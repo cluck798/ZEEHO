@@ -98,7 +98,8 @@ async function runSignin(source) {
       url: `http://127.0.0.1:${serverPort}/api/run-signin`,
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: "{}"
+      // 必须带 all:true——脚本端 body.all 为假且无 userId 时按空目标处理，会误报"没有已配置的账号"
+      body: JSON.stringify({ all: true })
     });
     let results = [];
     try { results = JSON.parse(out.body).results || []; } catch (e) {}
