@@ -1,0 +1,50 @@
+{
+  "name": "zeeho-panel",
+  "productName": "极核签到面板",
+  "version": "1.0.0",
+  "description": "极核 ZEEHO 签到面板桌面版：多账号签到、车辆管理、定时自动签到、托盘常驻",
+  "author": "lucky",
+  "homepage": "https://github.com/mlink798/ZEEHO",
+  "license": "MIT",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win",
+    "dist:portable": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.mlink798.zeehopanel",
+    "productName": "极核签到面板",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "engine.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../repo/zeeho_box_enhanced.js",
+        "to": "zeeho_box_enhanced.js"
+      }
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "极核签到面板"
+    }
+  }
+}
