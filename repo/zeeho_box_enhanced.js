@@ -1,16 +1,16 @@
 /*
-#!name=极核 ZEEHO 签到面板 V2.14.3
+#!name=极核 ZEEHO 签到面板 V2.14.4
 #!desc=极核ZEEHO多账号签到面板 + 网页配置，访问 http://zeeho.box
 #!author=lucky
 #!homepage=https://github.com/mlink798/ZEEHO
-#!version=2.14.3
+#!version=2.14.4
 
 图标: https://cdn.jsdelivr.net/gh/mlink798/ZEEHO@main/ZEEHO.png
 
 [Script]
 # ========== 极核 ZEEHO ==========
 # 面板 + 极核API自动捕获appId/appSecret
-http-request ^https?://(zeeho\.box|.*zeehoev\.com)/.* script-path=https://raw.githubusercontent.com/mlink798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js, requires-body=true, timeout=60, tag=极核面板V2.14.3
+http-request ^https?://(zeeho\.box|.*zeehoev\.com)/.* script-path=https://raw.githubusercontent.com/mlink798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js, requires-body=true, timeout=60, tag=极核面板V2.14.4
 
 # 极核Token自动捕获（打开极核App-我的页面）
 http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/mine\/cfmotoservermine\/setting script-path=https://raw.githubusercontent.com/mlink798/ZEEHO/refs/heads/main/repo/zeeho.js, requires-body=true, timeout=30, tag=极核抓Token
@@ -37,13 +37,13 @@ hostname = tapi.zeehoev.com, h5.zeehoev.com, zeeho.box
 const $ = new Env("极核看板增强版");
 
 // ========== 极核 ZEEHO 签到面板脚本 ==========
-// 版本: v2.14.3
-// 更新日期: 2026-09-25
+// 版本: v2.14.4
+// 更新日期: 2026-09-26
 // 作者: @lucky
 // 主页: https://github.com/mlink798/ZEEHO
 // ============================================
-const SCRIPT_VERSION = "v2.14.3";
-console.log(`🚀 [极核面板] 脚本版本: ${SCRIPT_VERSION} (2026-09-25 v2.14.3 按登录抓包修复手机号登录：内置 OAuth2 Basic 凭据 mck:123456；登录请求补全省份/城市/经纬度/referralCode 字段（与极核App完全一致）；发码改回免滑块的H5通道)`);
+const SCRIPT_VERSION = "v2.14.4";
+console.log(`🚀 [极核面板] 脚本版本: ${SCRIPT_VERSION} (2026-09-26 v2.14.4 修复手机号登录「验证码有误或已过期」：① 发码/登录统一走 App 网关（同一验证码池），不再 H5 发码 App 登录跨池取码；② 登录签名按官方 App 实际抓包结果修正为 GET 风格（URL入签、body不入签，与 HomeAssistant zeeho 集成一致）；③ nonce 对齐官方 App（16位随机字符+毫秒时间戳)；④ 登录请求体精简为 phone+authCode)`);
 
 // 面板入口域名：Loon 用虚拟域名 zeeho.box（Loon 可虚拟劫持不存在的域名），
 // QX 必须用真实可解析域名（默认 www.example.com，IANA 保留域名保证可解析）。
@@ -287,13 +287,16 @@ function h5SignWithBody(body, cfg) {
 // App 网关完整签名（与 HomeAssistant zeeho 集成一致，手机号登录走 App 网关时使用）：
 //  GET:  md5(sha1(scheme://host/path + "?" + query + param + secret))
 //  POST: md5(sha1(query + body + param + secret))
-// 说明：h5.zeehoev.com 的 authCode 发码实际写入 App 网关验证码池，而 H5 loginByPhone
-// 查的是 H5 池（空），导致"验证码有误或已过期"；发码与登录必须同一网关（App）。
+// 经验（v2.14.4 修复登录"验证码有误或已过期"）：
+//  ① 发码(authCode)与登录(loginByPhone)必须走同一网关(App)；H5 发码的码登录侧取不到；
+//  ② loginByPhone 虽然是 POST，签名必须按 GET 风格（URL入签、body不入签），
+//     用 POST 风格签名(query+body)会被服务端拒绝并返回"验证码有误或已过期"；
+//  ③ nonce 与官方 App 一致：16位随机字符 + 毫秒时间戳。
 function appGatewaySign(url, method, params = {}, body = '', cfg) {
   const c = cfg || getConfig();
   const ac = c.app || c.h5;
   const timestamp = new Date().getTime();
-  const nonce = timestamp + getRandomChars();
+  const nonce = getRandomChars(16) + timestamp;
   const param = `appId=${ac.appId}&nonce=${nonce}&timestamp=${timestamp}`;
   const query = toQuery(params);
   let preSign = '';
@@ -2133,7 +2136,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
         <button class="btn btn-sm" onclick="sendSmsCode()" id="pl_send_btn">获取验证码</button>
         <button class="btn btn-primary" onclick="phoneLogin()" id="pl_login_btn">登录并添加账号</button>
       </div>
-      <div class="hint">用手机号 + 短信验证码登录，自动获取 Token 与用户ID并加入账号列表，全程无需抓包。登录成功后会自动写入并刷新页面。<br><b>已修复</b>：登录已内置极核App的 client 凭据并补全省份/城市/定位字段（与 App 请求完全一致）。<br><b>提示</b>：若仍提示「验证码有误或已过期」，请先在<b>极核 App</b>里获取验证码（App 发码带滑块验证，面板发码走免滑块通道），把短信里的验证码填到面板登录即可。</div>
+      <div class="hint">用手机号 + 短信验证码登录，自动获取 Token 与用户ID并加入账号列表，全程无需抓包。登录成功后会自动写入并刷新页面。<br><b>已修复</b>（v2.14.4）：发码与登录统一走 App 网关（同一验证码池），登录签名按官方 App 抓包结果修正（POST 请求按 GET 风格入签），不再误报「验证码有误或已过期」。<br><b>提示</b>：验证码 5 分钟内有效，重复获取会使上一个验证码失效，请使用最新收到的那条。</div>
     </div>
   </div>
 
@@ -2557,12 +2560,13 @@ function __APP_HTML(){ return __appDecodeUtf8(__APP_HTML_B64); }
       return;
     }
     const cfg = getConfig();
-    // 发码走 H5 网关（免滑块、全自动；App 网关旧 GET 已废弃返回 permit error，新 POST /authCode/V2 需要滑块验证）
-    const url = `https://h5.zeehoev.com/cfmotoservermine/authCode/${encodeURIComponent(phone)}`;
-    const signH = getSign("h5", {}, '', cfg);
+    // 发码走 App 网关（与 loginByPhone 同一验证码池；签名按 GET 风格，URL入签）
+    // 曾误以为"App 网关旧 GET 已废弃返回 permit error"，实为签名风格错误所致，勿改回 H5（H5 发的码登录侧取不到）
+    const url = `https://tapi.zeehoev.com/v1.0/mine/cfmotoservermine/authCode/${encodeURIComponent(phone)}`;
+    const signH = appGatewaySign(url, "GET", {}, '', cfg);
     const res = await httpGet(url, {
       "Content-Type": "application/json;charset=UTF-8",
-      "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)",
+      "User-Agent": "okhttp/4.9.2",
       ...signH
     });
     if (res && String(res.code) === "10000") {
@@ -2587,23 +2591,16 @@ function __APP_HTML(){ return __appDecodeUtf8(__APP_HTML_B64); }
       return;
     }
     const cfg = getConfig();
-    // 登录请求体与极核 App 完全一致：phone+city+referralCode+longitude+latitude+authCode+province
-    // 定位字段默认福建宁德（极核 App 实测值）；未配置时可被服务端风控影响，必要时可改
-    const payload = {
-      phone: phone,
-      city: String(body.city || cfg.loginCity || "350900"),
-      referralCode: String(body.referralCode || ""),
-      longitude: String(body.longitude || cfg.loginLongitude || "119.646864"),
-      latitude: String(body.latitude || cfg.loginLatitude || "27.089556"),
-      authCode: code,
-      province: String(body.province || cfg.loginProvince || "350000")
-    };
+    // 登录请求体与参考实现（HomeAssistant zeeho 集成，实测可用）完全一致：phone + authCode
+    const payload = { phone: phone, authCode: code };
     // 登录必须带 OAuth2 Basic 凭据（逆向自极核 App，固定 mck:123456 → base64 bWNrOjEyMzQ1Ng==）
     // 留空则用内置默认值；用户抓包发现变化时可在面板输入框覆盖
     const basicAuth = String((body && body.basicAuth) || cfg.basicAuth || "bWNrOjEyMzQ1Ng==").trim().replace(/^Basic\s+/i, "");
-    // 走 App 网关（与发码同一验证码池）；H5 loginByPhone 查不到 H5 authCode 发的码
+    // 走 App 网关（与发码同一验证码池）
     const loginUrl = "https://tapi.zeehoev.com/v1.0/mine/cfmotoservermine/user/loginByPhone";
-    const signH = appGatewaySign(loginUrl, "POST", {}, payload, cfg);
+    // ⚠️ 虽然是 POST，签名必须按 GET 风格（URL入签、body 不入签，与参考实现一致）：
+    //    用 POST 风格签名(query+body) 服务端签名校验不过，返回"验证码有误或已过期"
+    const signH = appGatewaySign(loginUrl, "GET", {}, '', cfg);
     const loginHeaders = { "Content-Type": "application/json;charset=UTF-8", "User-Agent": "okhttp/4.9.2", ...signH };
     if (basicAuth) loginHeaders["Authorization"] = "Basic " + basicAuth;
     const loginRes = await httpPost(
