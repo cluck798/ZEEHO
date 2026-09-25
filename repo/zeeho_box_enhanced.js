@@ -1,16 +1,16 @@
 /*
-#!name=极核 ZEEHO 签到面板 V2.14.4
+#!name=极核 ZEEHO 签到面板 V2.14.5
 #!desc=极核ZEEHO多账号签到面板 + 网页配置，访问 http://zeeho.box
 #!author=lucky
 #!homepage=https://github.com/mlink798/ZEEHO
-#!version=2.14.4
+#!version=2.14.5
 
 图标: https://cdn.jsdelivr.net/gh/mlink798/ZEEHO@main/ZEEHO.png
 
 [Script]
 # ========== 极核 ZEEHO ==========
 # 面板 + 极核API自动捕获appId/appSecret
-http-request ^https?://(zeeho\.box|.*zeehoev\.com)/.* script-path=https://raw.githubusercontent.com/mlink798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js, requires-body=true, timeout=60, tag=极核面板V2.14.4
+http-request ^https?://(zeeho\.box|.*zeehoev\.com)/.* script-path=https://raw.githubusercontent.com/mlink798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js?v=2.14.5, requires-body=true, timeout=60, tag=极核面板V2.14.5
 
 # 极核Token自动捕获（打开极核App-我的页面）
 http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/mine\/cfmotoservermine\/setting script-path=https://raw.githubusercontent.com/mlink798/ZEEHO/refs/heads/main/repo/zeeho.js, requires-body=true, timeout=30, tag=极核抓Token
@@ -37,13 +37,13 @@ hostname = tapi.zeehoev.com, h5.zeehoev.com, zeeho.box
 const $ = new Env("极核看板增强版");
 
 // ========== 极核 ZEEHO 签到面板脚本 ==========
-// 版本: v2.14.4
+// 版本: v2.14.5
 // 更新日期: 2026-09-26
 // 作者: @lucky
 // 主页: https://github.com/mlink798/ZEEHO
 // ============================================
-const SCRIPT_VERSION = "v2.14.4";
-console.log(`🚀 [极核面板] 脚本版本: ${SCRIPT_VERSION} (2026-09-26 v2.14.4 修复手机号登录「验证码有误或已过期」：① 发码/登录统一走 App 网关（同一验证码池），不再 H5 发码 App 登录跨池取码；② 登录签名按官方 App 实际抓包结果修正为 GET 风格（URL入签、body不入签，与 HomeAssistant zeeho 集成一致）；③ nonce 对齐官方 App（16位随机字符+毫秒时间戳)；④ 登录请求体精简为 phone+authCode)`);
+const SCRIPT_VERSION = "v2.14.5";
+console.log(`🚀 [极核面板] 脚本版本: ${SCRIPT_VERSION} (2026-09-26 v2.14.5 ①手机号登录已用真实手机号+短信验证码全流程实测通过（App网关发码→登录→成功拿到access_token）；② script-path 增加 ?v=版本号 缓存戳——代理工具(Loon/QX/Surge)按 URL 缓存脚本，地址带版本号后每次更新都会强制重新下载，修复"更新了脚本但手机仍跑旧版"的问题)`);
 
 // 面板入口域名：Loon 用虚拟域名 zeeho.box（Loon 可虚拟劫持不存在的域名），
 // QX 必须用真实可解析域名（默认 www.example.com，IANA 保留域名保证可解析）。
