@@ -122,6 +122,17 @@ class Engine {
           write: (value, key) => { store.kv[String(key)] = String(value); engine._saveStore(); }
         },
         $httpClient: this._makeHttpClient(),
+        // ---- v2.14.9 本地通知：桌面版走 Electron 系统通知（纯 Node 环境兜底为日志） ----
+        $notification: {
+          post: (title, subtitle, body) => {
+            const text = [subtitle, body].filter(Boolean).join(" ");
+            try {
+              const { Notification } = require("electron");
+              if (Notification.isSupported()) { new Notification({ title: String(title || ""), body: text, silent: false }).show(); return; }
+            } catch (e) {}
+            this.log(`[通知] ${title} ${text}`);
+          }
+        },
         // ---- Node 全局（vm 沙箱默认没有） ----
         console: {
           log: (...a) => this.log(a.map(String).join(" ")),
