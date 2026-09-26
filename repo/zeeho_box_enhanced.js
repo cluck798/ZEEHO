@@ -1,16 +1,16 @@
 /*
-#!name=极核 ZEEHO 签到面板 V2.14.6
+#!name=极核 ZEEHO 签到面板 V2.14.7
 #!desc=极核ZEEHO多账号签到面板 + 网页配置，访问 http://zeeho.box
 #!author=lucky
 #!homepage=https://github.com/cluck798/ZEEHO
-#!version=2.14.6
+#!version=2.14.7
 
 图标: https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/ZEEHO.png
 
 [Script]
 # ========== 极核 ZEEHO ==========
 # 面板 + 极核API自动捕获appId/appSecret
-http-request ^https?://(zeeho\.box|.*zeehoev\.com)/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js?v=2.14.6, requires-body=true, timeout=60, tag=极核面板V2.14.6
+http-request ^https?://(zeeho\.box|.*zeehoev\.com)/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js?v=2.14.7, requires-body=true, timeout=60, tag=极核面板V2.14.7
 
 # 极核Token自动捕获（打开极核App-我的页面）
 http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/mine\/cfmotoservermine\/setting script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho.js, requires-body=true, timeout=30, tag=极核抓Token
@@ -37,13 +37,13 @@ hostname = tapi.zeehoev.com, h5.zeehoev.com, zeeho.box
 const $ = new Env("极核看板增强版");
 
 // ========== 极核 ZEEHO 签到面板脚本 ==========
-// 版本: v2.14.6
-// 更新日期: 2026-09-26
+// 版本: v2.14.7
+// 更新日期: 2026-09-27
 // 作者: @lucky
 // 主页: https://github.com/cluck798/ZEEHO
 // ============================================
-const SCRIPT_VERSION = "v2.14.6";
-console.log(`🚀 [极核面板] 脚本版本: ${SCRIPT_VERSION} (2026-09-26 v2.14.6 仓库迁移至 github.com/cluck798/ZEEHO——脚本内全部 GitHub 链接与 CDN 地址已更新为新仓库；请在代理工具中更新订阅/插件后强制刷新面板，以拉取新版脚本`);
+const SCRIPT_VERSION = "v2.14.7";
+console.log(`🚀 [极核面板] 脚本版本: ${SCRIPT_VERSION} (2026-09-27 v2.14.7 修复签到失败 permit error——极核服务端收紧签名校验，H5 签到 POST 现需把请求体纳入签名，已同步修正)`);
 
 // 面板入口域名：Loon 用虚拟域名 zeeho.box（Loon 可虚拟劫持不存在的域名），
 // QX 必须用真实可解析域名（默认 www.example.com，IANA 保留域名保证可解析）。
@@ -251,7 +251,7 @@ function getSign(type, params = {}, body = '', cfg) {
   const nonce = type === "h5" ? getUuid() : timestamp + getRandomChars();
   const param = `appId=${ac.appId}&nonce=${nonce}&timestamp=${timestamp}`;
   const bodyStr = body ? (typeof body === 'string' ? body : JSON.stringify(body)) : '';
-  const signature = type === "h5" ? `${query}${param}${ac.appSecret}` : `${bodyStr}${param}${ac.appSecret}`;
+  const signature = type === "h5" ? `${query}${bodyStr}${param}${ac.appSecret}` : `${bodyStr}${param}${ac.appSecret}`;
   const sign = md5(sha1(signature), 32).toString();
   // 按官方App真实请求头同时下发：cfmoto-x-* 三件套 + 独立 timestamp/nonce/signature（signature 与 sign 同值，官方冗余发送）
   return {
@@ -419,7 +419,7 @@ async function runSigninForAccount(acc, cfg) {
         // 多账号连签易触发“请稍后/操作频繁”限流，退避后最多重试3次
         let signRes = null, signMsg = "未知";
         for (let at = 1; at <= 3; at++) {
-          signRes = await httpPost(`https://h5.zeehoev.com/cfmotoservermine/signin`, { ...baseHeaders, ...getSign("h5", {}, '', cfg) }, {});
+          signRes = await httpPost(`https://h5.zeehoev.com/cfmotoservermine/signin`, { ...baseHeaders, ...getSign("h5", {}, {}, cfg) }, {});
           if (signRes?.code == "10000") break;
           signMsg = signRes?.message || "未知";
           if (/请稍|稍后|稍候|频繁|繁忙|重试/.test(signMsg) && at < 3) {
