@@ -17,7 +17,7 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "com.mlink798.zeehopanel",
+    "appId": "com.cluck798.zeehopanel",
     "productName": "极核签到面板",
     "directories": {
       "output": "dist",
