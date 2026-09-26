@@ -2,8 +2,8 @@
   "id": "zeeho",
   "name": "极核ZEEHO",
   "author": "@ZEEHO",
-  "icon": "https://raw.githubusercontent.com/mlink798/ZEEHO/main/ZEEHO.png",
-  "repo": "https://github.com/mlink798/ZEEHO",
+  "icon": "https://raw.githubusercontent.com/cluck798/ZEEHO/main/ZEEHO.png",
+  "repo": "https://github.com/cluck798/ZEEHO",
   "apps": [
     {
       "id": "zeeho_box",
@@ -40,10 +40,10 @@
         }
       ],
       "author": "@ZEEHO",
-      "repo": "https://github.com/mlink798/ZEEHO",
-      "script": "https://raw.githubusercontent.com/mlink798/ZEEHO/main/script/zeeho_box_enhanced.js",
+      "repo": "https://github.com/cluck798/ZEEHO",
+      "script": "https://raw.githubusercontent.com/cluck798/ZEEHO/main/script/zeeho_box_enhanced.js",
       "icons": [
-        "https://raw.githubusercontent.com/mlink798/ZEEHO/main/ZEEHO.png"
+        "https://raw.githubusercontent.com/cluck798/ZEEHO/main/ZEEHO.png"
       ]
     },
     {
@@ -62,8 +62,8 @@
         }
       ],
       "author": "@ZEEHO",
-      "repo": "https://github.com/mlink798/ZEEHO",
-      "script": "https://raw.githubusercontent.com/mlink798/ZEEHO/main/script/zeeho.js"
+      "repo": "https://github.com/cluck798/ZEEHO",
+      "script": "https://raw.githubusercontent.com/cluck798/ZEEHO/main/script/zeeho.js"
     }
   ]
 }

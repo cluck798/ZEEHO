@@ -3,14 +3,14 @@
 #!desc=极核打开我的插件自动捕获 user_id/Authorization/Cookie/User-Agent/app_secret，无需手动抓包；每日定时自动签到。仅供个人学习使用，请勿用于违规用途。
 #!author=lucky
 #!version=2.5.0
-#!icon=https://cdn.jsdelivr.net/gh/mlink798/ZEEHO@main/script/ZEEHO.png
+#!icon=https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/script/ZEEHO.png
 
 [Script]
 # 获取 Cookie
-http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/mine\/cfmotoservermine\/setting script-path=https://cdn.jsdelivr.net/gh/mlink798/ZEEHO@main/script/zeeho.js, requires-body=true, timeout=60, tag=极核Cookie
+http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/mine\/cfmotoservermine\/setting script-path=https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/script/zeeho.js, requires-body=true, timeout=60, tag=极核Cookie
 
 # 脚本任务
-cron "0 7 * * *" script-path=https://cdn.jsdelivr.net/gh/mlink798/ZEEHO@main/script/zeeho.js, timeout=300, tag=极核
+cron "0 7 * * *" script-path=https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/script/zeeho.js, timeout=300, tag=极核
 
 [MITM]
 hostname = tapi.zeehoev.com

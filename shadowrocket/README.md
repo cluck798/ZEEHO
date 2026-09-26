@@ -58,8 +58,8 @@ tapi.zeehoev.com, h5.zeehoev.com, zeeho.box
 
 如果你的网络环境可以访问 `cdn.jsdelivr.net`，也可以用 `zeeho.conf`（远程脚本版）：
 - 导入 `zeeho.conf` 即可，无需手动放入 `.js` 文件。
-- 脚本地址：`https://cdn.jsdelivr.net/gh/mlink798/ZEEHO@main/shadowrocket/zeeho.js`
-- 脚本更新后若未生效，浏览器访问 `https://purge.jsdelivr.net/gh/mlink798/ZEEHO@main/shadowrocket/zeeho.js` 刷新缓存。
+- 脚本地址：`https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/shadowrocket/zeeho.js`
+- 脚本更新后若未生效，浏览器访问 `https://purge.jsdelivr.net/gh/cluck798/ZEEHO@main/shadowrocket/zeeho.js` 刷新缓存。
 
 > jsDelivr 在国内部分地区存在 DNS 污染，如遇下载失败请用本地脚本版。
 

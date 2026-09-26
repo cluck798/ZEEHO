@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/mlink798/ZEEHO/main/ZEEHO.png" width="120" alt="ZEEHO" />
+<img src="https://raw.githubusercontent.com/cluck798/ZEEHO/main/ZEEHO.png" width="120" alt="ZEEHO" />
 
 # ZEEHO-福安鹤祥店
 > ⚠️本项目仅用于学习研究，禁止商用，使用产生一切风险自行承担
@@ -34,7 +34,7 @@
 - 云端开/关锁 AES 密钥默认不内置，需手动填写，防滥用
 - App 更新导致接口加密变化时脚本可能失效，等待适配
 - 使用第三方脚本存在账号风控风险，请自行评估
-- LOON插件订阅：https://raw.githubusercontent.com/mlink798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js
-- Shadowrocket配置：https://raw.githubusercontent.com/mlink798/ZEEHO/refs/heads/main/shadowrocket/zeeho.conf
-- BOXJS订阅：https://raw.githubusercontent.com/mlink798/ZEEHO/refs/heads/main/script/boxjs/zeeho.boxjs.json
+- LOON插件订阅：https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js
+- Shadowrocket配置：https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/shadowrocket/zeeho.conf
+- BOXJS订阅：https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/boxjs/zeeho.boxjs.json
 - 爱发电赞助：https://afdian.com/a/lucky798

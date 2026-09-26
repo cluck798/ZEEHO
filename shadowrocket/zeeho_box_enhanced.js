@@ -2,21 +2,21 @@
 #!name=极核 ZEEHO 签到面板 V2.13.1
 #!desc=极核ZEEHO多账号签到面板 + 网页配置，访问 http://zeeho.box
 #!author=lucky
-#!homepage=https://github.com/mlink798/ZEEHO
+#!homepage=https://github.com/cluck798/ZEEHO
 #!version=2.13.1
 
-图标: https://cdn.jsdelivr.net/gh/mlink798/ZEEHO@main/ZEEHO.png
+图标: https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/ZEEHO.png
 
 [Script]
 # ========== 极核 ZEEHO ==========
 # 面板 + 极核API自动捕获appId/appSecret
-http-request ^https?://(zeeho\.box|.*zeehoev\.com)/.* script-path=https://raw.githubusercontent.com/mlink798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js, requires-body=true, timeout=60, tag=极核面板V2.13.1
+http-request ^https?://(zeeho\.box|.*zeehoev\.com)/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js, requires-body=true, timeout=60, tag=极核面板V2.13.1
 
 # 极核Token自动捕获（打开极核App-我的页面）
-http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/mine\/cfmotoservermine\/setting script-path=https://raw.githubusercontent.com/mlink798/ZEEHO/refs/heads/main/repo/zeeho.js, requires-body=true, timeout=30, tag=极核抓Token
+http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/mine\/cfmotoservermine\/setting script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho.js, requires-body=true, timeout=30, tag=极核抓Token
 
 # 极核每日签到（每天7点）
-cron "0 7 * * *" script-path=https://raw.githubusercontent.com/mlink798/ZEEHO/refs/heads/main/repo/zeeho.js, timeout=120, tag=极核每日签到
+cron "0 7 * * *" script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho.js, timeout=120, tag=极核每日签到
 
 
 [MITM]
@@ -41,7 +41,7 @@ const $ = new Env("极核看板增强版");
 // 版本: v2.13.1
 // 更新日期: 2026-09-24
 // 作者: @lucky
-// 主页: https://github.com/mlink798/ZEEHO
+// 主页: https://github.com/cluck798/ZEEHO
 // ============================================
 const SCRIPT_VERSION = "v2.13.1";
 console.log(`🚀 [极核面板] 脚本版本: ${SCRIPT_VERSION} (2026-09-24 v2.13.1 ①修复：多车切换后控车未传VIN导致误操作默认车辆；②修复：账号错误(Token失效/缺用户ID)在看板卡片不显示；③优化：主题选择——设置页新增5套主题卡片、悬浮按钮显示当前主题名)`);
@@ -1728,7 +1728,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
   </div>
 </div>
 
-<div class="footer">极核 ZEEHO 签到看板 · 作者 <a href="https://github.com/mlink798">lucky</a> · 数据来自代理工具实时 API<br><span style="font-size:10px;color:#CBD5E1;margin-top:4px;display:inline-block">脚本版本 ${SCRIPT_VERSION}</span></div>
+<div class="footer">极核 ZEEHO 签到看板 · 作者 <a href="https://github.com/cluck798">lucky</a> · 数据来自代理工具实时 API<br><span style="font-size:10px;color:#CBD5E1;margin-top:4px;display:inline-block">脚本版本 ${SCRIPT_VERSION}</span></div>
 <script>
 var vehicleDataList = ${JSON.stringify(data.map(function(a){ return a.vehicle || {}; }))};
 var AUTO_REFRESH_SEC = ${cfg.autoRefreshSec || 60};

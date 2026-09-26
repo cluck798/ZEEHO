@@ -1,22 +1,22 @@
 /*
-#!name=极核 ZEEHO 签到面板 V2.14.5
+#!name=极核 ZEEHO 签到面板 V2.14.6
 #!desc=极核ZEEHO多账号签到面板 + 网页配置，访问 http://zeeho.box
 #!author=lucky
-#!homepage=https://github.com/mlink798/ZEEHO
-#!version=2.14.5
+#!homepage=https://github.com/cluck798/ZEEHO
+#!version=2.14.6
 
-图标: https://cdn.jsdelivr.net/gh/mlink798/ZEEHO@main/ZEEHO.png
+图标: https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/ZEEHO.png
 
 [Script]
 # ========== 极核 ZEEHO ==========
 # 面板 + 极核API自动捕获appId/appSecret
-http-request ^https?://(zeeho\.box|.*zeehoev\.com)/.* script-path=https://raw.githubusercontent.com/mlink798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js?v=2.14.5, requires-body=true, timeout=60, tag=极核面板V2.14.5
+http-request ^https?://(zeeho\.box|.*zeehoev\.com)/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js?v=2.14.6, requires-body=true, timeout=60, tag=极核面板V2.14.6
 
 # 极核Token自动捕获（打开极核App-我的页面）
-http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/mine\/cfmotoservermine\/setting script-path=https://raw.githubusercontent.com/mlink798/ZEEHO/refs/heads/main/repo/zeeho.js, requires-body=true, timeout=30, tag=极核抓Token
+http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/mine\/cfmotoservermine\/setting script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho.js, requires-body=true, timeout=30, tag=极核抓Token
 
 # 极核每日签到（每天7点）
-cron "0 7 * * *" script-path=https://raw.githubusercontent.com/mlink798/ZEEHO/refs/heads/main/repo/zeeho.js, timeout=120, tag=极核每日签到
+cron "0 7 * * *" script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho.js, timeout=120, tag=极核每日签到
 
 
 [MITM]
@@ -37,13 +37,13 @@ hostname = tapi.zeehoev.com, h5.zeehoev.com, zeeho.box
 const $ = new Env("极核看板增强版");
 
 // ========== 极核 ZEEHO 签到面板脚本 ==========
-// 版本: v2.14.5
+// 版本: v2.14.6
 // 更新日期: 2026-09-26
 // 作者: @lucky
-// 主页: https://github.com/mlink798/ZEEHO
+// 主页: https://github.com/cluck798/ZEEHO
 // ============================================
-const SCRIPT_VERSION = "v2.14.5";
-console.log(`🚀 [极核面板] 脚本版本: ${SCRIPT_VERSION} (2026-09-26 v2.14.5 ①手机号登录已用真实手机号+短信验证码全流程实测通过（App网关发码→登录→成功拿到access_token）；② script-path 增加 ?v=版本号 缓存戳——代理工具(Loon/QX/Surge)按 URL 缓存脚本，地址带版本号后每次更新都会强制重新下载，修复"更新了脚本但手机仍跑旧版"的问题)`);
+const SCRIPT_VERSION = "v2.14.6";
+console.log(`🚀 [极核面板] 脚本版本: ${SCRIPT_VERSION} (2026-09-26 v2.14.6 仓库迁移至 github.com/cluck798/ZEEHO——脚本内全部 GitHub 链接与 CDN 地址已更新为新仓库；请在代理工具中更新订阅/插件后强制刷新面板，以拉取新版脚本`);
 
 // 面板入口域名：Loon 用虚拟域名 zeeho.box（Loon 可虚拟劫持不存在的域名），
 // QX 必须用真实可解析域名（默认 www.example.com，IANA 保留域名保证可解析）。
@@ -1783,7 +1783,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
   </div>
 </div>
 
-<div class="footer">极核 ZEEHO 签到看板 · 作者 <a href="https://github.com/mlink798">lucky</a> · 数据来自代理工具实时 API<br><span style="font-size:10px;color:#CBD5E1;margin-top:4px;display:inline-block">脚本版本 ${SCRIPT_VERSION}</span></div>
+<div class="footer">极核 ZEEHO 签到看板 · 作者 <a href="https://github.com/cluck798">lucky</a> · 数据来自代理工具实时 API<br><span style="font-size:10px;color:#CBD5E1;margin-top:4px;display:inline-block">脚本版本 ${SCRIPT_VERSION}</span></div>
 <script>
 var vehicleDataList = ${JSON.stringify(data.map(function(a){ return a.vehicle || {}; }))};
 var AUTO_REFRESH_SEC = ${cfg.autoRefreshSec || 60};
