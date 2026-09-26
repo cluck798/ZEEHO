@@ -1,0 +1,82 @@
+name: build-ipa
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "ios/**"
+      - "repo/zeeho_box_enhanced.js"
+      - ".github/workflows/build-ipa.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-ipa
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # macos-15 自带 Xcode 16+，可读新版 xcodegen 生成的项目格式
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Prepare resources
+        run: |
+          set -e
+          cp repo/zeeho_box_enhanced.js ios/App/Resources/zeeho_box_enhanced.js
+          sips -z 1024 1024 desktop/build/icon.png --out ios/App/Resources/Assets.xcassets/AppIcon.appiconset/icon.png
+
+      - name: Generate project and build
+        run: |
+          set -eo pipefail
+          cd ios
+          xcodegen generate
+          xcodebuild -project ZeehoSignPanel.xcodeproj -scheme ZeehoPanel -configuration Release \
+            -sdk iphoneos -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= \
+            build 2>&1 | tee xcodebuild.log
+
+      - name: Package IPA
+        run: |
+          set -e
+          cd ios
+          rm -rf Payload
+          mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/ZeehoPanel.app Payload/
+          zip -qry ../ZeehoSignPanel.ipa Payload
+          ls -la ../ZeehoSignPanel.ipa
+
+      - name: Publish IPA to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-latest
+          name: 极核签到面板 iOS IPA（巨魔/TrollStore）
+          body: |
+            TrollStore（巨魔）专用未签名 IPA。
+            - 内核：构建时自动同步 repo/zeeho_box_enhanced.js（当前 v2.14.9）
+            - 安装：TrollStore 中点击 + 选择本 IPA 即可，永久签名不掉签
+            - 构建提交：${{ github.sha }}
+          files: ZeehoSignPanel.ipa
+          overwrite: true
+          make_latest: true
+
+      - name: Collect build log on failure
+        if: failure()
+        run: |
+          touch ios/xcodebuild.log
+          tail -c 300000 ios/xcodebuild.log > ios/xcodebuild-tail.log
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-latest
+          name: 极核签到面板 iOS IPA（巨魔/TrollStore）
+          files: ios/xcodebuild-tail.log
+          overwrite: true

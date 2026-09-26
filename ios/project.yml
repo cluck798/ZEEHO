@@ -1,0 +1,28 @@
+name: ZeehoSignPanel
+options:
+  createIntermediateGroups: true
+  deploymentTarget:
+    iOS: "14.0"
+settings:
+  base:
+    CODE_SIGNING_ALLOWED: "NO"
+    CODE_SIGNING_REQUIRED: "NO"
+    CODE_SIGN_IDENTITY: ""
+targets:
+  ZeehoPanel:
+    type: application
+    platform: iOS
+    sources:
+      - path: App/Sources
+      - path: App/Resources
+      - path: App/Info.plist
+        buildPhase: none
+    settings:
+      base:
+        PRODUCT_NAME: ZeehoPanel
+        PRODUCT_BUNDLE_IDENTIFIER: com.zeeho.signpanel
+        INFOPLIST_FILE: App/Info.plist
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_BITCODE: "NO"
+        IPHONEOS_DEPLOYMENT_TARGET: "14.0"
