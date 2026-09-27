@@ -90,7 +90,7 @@ static UIColor *ZHPanelBackgroundColor(void) {
     config.allowsInlineMediaPlayback = YES;
     // 诊断 JS 桥（iOS 14+，带 reply 回调，页面侧用 Promise 调用）
     [config.userContentController addScriptMessageHandler:self
-                                              contentWorld:WKContentWorld.page
+                                              contentWorld:WKContentWorld.pageWorld
                                                       name:@"zhDiag"];
 
     WKWebView *webView = [[WKWebView alloc] initWithFrame:CGRectZero configuration:config];
