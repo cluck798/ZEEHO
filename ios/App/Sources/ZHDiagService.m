@@ -248,7 +248,7 @@ static long long zhParseDidUnsigned(NSData *uds, uint16_t did) {
 #pragma mark - WiFi 凭证推导（与 wifi.js 一致）
 
 - (NSDictionary *)credentialsFromDeviceName:(NSString *)name {
-    NSArray *parts = [NSString stringWithFormat:@"%@", name].componentsSeparatedByString:@"-"];
+    NSArray *parts = [[NSString stringWithFormat:@"%@", name] componentsSeparatedByString:@"-"];
     if (parts.count < 2) return nil;
     NSString *suffix = parts.lastObject;
     if (suffix.length < 8) return nil;
@@ -258,7 +258,7 @@ static long long zhParseDidUnsigned(NSData *uds, uint16_t did) {
     };
 }
 - (NSDictionary *)credentialsFromVin:(NSString *)vin {
-    NSString *v = [NSString stringWithFormat:@"%@", vin].stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+    NSString *v = [[NSString stringWithFormat:@"%@", vin] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
     if (v.length < 8) return nil;
     return @{
         @"ssid": [v substringFromIndex:v.length - 6],
@@ -359,7 +359,7 @@ static long long zhParseDidUnsigned(NSData *uds, uint16_t did) {
     __block BOOL settled = NO;
     nw_connection_set_queue(conn, self.netQueue);
     nw_connection_set_state_changed_handler(conn, ^(nw_connection_state_t state, nw_error_t error) {
-        if (state == NW_CONNECTION_STATE_READY) {
+        if (state == nw_connection_state_ready) {
             if (!settled) {
                 settled = YES;
                 self.connected = YES;
@@ -370,7 +370,7 @@ static long long zhParseDidUnsigned(NSData *uds, uint16_t did) {
                 [self startHeartbeat];
                 reply(@{ @"ok": @YES, @"message": [NSString stringWithFormat:@"已连接车机网关 %@（路由激活+心跳已启动）", kDoipHost] }, nil);
             }
-        } else if (state == NW_CONNECTION_STATE_FAILED || state == NW_CONNECTION_STATE_CANCELLED) {
+        } else if (state == nw_connection_state_failed || state == nw_connection_state_cancelled) {
             NSString *msg = error ? zhNWErrorDescription(error) : @"连接失败";
             [self log:@"TCP 连接失败: %@", msg];
             [self handleConnectionClosed];
