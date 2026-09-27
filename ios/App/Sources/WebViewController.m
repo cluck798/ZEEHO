@@ -3,7 +3,6 @@
 // ZHDispatcher（JavaScriptCore 引擎）运行核心脚本，1:1 复刻桌面版架构。
 #import "WebViewController.h"
 #import "ZHDispatcher.h"
-#import "ZHDiagService.h"
 #import <WebKit/WebKit.h>
 #import <AVFoundation/AVFoundation.h>
 #import <UserNotifications/UserNotifications.h>
@@ -30,41 +29,10 @@ static NSString * const kFetchBodyShim =
 "}}catch(e){}"
 "return OF.apply(this,arguments)};})();</script>";
 
-// 注入到每个 text/html 响应：面板页右下角悬浮「诊断」入口（诊断页自身不注入）
-static NSString * const kDiagEntryShim =
-@"<script>(function(){if(window.__zhDiagEntry)return;window.__zhDiagEntry=1;"
-"if(location.pathname.indexOf('/diag')===0)return;"
-"function mount(){var b=document.createElement('div');"
-"b.textContent='诊断';"
-"b.style.cssText='position:fixed;right:14px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:99999;"
-"background:#2f9de0;color:#fff;border-radius:999px;padding:9px 15px;font-size:13px;"
-"box-shadow:0 2px 12px rgba(0,0,0,.45);opacity:.92;cursor:pointer;';"
-"b.addEventListener('click',function(){location.href='/diag'});"
-"document.body.appendChild(b)}"
-"if(document.body)mount();else document.addEventListener('DOMContentLoaded',mount);})();</script>";
-
-// JS 字符串转义（evaluateJavaScript 注入事件用）
-static NSString *ZHEscapeJsString(NSString *s) {
-    NSMutableString *out = [NSMutableString stringWithCapacity:s.length + 8];
-    for (NSUInteger i = 0; i < s.length; i++) {
-        unichar c = [s characterAtIndex:i];
-        switch (c) {
-            case '\\': [out appendString:@"\\\\"]; break;
-            case '"':  [out appendString:@"\\\""]; break;
-            case '\n': [out appendString:@"\\n"]; break;
-            case '\r': [out appendString:@"\\r"]; break;
-            case 0x2028: [out appendString:@"\\u2028"]; break;
-            case 0x2029: [out appendString:@"\\u2029"]; break;
-            default: [out appendFormat:@"%C", c]; break;
-        }
-    }
-    return out;
-}
-
 // 后台充电/离线监控轮询间隔（秒）
 static const NSTimeInterval kMonitorTickInterval = 180.0;
 
-@interface WebViewController () <WKURLSchemeHandler, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandlerWithReply>
+@interface WebViewController () <WKURLSchemeHandler, WKNavigationDelegate, WKUIDelegate>
 @property (nonatomic, strong) WKWebView *webView;
 @property (nonatomic, strong) ZHDispatcher *dispatcher;
 @property (nonatomic, strong) NSHashTable<id<WKURLSchemeTask>> *activeTasks;
@@ -88,10 +56,6 @@ static UIColor *ZHPanelBackgroundColor(void) {
     WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
     [config setURLSchemeHandler:self forURLScheme:kPanelScheme];
     config.allowsInlineMediaPlayback = YES;
-    // 诊断 JS 桥（iOS 14+，带 reply 回调，页面侧用 Promise 调用）
-    [config.userContentController addScriptMessageHandler:self
-                                              contentWorld:WKContentWorld.pageWorld
-                                                      name:@"zhDiag"];
 
     WKWebView *webView = [[WKWebView alloc] initWithFrame:CGRectZero configuration:config];
     webView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -115,18 +79,6 @@ static UIColor *ZHPanelBackgroundColor(void) {
 
     NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"%@://panel/", kPanelScheme]];
     [webView loadRequest:[NSURLRequest requestWithURL:url]];
-
-    // 诊断服务事件（log / pdu）→ 页面 __zhDiagEvent
-    __weak typeof(self) weakSelf = self;
-    [ZHDiagService shared].eventHandler = ^(NSString *type, NSString *message) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
-        NSString *js = [NSString stringWithFormat:@"if(window.__zhDiagEvent)window.__zhDiagEvent(\"%@\",\"%@\")",
-                        ZHEscapeJsString(type), ZHEscapeJsString(message)];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [strongSelf.webView evaluateJavaScript:js completionHandler:nil];
-        });
-    };
 
     [self requestNotificationAuth];
     [self startBackgroundKeepAlive];
@@ -244,15 +196,9 @@ static UIColor *ZHPanelBackgroundColor(void) {
 - (void)webView:(WKWebView *)webView startURLSchemeTask:(id<WKURLSchemeTask>)urlSchemeTask {
     [self.activeTasks addObject:urlSchemeTask];
 
-    // /diag → 原生诊断页（bundle 内 diag.html，不经核心脚本）
+    // zeeho://panel/path?query → http://zeeho.box/path?query（脚本的标准入口域名）
     NSURL *reqURL = urlSchemeTask.request.URL;
     NSString *path = reqURL.path.length ? reqURL.path : @"/";
-    if ([path isEqualToString:@"/diag"]) {
-        [self serveDiagPage:urlSchemeTask];
-        return;
-    }
-
-    // zeeho://panel/path?query → http://zeeho.box/path?query（脚本的标准入口域名）
     NSString *urlStr = [@"http://zeeho.box" stringByAppendingString:path];
     if (reqURL.query.length) urlStr = [urlStr stringByAppendingFormat:@"?%@", reqURL.query];
 
@@ -277,11 +223,10 @@ static UIColor *ZHPanelBackgroundColor(void) {
             NSMutableDictionary *finalHeaders = [NSMutableDictionary dictionaryWithDictionary:respHeaders ?: @{}];
             finalHeaders[@"Cache-Control"] = @"no-store";
             NSString *finalBody = respBody ?: @"";
-            // HTML 响应（看板页/配置页）最前面注入 fetch body 桥接垫片 + 诊断入口
+            // HTML 响应（看板页/配置页）最前面注入 fetch body 桥接垫片
             NSString *contentType = [finalHeaders[@"Content-Type"] isKindOfClass:[NSString class]] ? finalHeaders[@"Content-Type"] : @"";
             if ([contentType containsString:@"text/html"]) {
                 finalBody = [kFetchBodyShim stringByAppendingString:finalBody];
-                finalBody = [finalBody stringByAppendingString:kDiagEntryShim];
             }
             NSHTTPURLResponse *response = [[NSHTTPURLResponse alloc] initWithURL:reqURL
                                                                         statusCode:status
@@ -299,47 +244,6 @@ static UIColor *ZHPanelBackgroundColor(void) {
 
 - (void)webView:(WKWebView *)webView stopURLSchemeTask:(id<WKURLSchemeTask>)urlSchemeTask {
     [self.activeTasks removeObject:urlSchemeTask];
-}
-
-#pragma mark - 诊断页与诊断桥
-
-// /diag：返回 bundle 内 diag.html（原生诊断 UI，不经核心脚本）
-- (void)serveDiagPage:(id<WKURLSchemeTask>)urlSchemeTask {
-    NSString *html = @"";
-    NSString *path = [[NSBundle mainBundle] pathForResource:@"diag" ofType:@"html"];
-    if (path) html = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:NULL] ?: @"";
-    @try {
-        NSHTTPURLResponse *response = [[NSHTTPURLResponse alloc] initWithURL:urlSchemeTask.request.URL
-                                                                  statusCode:path ? 200 : 500
-                                                                 HTTPVersion:@"HTTP/1.1"
-                                                                headerFields:@{ @"Content-Type": @"text/html; charset=utf-8",
-                                                                                @"Cache-Control": @"no-store" }];
-        [urlSchemeTask didReceiveResponse:response];
-        [urlSchemeTask didReceiveData:[html dataUsingEncoding:NSUTF8StringEncoding] ?: [NSData data]];
-        [urlSchemeTask didFinish];
-    } @catch (NSException *exception) {
-        // 任务已被 WebKit 取消，忽略
-    }
-    [self.activeTasks removeObject:urlSchemeTask];
-}
-
-// JS 桥：window.webkit.messageHandlers.zhDiag.postMessage({op, args}, reply)
-- (void)userContentController:(WKUserContentController *)userContentController
-      didReceiveScriptMessage:(WKScriptMessage *)message
-                 replyHandler:(void (^)(id _Nullable, NSString *_Nullable))replyHandler {
-    if (![message.name isEqualToString:@"zhDiag"]) {
-        replyHandler(nil, @"未知消息通道");
-        return;
-    }
-    NSDictionary *body = [message.body isKindOfClass:[NSDictionary class]] ? message.body : @{};
-    NSString *op = [body[@"op"] isKindOfClass:[NSString class]] ? body[@"op"] : @"";
-    NSDictionary *args = [body[@"args"] isKindOfClass:[NSDictionary class]] ? body[@"args"] : @{};
-    [[ZHDiagService shared] handleOp:op args:args reply:^(id result, NSString *error) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            // 错误时 reply 传 nil（JS promise reject）；成功时 result 至少为 NSNull
-            replyHandler(error ? nil : (result ?: [NSNull null]), error);
-        });
-    }];
 }
 
 #pragma mark - WKNavigationDelegate

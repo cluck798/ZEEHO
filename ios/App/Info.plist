@@ -17,19 +17,13 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.8</string>
+	<string>1.0.7</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>用于扫描车辆蓝牙广播（zeehok1-*），自动推导车辆 WiFi 热点凭证</string>
-	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>用于扫描车辆蓝牙广播（zeehok1-*），自动推导车辆 WiFi 热点凭证</string>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>用于连接车辆网关（192.168.49.1）读取车辆诊断信息</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
