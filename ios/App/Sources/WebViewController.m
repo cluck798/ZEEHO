@@ -6,6 +6,26 @@
 #import <WebKit/WebKit.h>
 
 static NSString * const kPanelScheme = @"zeeho";
+// POST 请求体桥接头：WKWebView 对自定义 scheme 的 fetch/XHR POST 会剥离请求体
+// （WebKit bug 179077 / radar 35087855，HTTPBody 与 HTTPBodyStream 均为 nil），
+// 导致面板 /api/* 的 POST（签到/车控扩展/保存配置等）全部收到空 body。
+// 前端 fetch 垫片（kFetchBodyShim）把 body 百分号编码后复制进该请求头，
+// 原生端 readRequestBody 优先取真实 body，取不到时从该头兜底还原。
+static NSString * const kBodyBridgeHeader = @"X-Zeeho-Body";
+
+// 注入到每个 text/html 响应最前面：劫持 window.fetch，
+// 把字符串请求体镜像进 X-Zeeho-Body 头（不影响原请求语义）
+static NSString * const kFetchBodyShim =
+@"<script>(function(){if(window.__zhBodyBridge)return;window.__zhBodyBridge=1;"
+"var OF=window.fetch;if(typeof OF!=='function')return;"
+"window.fetch=function(input,init){"
+"try{if(init&&typeof init.body==='string'&&init.body.length){"
+"var enc=encodeURIComponent(init.body);var h=init.headers;"
+"if(h&&typeof h.set==='function'){h.set('X-Zeeho-Body',enc)}"
+"else if(Array.isArray(h)){h.push(['X-Zeeho-Body',enc])}"
+"else{var n={};if(h){for(var k in h){n[k]=h[k]}}n['X-Zeeho-Body']=enc;init.headers=n}"
+"}}catch(e){}"
+"return OF.apply(this,arguments)};})();</script>";
 
 @interface WebViewController () <WKURLSchemeHandler, WKNavigationDelegate, WKUIDelegate>
 @property (nonatomic, strong) WKWebView *webView;
@@ -54,7 +74,7 @@ static UIColor *ZHPanelBackgroundColor(void) {
     [webView loadRequest:[NSURLRequest requestWithURL:url]];
 }
 
-#pragma mark - 请求体读取（兼容 HTTPBody / HTTPBodyStream 两种形态）
+#pragma mark - 请求体读取（兼容 HTTPBody / HTTPBodyStream / X-Zeeho-Body 头三种形态）
 
 - (NSString *)readRequestBody:(NSURLRequest *)request {
     if (request.HTTPBody.length) {
@@ -72,7 +92,22 @@ static UIColor *ZHPanelBackgroundColor(void) {
         [stream close];
         return [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
     }
-    return nil;
+    // 兜底：WebKit 剥离自定义 scheme POST 请求体，从前端垫片写入的桥接头还原
+    return [self bridgeBodyFromHeaders:request.allHTTPHeaderFields];
+}
+
+- (NSString *)bridgeBodyFromHeaders:(NSDictionary *)headers {
+    __block NSString *value = nil;
+    [headers enumerateKeysAndObjectsUsingBlock:^(id key, id val, BOOL *stop) {
+        if ([key isKindOfClass:[NSString class]] &&
+            [key caseInsensitiveCompare:kBodyBridgeHeader] == NSOrderedSame) {
+            value = [val isKindOfClass:[NSString class]] ? val : [NSString stringWithFormat:@"%@", val];
+            *stop = YES;
+        }
+    }];
+    if (!value.length) return nil;
+    NSString *decoded = [value stringByRemovingPercentEncoding];
+    return decoded.length ? decoded : nil;
 }
 
 #pragma mark - WKURLSchemeHandler
@@ -88,7 +123,14 @@ static UIColor *ZHPanelBackgroundColor(void) {
 
     NSString *method = urlSchemeTask.request.HTTPMethod ?: @"GET";
     NSString *body = [self readRequestBody:urlSchemeTask.request];
-    NSDictionary *headers = urlSchemeTask.request.allHTTPHeaderFields ?: @{};
+    // 剔除 body 桥接头，避免泄漏进脚本 $request.headers
+    NSDictionary *rawHeaders = urlSchemeTask.request.allHTTPHeaderFields ?: @{};
+    NSMutableDictionary *headers = [NSMutableDictionary dictionaryWithCapacity:rawHeaders.count];
+    [rawHeaders enumerateKeysAndObjectsUsingBlock:^(id key, id val, BOOL *stop) {
+        if ([key isKindOfClass:[NSString class]] &&
+            [key caseInsensitiveCompare:kBodyBridgeHeader] == NSOrderedSame) return;
+        headers[key] = val;
+    }];
 
     __weak typeof(self) weakSelf = self;
     [self.dispatcher dispatchURL:urlStr method:method headers:headers body:body completion:^(NSInteger status, NSDictionary *respHeaders, NSString *respBody) {
@@ -96,12 +138,21 @@ static UIColor *ZHPanelBackgroundColor(void) {
         if (!strongSelf || ![strongSelf.activeTasks containsObject:urlSchemeTask]) return;
         [strongSelf.activeTasks removeObject:urlSchemeTask];
         @try {
+            // 统一禁缓存，防止 WKWebView 缓存 /api/* 的 GET 响应导致数据陈旧
+            NSMutableDictionary *finalHeaders = [NSMutableDictionary dictionaryWithDictionary:respHeaders ?: @{}];
+            finalHeaders[@"Cache-Control"] = @"no-store";
+            NSString *finalBody = respBody ?: @"";
+            // HTML 响应（看板页/配置页）最前面注入 fetch body 桥接垫片
+            NSString *contentType = [finalHeaders[@"Content-Type"] isKindOfClass:[NSString class]] ? finalHeaders[@"Content-Type"] : @"";
+            if ([contentType containsString:@"text/html"]) {
+                finalBody = [kFetchBodyShim stringByAppendingString:finalBody];
+            }
             NSHTTPURLResponse *response = [[NSHTTPURLResponse alloc] initWithURL:reqURL
                                                                         statusCode:status
                                                                        HTTPVersion:@"HTTP/1.1"
-                                                                      headerFields:respHeaders];
+                                                                      headerFields:finalHeaders];
             [urlSchemeTask didReceiveResponse:response];
-            NSData *data = [respBody dataUsingEncoding:NSUTF8StringEncoding] ?: [NSData data];
+            NSData *data = [finalBody dataUsingEncoding:NSUTF8StringEncoding] ?: [NSData data];
             [urlSchemeTask didReceiveData:data];
             [urlSchemeTask didFinish];
         } @catch (NSException *exception) {
