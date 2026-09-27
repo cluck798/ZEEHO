@@ -1,16 +1,16 @@
 /*
-#!name=极核 ZEEHO 签到面板 V2.14.12
+#!name=极核 ZEEHO 签到面板 V2.14.13
 #!desc=极核ZEEHO多账号签到面板 + 网页配置，访问 http://zeeho.box
 #!author=lucky
 #!homepage=https://github.com/cluck798/ZEEHO
-#!version=2.14.12
+#!version=2.14.13
 
 图标: https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/ZEEHO.png
 
 [Script]
 # ========== 极核 ZEEHO ==========
 # 面板 + 极核API自动捕获appId/appSecret
-http-request ^https?://(zeeho\.box|.*zeehoev\.com)/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js?v=2.14.12, requires-body=true, timeout=60, tag=极核面板V2.14.12
+http-request ^https?://(zeeho\.box|.*zeehoev\.com)/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js?v=2.14.13, requires-body=true, timeout=60, tag=极核面板V2.14.13
 
 # 极核Token自动捕获（打开极核App-我的页面）
 http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/mine\/cfmotoservermine\/setting script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho.js, requires-body=true, timeout=30, tag=极核抓Token
@@ -37,13 +37,13 @@ hostname = tapi.zeehoev.com, h5.zeehoev.com, zeeho.box
 const $ = new Env("极核看板增强版");
 
 // ========== 极核 ZEEHO 签到面板脚本 ==========
-// 版本: v2.14.12
+// 版本: v2.14.13
 // 更新日期: 2026-09-28
 // 作者: @lucky
 // 主页: https://github.com/cluck798/ZEEHO
 // ============================================
-const SCRIPT_VERSION = "v2.14.12";
-console.log(`🚀 [极核面板] 脚本版本: ${SCRIPT_VERSION} (2026-09-28 v2.14.12 修复：充电功率误报token失效、盲盒开启日显示断签、刷新屏闪；新增：入场闪屏、移除信息中心活动块、/api/vehicle-monitor-tick 后台充电监控端点)`);
+const SCRIPT_VERSION = "v2.14.13";
+console.log(`🚀 [极核面板] 脚本版本: ${SCRIPT_VERSION} (2026-09-28 v2.14.13 修复：车辆停放休眠被误报离线——离线判断改用官方TBOX在线状态，停放休眠不算离线，未知状态回退2小时时间戳阈值)`);
 
 // 面板入口域名：Loon 用虚拟域名 zeeho.box（Loon 可虚拟劫持不存在的域名），
 // QX 必须用真实可解析域名（默认 www.example.com，IANA 保留域名保证可解析）。
@@ -2539,6 +2539,24 @@ async function fetchVehicleSnapshots(acc, cfg, vin) {
   } catch(e) { return null; }
 }
 
+// v2.14.13 监控离线判断：以官方在线状态（TBOX 网络连接状态）为准，而非属性上报时间戳。
+// 修复：停放后 TBOX 休眠、属性停报，时间戳很快"过期"，按时间戳判断会在 30 分钟后误报离线（车辆其实正常）。
+//   - 官方状态在线 / 停放休眠（sleep/休眠）→ 不离线（停放是正常状态）
+//   - 官方状态明确断开（offline/disconnect）→ 离线
+//   - 官方状态未知 → 回退属性时间戳但阈值放宽到 2 小时，宁可少报不误报
+function isMonitorOffline(onlineStr, ts) {
+  const s = String(onlineStr || "").toLowerCase().trim();
+  const onVals = ["1", "on", "online", "true", "在线", "已在线", "connected", "normal", "sleep", "休眠"];
+  const offVals = ["0", "off", "offline", "false", "离线", "未在线", "已离线", "disconnect", "disconnected"];
+  if (s) {
+    if (onVals.includes(s)) return false;
+    if (offVals.includes(s)) return true;
+  }
+  // 官方状态未知：回退属性时间戳，阈值放宽到 2 小时，避免停放误报
+  if (ts > 0) return (Date.now() - ts) > 120 * 60 * 1000;
+  return false;
+}
+
 // v2.14.9 车辆监控引擎（打开面板补查模型）：充满/离线状态变化时本地通知，状态记录去重
 async function checkVehicleMonitor(cfg) {
   if (!cfg.vehicleMonitor) return;
@@ -2554,6 +2572,13 @@ async function checkVehicleMonitor(cfg) {
         const veh = list[0];
         const snap = await fetchVehicleSnapshots(acc, cfg, veh.vinNo);
         if (!snap) continue;
+        // 官方在线状态（TBOX）：widgets 接口，取不到则空串，回退时间戳逻辑
+        let onlineStr = "";
+        try {
+          const w = await fetchVehicleWidgets(acc, cfg, veh.vinNo);
+          if (w) onlineStr = w.online || "";
+        } catch(e) {}
+        const offline = isMonitorOffline(onlineStr, snap.ts);
         const key = String(acc.userId || "") + ":" + veh.vinNo;
         const prev = state[key] || {};
         const name = (acc.userName || "") + " · " + (veh.vehicleName || veh.vinNo);
@@ -2563,10 +2588,10 @@ async function checkVehicleMonitor(cfg) {
         } else if (snap.soc !== null && snap.soc < 100 && prev.socFull === true) {
           state[key] = Object.assign({}, prev, { socFull: false });
         }
-        if (snap.offline && prev.offline !== true) {
-          notifyPush("车辆离线", name + " 超过 30 分钟未上报状态", cfg);
+        if (offline && prev.offline !== true) {
+          notifyPush("车辆离线", name + " TBOX 网络断开（停放休眠不算离线）", cfg);
           state[key] = Object.assign({}, prev, { offline: true });
-        } else if (!snap.offline && prev.offline === true) {
+        } else if (!offline && prev.offline === true) {
           state[key] = Object.assign({}, prev, { offline: false });
         }
       } catch(e) {}
