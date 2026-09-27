@@ -4,6 +4,8 @@
 #import "WebViewController.h"
 #import "ZHDispatcher.h"
 #import <WebKit/WebKit.h>
+#import <AVFoundation/AVFoundation.h>
+#import <UserNotifications/UserNotifications.h>
 
 static NSString * const kPanelScheme = @"zeeho";
 // POST 请求体桥接头：WKWebView 对自定义 scheme 的 fetch/XHR POST 会剥离请求体
@@ -27,10 +29,15 @@ static NSString * const kFetchBodyShim =
 "}}catch(e){}"
 "return OF.apply(this,arguments)};})();</script>";
 
+// 后台充电/离线监控轮询间隔（秒）
+static const NSTimeInterval kMonitorTickInterval = 180.0;
+
 @interface WebViewController () <WKURLSchemeHandler, WKNavigationDelegate, WKUIDelegate>
 @property (nonatomic, strong) WKWebView *webView;
 @property (nonatomic, strong) ZHDispatcher *dispatcher;
 @property (nonatomic, strong) NSHashTable<id<WKURLSchemeTask>> *activeTasks;
+@property (nonatomic, strong) AVAudioPlayer *silencePlayer;
+@property (nonatomic, strong) NSTimer *monitorTimer;
 @end
 
 @implementation WebViewController
@@ -72,6 +79,80 @@ static UIColor *ZHPanelBackgroundColor(void) {
 
     NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"%@://panel/", kPanelScheme]];
     [webView loadRequest:[NSURLRequest requestWithURL:url]];
+
+    [self requestNotificationAuth];
+    [self startBackgroundKeepAlive];
+    [self startMonitorTimer];
+}
+
+#pragma mark - 常驻后台 & 充电监控
+
+// 启动时申请通知权限（充满/离线提醒需要）
+- (void)requestNotificationAuth {
+    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+    [center requestAuthorizationWithOptions:(UNAuthorizationOptionAlert | UNAuthorizationOptionSound | UNAuthorizationOptionBadge)
+                          completionHandler:^(BOOL granted, NSError *error) {}];
+}
+
+// 常驻后台：循环播放静音音频使进程不被系统挂起，
+// 锁屏/切后台后监控定时器与面板逻辑才能继续工作
+- (void)startBackgroundKeepAlive {
+    NSError *err = nil;
+    AVAudioSession *session = [AVAudioSession sharedInstance];
+    [session setCategory:AVAudioSessionCategoryPlayback
+             withOptions:AVAudioSessionCategoryOptionMixWithOthers
+                   error:&err];
+    [session setActive:YES error:&err];
+    [self playSilence];
+    // 音频会话被打断（来电等）结束后恢复播放
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleAudioInterruption:)
+                                                 name:AVAudioSessionInterruptionNotification
+                                               object:nil];
+}
+
+- (void)playSilence {
+    NSString *path = [[NSBundle mainBundle] pathForResource:@"silent" ofType:@"wav"];
+    if (!path.length) return;
+    AVAudioPlayer *player = [[AVAudioPlayer alloc] initWithContentsOfURL:[NSURL fileURLWithPath:path] error:NULL];
+    player.numberOfLoops = -1;
+    player.volume = 0.0;
+    [player prepareToPlay];
+    [player play];
+    self.silencePlayer = player;
+}
+
+- (void)handleAudioInterruption:(NSNotification *)note {
+    NSNumber *typeNum = note.userInfo[AVAudioSessionInterruptionTypeKey];
+    if (typeNum.unsignedIntegerValue == AVAudioSessionInterruptionTypeEnded) {
+        [[AVAudioSession sharedInstance] setActive:YES error:NULL];
+        if (!self.silencePlayer.isPlaying) [self.silencePlayer play];
+    }
+}
+
+// 充电/离线监控定时器：每 3 分钟让脚本引擎跑一轮 checkVehicleMonitor，
+// 配置未开启时脚本内部直接返回；充满/离线状态变化由脚本侧发本地通知
+- (void)startMonitorTimer {
+    [self.monitorTimer invalidate];
+    __weak typeof(self) weakSelf = self;
+    self.monitorTimer = [NSTimer scheduledTimerWithTimeInterval:kMonitorTickInterval
+                                                        repeats:YES
+                                                          block:^(NSTimer *timer) {
+        [weakSelf runMonitorTick];
+    }];
+}
+
+- (void)runMonitorTick {
+    [self.dispatcher dispatchURL:@"http://zeeho.box/api/vehicle-monitor-tick"
+                          method:@"GET"
+                         headers:@{}
+                            body:nil
+                      completion:^(NSInteger status, NSDictionary *respHeaders, NSString *respBody) {}];
+}
+
+- (void)dealloc {
+    [_monitorTimer invalidate];
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 #pragma mark - 请求体读取（兼容 HTTPBody / HTTPBodyStream / X-Zeeho-Body 头三种形态）
@@ -210,6 +291,12 @@ static UIColor *ZHPanelBackgroundColor(void) {
         completionHandler(YES);
     }]];
     [self presentViewController:alert animated:YES completion:nil];
+}
+
+// WebContent 进程被系统回收（后台内存压力）时页面会整页变白，
+// 不主动 reload 将一直白屏，用户感知为闪屏/白屏，这里自动恢复
+- (void)webViewWebContentProcessDidTerminate:(WKWebView *)webView {
+    [webView reload];
 }
 
 @end

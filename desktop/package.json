@@ -1,7 +1,7 @@
 {
   "name": "zeeho-panel",
   "productName": "极核签到面板",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "极核 ZEEHO 签到面板桌面版：多账号签到、车辆管理、定时自动签到、托盘常驻",
   "author": "lucky",
   "homepage": "https://github.com/cluck798/ZEEHO",
