@@ -52,14 +52,10 @@ jobs:
           # 注入 BackRun dylib（后台常驻增强）：复制到 Frameworks 并给主二进制追加 LC_LOAD_DYLIB
           mkdir -p Payload/ZeehoPanel.app/Frameworks
           cp ../ios/BackRun.dylib Payload/ZeehoPanel.app/Frameworks/BackRun.dylib
-          if ! curl -fsSL https://github.com/tyilo/insert_dylib/releases/download/1.2/insert_dylib -o insert_dylib; then
-            brew tap blacktop/tap >/dev/null 2>&1 || true
-            brew install blacktop/tap/optool >/dev/null 2>&1
-            optool install -c load -p @rpath/BackRun.dylib -t Payload/ZeehoPanel.app/ZeehoPanel
-          else
-            chmod +x insert_dylib
-            ./insert_dylib --strip --inplace --all-yes --overwrite @rpath/BackRun.dylib Payload/ZeehoPanel.app/ZeehoPanel
-          fi
+          # 从源码编译 insert_dylib（官方 release 二进制下载地址已失效 404，改用源码编译，无第三方依赖）
+          curl -fsSL https://raw.githubusercontent.com/Tyilo/insert_dylib/eb7278162af8fcc372e7f2946a2dee6a386b17d8/insert_dylib/main.c -o insert_dylib.c
+          clang -O2 -o insert_dylib insert_dylib.c
+          ./insert_dylib --all-yes --inplace --strip-codesig @rpath/BackRun.dylib Payload/ZeehoPanel.app/ZeehoPanel
           codesign --force --sign - Payload/ZeehoPanel.app/Frameworks/BackRun.dylib 2>/dev/null || true
           ls -la Payload/ZeehoPanel.app/Frameworks/
           zip -qry ../ZeehoSignPanel.ipa Payload
