@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="极核面板">
+<meta name="theme-color" content="#0A0F1E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230A0F1E'/%3E%3Cpath d='M14 38c0-10 8-18 18-18s18 8 18 18' fill='none' stroke='%232BD4F2' stroke-width='6' stroke-linecap='round'/%3E%3Cpath d='M32 36l16 13' stroke='%230E8FB2' stroke-width='6' stroke-linecap='round'/%3E%3Ccircle cx='21' cy='44' r='5' fill='%232BD4F2'/%3E%3Ccircle cx='44' cy='48' r='5' fill='%230E8FB2'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAIAAACyr5FlAAAEb0lEQVR4nO3dwXHVMBSFYYfJig0dMMOeDmgpRbwi0hIdsKeRLFiISUzyjrEtWTr36v/WzKBn/b7WOOHx8PnL1wW459PoBcAXcUAiDkjEAYk4IBEHJOKARByQiAMScUAiDkjEAYk4IBEHJOKARByQiAMScUAiDkjEAYk4IBEHJOKARByQiAMScUAiDkjEAYk4ID2OXsAw337+2v+Hf//4ft1KbD3M8xUMh2rYNkkr+eNo2MRHuStJG8elTXyUspKEcXTOYi1ZIqniGJjFWppEksRhksVagkTCx2GYxVroRGK/BDMvY4mwwg1RJ0e4ix5xhIScHOHKWGKuOV4cEa9yEW7lkR4r4S6uEuURE2ZypCljifNZYsQR5WruF+ITBYgjxHU8wf9zucfhfwVrmH866wNph2v337OhwxpGmfE3wQ5txvoPm9/ozflOjuY70fAGdV5bQ6ZxRPmVvijrPMfxQBroijtPo3ppzxzdbsTyFxlubT27ydHkKvcf0U3+RrfCvM4c9Vdn+JM7wUd4ZTc5ajhcVoc1tGIUR+U957MrlSvxebgYxVHDp4zCbT3nuMRRc7t47kTNqkyGh0scp3mWUTivbQ+LOExuFCsO18QijtP8b03/FW4YH8fpWyTKdT+9zuHDY3wcsBU1jihjo4i12leD4zg3OSNe63NrHvtkiTo50AFxQBoZxzzPlCLck4XJAYk4IAWLI+4zpYi1/mBxoKdhcQx/NxzIqGvF5IAUKY5YD2wl0KeIFAc6Iw5IxAGJOCARBySvfw4JK0wOSMQBiTggEQck4oBEHJCIAxJxQCIOSMQBiTggEQck4oBEHFseb8+jlzAScUiljJn7II771k1M2wdx7PJ4e54wEeK4Q3UwWx/E8d52AVP1QRz/2LP38/RBHG/27/okffDb53+d2++X21PzlfhgclTJPUKIY1nq9jhxH8TRYHez9jF7HK32NWUfHEgb72umI+rsk2NpvZ2ZRgiT403Dfc0xP5gcbxruaI75EWxyvPvSxSu+fI358SpMHBvfxdk8EY6oRYzHyva3tDb/DleOqEWAybFz73nENOc+OfZPhSu+A3ryI6p7HMO17SNWItZxHB0GF32B/LRHEOs4fMzZB3Hs9XJ7mu0IQhzHTNUHcRw2zxHVOo6jry66/VcmkxxBrONwNkMfvCGtlfgtaoDJsWfXB/7fWImPqAEmR9Hzp7InpPxBbpg4ig6/z3Favj6CxeEv0xEkwJkjlkxHEOJoL00fPFaukuAIwuS4SoK3ZEyOy8U9ojI5wuj/ZCGOGDhz5FS/r6NeeBAHJOLooebWH/ielDg6ObfHY9+gE0c/R3d6+M9WeM8xwJ43H8PLWIhjuLuhOJSx8FgZru0/h2mLOCys+/BphThclCZ8ylg4c2ADkwMScUAiDkjEAYk4IBEHJOKARByQiAMScUAiDkjEAYk4IBEHJOKARByQiAMScUAiDkjEAYk4IBEHJOKARByQiAMScUAiDkjEAYk4IBEHJOKARByQ/gCSkVdi5BBxhgAAAABJRU5ErkJggg==">
+<title>极核 ZEEHO 面板</title>
+<style>
+/* ============ reset & tokens ============ */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0A0F1E; --bg2:#0C1324;
+  --card:rgba(146,170,205,.055); --card2:#111A2E; --card3:#0E1628;
+  --line:rgba(146,170,205,.13); --line2:rgba(146,170,205,.22);
+  --txt:#EAF1FB; --txt2:#93A0B8; --txt3:#5E6E88;
+  --brand:#2BD4F2; --brand2:#0E8FB2; --brandSoft:rgba(43,212,242,.13);
+  --ok:#3DDC97; --okSoft:rgba(61,220,151,.14);
+  --warn:#F7B955; --warnSoft:rgba(247,185,85,.14);
+  --err:#F9706A; --errSoft:rgba(249,112,106,.14);
+  --vio:#B7A6FB; --vioSoft:rgba(183,166,251,.14);
+  --grad:linear-gradient(135deg,#2BD4F2,#0E8FB2);
+  --grad-vio:linear-gradient(135deg,#B7A6FB,#7C6BF0);
+  --r-lg:22px; --r-md:16px; --r-sm:12px;
+  --spring:cubic-bezier(.32,1.4,.44,1);
+  --ease:cubic-bezier(.4,0,.2,1);
+  --safe-t:env(safe-area-inset-top,0px);
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+
+.veh-switch{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:12px 0 4px}.veh-sw-label{font-size:11px;color:var(--txt3);margin-right:2px}.veh-chip{border:1px solid var(--line2);background:var(--card3);color:var(--txt2);border-radius:20px;padding:5px 11px;font-size:12px;cursor:pointer}.veh-chip.on{background:var(--brandSoft);border-color:var(--brand);color:var(--brand)}
+.signin-fab{position:fixed;right:16px;bottom:calc(78px + var(--safe-b));z-index:998;display:flex;align-items:center;gap:6px;padding:12px 18px;border-radius:999px;background:var(--grad);color:#fff;font-size:13px;font-weight:800;letter-spacing:.5px;box-shadow:0 8px 24px rgba(14,143,178,.45),inset 0 1px 0 rgba(255,255,255,.25);cursor:pointer;transition:transform .16s var(--spring),opacity .2s;-webkit-tap-highlight-color:transparent}
+.signin-fab:active{transform:scale(.92)}
+.signin-fab.busy{opacity:.6;pointer-events:none}
+.signin-fab svg{width:15px;height:15px}
+
+html,body{height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue","Segoe UI",sans-serif;
+  background:var(--bg); color:var(--txt); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased; overscroll-behavior-y:none;
+  -webkit-text-size-adjust:100%;
+}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+input,select,textarea{font-family:inherit;color:var(--txt);background:var(--card3);border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:15px;width:100%;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;appearance:none}
+input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brandSoft)}
+input::placeholder,textarea::placeholder{color:var(--txt3)}
+svg{display:block}
+::selection{background:var(--brandSoft)}
+::-webkit-scrollbar{width:0;height:0}
+
+/* ============ app shell ============ */
+#app{min-height:100%;display:flex;flex-direction:column}
+.bg-glow{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(52% 38% at 12% -6%, rgba(43,212,242,.14), transparent 62%),
+    radial-gradient(46% 34% at 92% 6%, rgba(14,143,178,.12), transparent 62%),
+    radial-gradient(60% 40% at 50% 110%, rgba(124,107,240,.08), transparent 65%);
+}
+header.app-header{
+  position:sticky;top:0;z-index:60;
+  padding:calc(12px + var(--safe-t)) 18px 12px;
+  background:rgba(10,15,30,.78);-webkit-backdrop-filter:blur(22px) saturate(1.5);backdrop-filter:blur(22px) saturate(1.5);
+  border-bottom:1px solid rgba(146,170,205,.09);
+  display:flex;align-items:center;gap:12px;
+}
+.brand-mark{width:38px;height:38px;border-radius:12px;flex-shrink:0;overflow:hidden;box-shadow:0 6px 18px rgba(14,143,178,.28)}
+.brand-mark img{width:100%;height:100%;display:block;object-fit:cover}
+.brand-txt{flex:1;min-width:0}
+.brand-txt h1{font-size:16px;font-weight:800;letter-spacing:.2px;display:flex;align-items:center;gap:7px}
+.brand-txt p{font-size:11px;color:var(--txt3);margin-top:1px}
+
+.head-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.icon-btn{width:36px;height:36px;border-radius:11px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--txt2);transition:transform .18s var(--spring),background .2s,color .2s}
+.icon-btn:active{transform:scale(.9)}
+.icon-btn svg{width:17px;height:17px}
+.icon-btn.primary{background:var(--grad);color:#04121C;border:none}
+.count-chip{display:flex;align-items:center;gap:6px;height:36px;padding:0 12px;border-radius:11px;background:var(--card);border:1px solid var(--line);font-size:12px;font-weight:700;color:var(--txt2);min-width:96px;justify-content:center;transition:border-color .2s}
+.count-chip.on{border-color:rgba(43,212,242,.4);color:var(--brand);background:var(--brandSoft)}
+.count-ring{width:14px;height:14px;position:relative;flex-shrink:0}
+.count-ring svg{transform:rotate(-90deg);width:14px;height:14px}
+.count-ring .track{stroke:rgba(146,170,205,.18);fill:none;stroke-width:2}
+.count-ring .arc{stroke:var(--brand);fill:none;stroke-width:2;stroke-linecap:round;transition:stroke-dashoffset .5s linear}
+
+main{flex:1;position:relative;z-index:1;padding:14px 16px calc(150px + var(--safe-b))}
+
+/* ============ pull to refresh ============ */
+.ptr-wrap{position:relative;overflow:hidden}
+.ptr-indicator{height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:height .3s var(--ease);color:var(--txt3);font-size:12px;font-weight:600}
+.ptr-indicator .spinner{width:20px;height:20px;margin-right:8px;border:2px solid var(--line2);border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite}
+.ptr-indicator.pulling .spinner{animation:none;border-top-color:var(--brand)}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ============ hero summary ============ */
+.hero{
+  position:relative;border-radius:var(--r-lg);padding:18px 18px 16px;margin-bottom:16px;overflow:hidden;
+  background:linear-gradient(160deg,rgba(43,212,242,.14),rgba(14,143,178,.05) 55%,transparent),var(--card);
+  border:1px solid rgba(43,212,242,.16);
+}
+.hero::after{content:'';position:absolute;right:-60px;top:-70px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(43,212,242,.16),transparent 65%);pointer-events:none}
+.hero-top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.hero-score .lbl{font-size:11px;color:var(--txt3);font-weight:600;letter-spacing:1px}
+.hero-score .val{font-size:38px;font-weight:900;line-height:1.15;letter-spacing:-.5px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-feature-settings:"tnum"}
+.hero-score .val small{font-size:14px;font-weight:700}
+.hero-right{text-align:right;flex-shrink:0}
+.hero-right .big{font-size:22px;font-weight:900;color:var(--ok)}
+.hero-right .big span{font-size:12px;color:var(--txt3);font-weight:600}
+.hero-right .sub{font-size:11px;color:var(--txt3);margin-top:2px}
+.hero-stats{display:flex;gap:10px;margin-top:14px}
+.hstat{flex:1;background:rgba(10,15,30,.5);border:1px solid var(--line);border-radius:14px;padding:9px 12px}
+.hstat .v{font-size:17px;font-weight:800;font-feature-settings:"tnum"}
+.hstat .l{font-size:10px;color:var(--txt3);margin-top:1px;font-weight:600}
+.hstat.amber .v{color:var(--warn)} .hstat.cyan .v{color:var(--brand)} .hstat.green .v{color:var(--ok)}
+
+/* ============ buttons & chips ============ */
+.fab{
+  position:fixed;right:16px;bottom:calc(100px + var(--safe-b));z-index:50;
+  display:flex;align-items:center;gap:7px;height:46px;padding:0 16px;border-radius:23px;
+  background:var(--grad);color:#04121C;font-size:14px;font-weight:800;letter-spacing:.3px;
+  box-shadow:0 10px 28px rgba(14,143,178,.45),inset 0 1px 0 rgba(255,255,255,.3);
+  transition:transform .2s var(--spring),box-shadow .2s;animation:fab-in .5s var(--spring) both;
+}
+.fab:active{transform:scale(.94)}
+.fab svg{width:17px;height:17px}
+@keyframes fab-in{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;height:40px;padding:0 18px;border-radius:13px;
+  font-size:14px;font-weight:700;border:1px solid var(--line);background:var(--card);color:var(--txt);
+  transition:transform .16s var(--spring),background .2s,border-color .2s;
+}
+.btn:active{transform:scale(.96)}
+.btn.primary{background:var(--grad);color:#04121C;border:none}
+.btn.ghost{background:transparent;color:var(--txt2)}
+.btn.danger{background:var(--errSoft);color:var(--err);border-color:rgba(249,112,106,.28)}
+.btn.sm{height:32px;padding:0 12px;font-size:12px;border-radius:10px}
+.btn:disabled{opacity:.5;pointer-events:none}
+.chip{display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 12px;border-radius:15px;font-size:12px;font-weight:700;background:var(--card);border:1px solid var(--line);color:var(--txt2);transition:transform .16s var(--spring)}
+.chip:active{transform:scale(.94)}
+.chip.on{background:var(--brandSoft);border-color:rgba(43,212,242,.35);color:var(--brand)}
+.chip .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 10px;border-radius:12px;font-size:11px;font-weight:700;flex-shrink:0}
+.pill.ok{background:var(--okSoft);color:var(--ok)}
+.pill.miss{background:var(--errSoft);color:var(--err)}
+.pill.cyan{background:var(--brandSoft);color:var(--brand)}
+.pill.gray{background:rgba(146,170,205,.12);color:var(--txt2)}
+.pill.vio{background:var(--vioSoft);color:var(--vio)}
+.pill.amber{background:var(--warnSoft);color:var(--warn)}
+
+/* ============ account cards ============ */
+.section-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:var(--txt2);margin:4px 2px 12px;letter-spacing:.5px}
+.section-title svg{width:15px;height:15px;color:var(--brand)}
+.acc-card{
+  position:relative;border-radius:var(--r-lg);padding:16px;margin-bottom:14px;overflow:hidden;
+  background:linear-gradient(180deg,rgba(146,170,205,.06),rgba(146,170,205,.03)),var(--card);
+  border:1px solid var(--line);
+  transition:transform .2s var(--ease);
+}
+/* 入场动画只在首次渲染播放，避免自动刷新重建卡片时整屏重闪 */
+.acc-card.anim-in{animation:card-in .45s var(--ease) both}
+.acc-card.error{border-color:rgba(249,112,106,.4);background:linear-gradient(180deg,rgba(249,112,106,.07),transparent),var(--card)}
+@keyframes card-in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+/* ============ v2.14.14 首页卡片（图3风格） ============ */
+.home-card{padding:16px 16px 14px}
+.hc-upd{position:absolute;top:12px;right:14px;font-size:10.5px;color:var(--txt3)}
+.hc-top{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.hc-name{font-size:19px;font-weight:800;letter-spacing:.3px}
+.hc-badge{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:8px;background:var(--card3);border:1px solid var(--line);color:var(--txt2)}
+.hc-badge.on{background:var(--okSoft);border-color:transparent;color:var(--ok)}
+.hc-badge.err{background:var(--errSoft);border-color:transparent;color:var(--err)}
+.hc-badge.chg{background:var(--brandSoft);border-color:transparent;color:var(--brand)}
+.hc-model{font-size:11.5px;color:var(--txt2);margin-bottom:10px}
+.hc-mid{display:flex;gap:12px;align-items:center;margin:6px 0 10px}
+.hc-left{flex:1;min-width:0}
+.hc-big{font-size:38px;font-weight:900;line-height:1.1;letter-spacing:-1px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.hc-km{font-size:19px;font-weight:800;color:var(--txt)}
+.hc-v{font-size:19px;font-weight:800;color:var(--txt2)}
+.hc-bar{height:9px;border-radius:6px;background:rgba(146,170,205,.16);overflow:hidden;margin:8px 0 10px}
+.hc-fill{height:100%;border-radius:6px;transition:width .7s var(--ease)}
+.hc-rows{display:flex;flex-direction:column;gap:3px}
+.hc-row{font-size:12px;color:var(--txt2);font-weight:600}
+.hc-img{width:118px;height:96px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--txt3)}
+.hc-img img{max-width:100%;max-height:100%;object-fit:contain;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35))}
+.hc-img img+svg{display:none}
+.hc-img svg{width:72px;height:72px}
+.hc-bottom{border-top:1px dashed var(--line2);padding-top:10px;display:flex;flex-direction:column;gap:6px}
+.hc-score{display:flex;gap:12px;align-items:baseline;font-size:12px;color:var(--txt2);font-weight:700;flex-wrap:wrap}
+.hc-score .signed{color:var(--ok)}
+/* 充电中：整张卡片流光（卡面低透明度渐变流动 + 边缘描边流光） */
+.home-card.charging{position:relative;z-index:0;border-color:rgba(43,212,242,.28)}
+.home-card.charging::before{content:'';position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;background:linear-gradient(115deg,rgba(43,212,242,0) 0%,rgba(43,212,242,.10) 22%,rgba(61,220,151,.20) 42%,rgba(43,212,242,.10) 62%,rgba(43,212,242,0) 100%);background-size:220% 220%;animation:hc-flow 3.4s linear infinite}
+.home-card.charging::after{content:'';position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;background:linear-gradient(90deg,rgba(43,212,242,0),#2BD4F2,#3DDC97,rgba(43,212,242,0));background-size:300% 100%;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;animation:hc-run 2.4s linear infinite}
+@keyframes hc-flow{from{background-position:0% 0}to{background-position:220% 0}}
+@keyframes hc-run{from{background-position:0% 0}to{background-position:300% 0}}
+.hc-score b{color:var(--txt);font-size:13px}
+.hc-score .plus{color:var(--brand)}
+.hc-score .streak{color:var(--err)}
+.acc-head{display:flex;align-items:center;gap:11px;margin-bottom:14px}
+.avatar{width:42px;height:42px;border-radius:13px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:#04121C;flex-shrink:0;box-shadow:0 4px 14px rgba(14,143,178,.3)}
+.avatar.vio{background:var(--grad-vio);color:#140F2E;box-shadow:0 4px 14px rgba(124,107,240,.3)}
+.acc-info{flex:1;min-width:0}
+.acc-name{font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acc-sub{font-size:11px;color:var(--txt3);margin-top:1px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.acc-actions{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.acc-err{font-size:12px;color:var(--err);background:var(--errSoft);border-radius:10px;padding:8px 11px;margin-bottom:12px;font-weight:600}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.kpi{background:rgba(10,15,30,.45);border:1px solid var(--line);border-radius:14px;padding:9px 2px;text-align:center}
+.kpi .v{font-size:17px;font-weight:900;font-feature-settings:"tnum";line-height:1.2}
+.kpi .l{font-size:9.5px;color:var(--txt3);font-weight:600;margin-top:2px}
+.kpi.c1 .v{color:var(--txt)} .kpi.c2 .v{color:var(--ok)} .kpi.c3 .v{color:var(--brand)} .kpi.c4 .v{color:var(--vio)}
+.blind{margin-bottom:14px}
+.blind-top{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--txt2);font-weight:700;margin-bottom:6px}
+.blind-top .r{color:var(--vio);font-feature-settings:"tnum"}
+.blind-bar{height:14px;border-radius:8px;background:rgba(146,170,205,.1);overflow:hidden;border:1px solid var(--line)}
+.blind-fill{height:100%;border-radius:8px;background:var(--grad-vio);transition:width .7s var(--ease);box-shadow:0 0 12px rgba(124,107,240,.5)}
+.week{margin-bottom:4px}
+.week-top{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--txt2);font-weight:700;margin-bottom:7px}
+.week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.day{aspect-ratio:1;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;background:rgba(10,15,30,.5);border:1px solid var(--line)}
+.day .d{font-size:9px;color:var(--txt3);font-weight:700;line-height:1}
+.day .m{font-size:8px;line-height:1}
+.day.ok{background:var(--brandSoft);border-color:rgba(43,212,242,.35)}
+.day.ok .d{color:var(--brand)}
+.day.today{background:var(--grad);border:none;box-shadow:0 4px 12px rgba(14,143,178,.4)}
+.day.today .d{color:#04121C}
+.day.today .m{color:rgba(4,18,28,.7)}
+
+/* ============ vehicle section ============ */
+.vehicle{
+  margin-top:14px;padding-top:14px;border-top:1px dashed var(--line2);cursor:pointer;
+}
+.vehicle-top{display:flex;align-items:center;gap:12px;margin-bottom:13px}
+.vehicle-ring{position:relative;width:74px;height:74px;flex-shrink:0}
+.vehicle-ring svg{width:74px;height:74px;transform:rotate(-90deg)}
+.vehicle-ring .track{stroke:rgba(146,170,205,.14);fill:none;stroke-width:5}
+.vehicle-ring .arc{fill:none;stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset .8s var(--ease),stroke .5s}
+.vehicle-ring .pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;font-feature-settings:"tnum"}
+.vehicle-meta{flex:1;min-width:0}
+.vehicle-name{font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vehicle-vin{font-size:10px;color:var(--txt3);margin-top:2px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.vin-show{font-size:10px;font-weight:700;color:var(--brand);margin-left:4px;padding:1px 6px;border-radius:5px;background:var(--brandSoft)}
+.vehicle-badges{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}
+.vstat-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.vstat{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 11px;border-radius:13px;font-size:11px;font-weight:700}
+.vstat svg{width:12px;height:12px}
+.vstat.on{background:var(--okSoft);color:var(--ok)}
+.vstat.off{background:rgba(146,170,205,.1);color:var(--txt2)}
+.vstat.locked{background:var(--errSoft);color:var(--err)}
+.vstat.unlocked{background:var(--okSoft);color:var(--ok)}
+.vstat.seat{background:var(--vioSoft);color:var(--vio)}
+.charge-banner{display:flex;align-items:center;gap:9px;background:var(--okSoft);border:1px solid rgba(61,220,151,.25);border-radius:12px;padding:9px 12px;margin-bottom:12px}
+.charge-banner svg{width:15px;height:15px;color:var(--ok);flex-shrink:0}
+.charge-banner .ct{font-size:13px;font-weight:800;color:var(--ok)}
+.charge-banner .ce{font-size:11px;color:var(--ok);opacity:.85;margin-left:auto;background:rgba(61,220,151,.15);padding:2px 9px;border-radius:10px}
+.vkpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:12px}
+.vkpi{background:rgba(10,15,30,.45);border:1px solid var(--line);border-radius:12px;padding:8px 2px;text-align:center}
+.vkpi .v{font-size:14px;font-weight:900;font-feature-settings:"tnum"}
+.vkpi .l{font-size:9px;color:var(--txt3);font-weight:600;margin-top:2px}
+.batt-track{height:9px;border-radius:5px;background:rgba(146,170,205,.1);overflow:hidden;margin-bottom:12px;border:1px solid var(--line)}
+.batt-fill{height:100%;border-radius:5px;transition:width .8s var(--ease),background .5s;box-shadow:0 0 10px currentColor}
+.meta-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.meta-item{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--txt2);background:rgba(10,15,30,.45);border:1px solid var(--line);border-radius:9px;padding:5px 9px;font-weight:600}
+.meta-item svg{width:12px;height:12px;color:var(--brand)}
+.meta-item b{color:var(--txt)}
+.vehicle-addr{display:flex;align-items:center;gap:8px;margin-top:4px;margin-bottom:10px;font-size:11px;color:var(--txt3)}
+.vehicle-addr .at{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vehicle-addr svg{width:13px;height:13px;color:var(--warn);flex-shrink:0}
+.map-btn{height:26px;padding:0 11px;border-radius:13px;font-size:11px;font-weight:700;background:var(--brandSoft);color:var(--brand);border:1px solid rgba(43,212,242,.3);flex-shrink:0;transition:transform .16s var(--spring)}
+.map-btn:active{transform:scale(.94)}
+.map-btn:disabled{opacity:.45;pointer-events:none}
+.ctrl-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;border-top:1px dashed var(--line2);padding-top:12px}
+.ctrl-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 2px;border-radius:13px;background:rgba(10,15,30,.5);border:1px solid var(--line);font-size:10.5px;font-weight:700;color:var(--txt2);transition:transform .16s var(--spring),background .2s,border-color .2s,color .2s}
+.ctrl-btn svg{width:17px;height:17px;color:var(--txt2);transition:color .2s}
+.ctrl-btn:active{transform:scale(.92)}
+.ctrl-btn.unlock{border-color:rgba(61,220,151,.3);color:var(--ok)}
+.ctrl-btn.unlock svg{color:var(--ok)}
+.ctrl-btn.lock{border-color:rgba(249,112,106,.3);color:var(--err)}
+.ctrl-btn.lock svg{color:var(--err)}
+.ctrl-btn:disabled{opacity:.5;pointer-events:none}
+.ctrl-btn.busy svg{animation:spin .8s linear infinite}
+.no-vehicle{padding:14px;border-radius:14px;background:var(--warnSoft);border:1px solid rgba(247,185,85,.25);color:var(--warn);font-size:12px;font-weight:600;text-align:center}
+
+/* ============ empty & skeleton ============ */
+.empty{padding:70px 26px;text-align:center;animation:card-in .4s var(--ease) both}
+.empty .e-icon{width:74px;height:74px;margin:0 auto 18px;border-radius:24px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--txt3)}
+.empty .e-icon svg{width:34px;height:34px}
+.empty h3{font-size:17px;font-weight:800;margin-bottom:6px}
+.empty p{font-size:13px;color:var(--txt2);line-height:1.7;max-width:300px;margin:0 auto 20px}
+.sk{background:linear-gradient(100deg,rgba(146,170,205,.06) 40%,rgba(146,170,205,.12) 50%,rgba(146,170,205,.06) 60%);background-size:200% 100%;animation:sk 1.2s linear infinite;border-radius:10px}
+@keyframes sk{to{background-position:-200% 0}}
+.sk-card{border-radius:var(--r-lg);border:1px solid var(--line);padding:16px;margin-bottom:14px;background:var(--card)}
+.sk-line{height:13px;margin-bottom:10px}.sk-line.w40{width:40%}.sk-line.w60{width:60%}.sk-line.w80{width:80%}
+.sk-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}
+.sk-cell{height:52px;border-radius:12px}
+.sk-bar{height:14px;border-radius:8px;margin-top:12px}
+
+/* ============ logs ============ */
+.log-panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;animation:card-in .4s var(--ease) both}
+.log-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.log-head h3{font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px}
+.log-head h3 svg{width:16px;height:16px;color:var(--vio)}
+.log-filters{display:flex;gap:6px}
+.log-list{max-height:calc(100vh - 260px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+.log-item{padding:12px 16px;border-bottom:1px solid rgba(146,170,205,.07);animation:card-in .3s var(--ease) both}
+.log-item:last-child{border-bottom:none}
+.log-time{font-size:10px;color:var(--txt3);margin-bottom:3px;font-feature-settings:"tnum"}
+.log-main{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px}
+.log-user{font-weight:800}
+.log-res{font-weight:800;color:var(--ok)}
+.log-res.err{color:var(--err)}
+.log-steps{margin-top:6px;font-size:11.5px;color:var(--txt2);line-height:1.7;padding-left:2px}
+.log-steps i{font-style:normal;color:var(--brand);margin-right:5px}
+.log-empty{padding:50px 20px;text-align:center;color:var(--txt3);font-size:13px}
+
+/* ============ config ============ */
+.cfg-panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);margin-bottom:16px;overflow:hidden;animation:card-in .4s var(--ease) both}
+.cfg-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 16px;border-bottom:1px solid var(--line)}
+.cfg-head h3{font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px}
+.cfg-head h3 svg{width:16px;height:16px}
+.cfg-head .bar{width:3px;height:15px;border-radius:2px;background:var(--brand);flex-shrink:0}
+.cfg-head .bar.amber{background:var(--warn)} .cfg-head .bar.green{background:var(--ok)} .cfg-head .bar.vio{background:var(--vio)}
+.cfg-body{padding:16px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.f-item{min-width:0}
+.f-item.full{grid-column:1/-1}
+.f-item label{display:block;font-size:11px;color:var(--txt2);font-weight:700;margin-bottom:6px}
+.f-item .hint{font-size:10.5px;color:var(--txt3);margin-top:5px;line-height:1.6}
+.f-item .hint code{background:rgba(146,170,205,.12);padding:1px 5px;border-radius:5px;font-size:10px;font-family:ui-monospace,Menlo,monospace}
+.switch{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(10,15,30,.45);border:1px solid var(--line);border-radius:12px;cursor:pointer;transition:border-color .2s}
+.switch:active{transform:scale(.98)}
+.switch .lbl{font-size:12.5px;font-weight:600;flex:1}
+.switch .sc{font-size:10px;color:var(--txt3)}
+.sw{position:relative;width:44px;height:26px;border-radius:13px;background:rgba(146,170,205,.2);transition:background .25s var(--ease);flex-shrink:0}
+.sw::after{content:'';position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .25s var(--spring);box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.switch input{display:none}
+.switch input:checked+.sw{background:var(--grad)}
+.switch input:checked+.sw::after{transform:translateX(18px)}
+.acc-edit{background:rgba(10,15,30,.4);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+.acc-edit-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.acc-edit-title{font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px}
+.acc-edit-title .n{width:24px;height:24px;border-radius:8px;background:var(--brandSoft);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900}
+.acc-edit-head .acts{display:flex;gap:6px}
+.btn-row{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.btn-row .btn{flex:1;min-width:120px}
+.cfg-note{font-size:10.5px;color:var(--txt3);line-height:1.7;padding:12px 14px;background:rgba(247,185,85,.07);border:1px solid rgba(247,185,85,.18);border-radius:12px;margin-top:12px}
+.cfg-note b{color:var(--warn)}
+
+/* ============ tabbar ============ */
+nav.tabbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:60;
+  display:flex;padding:8px 10px calc(8px + var(--safe-b));
+  background:rgba(10,15,30,.82);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);
+  border-top:1px solid rgba(146,170,205,.1);
+}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;border-radius:14px;color:var(--txt3);font-size:10px;font-weight:700;transition:color .2s,transform .16s var(--spring)}
+.tab svg{width:22px;height:22px}
+.tab:active{transform:scale(.9)}
+.tab.on{color:var(--brand)}
+.tab .t-ind{width:14px;height:3px;border-radius:2px;background:transparent;transition:background .25s}
+.tab.on .t-ind{background:var(--brand)}
+
+/* ============ sheets & toast ============ */
+.sheet-backdrop{position:fixed;inset:0;z-index:100;background:rgba(4,8,18,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .3s var(--ease)}
+.sheet-backdrop.show{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:101;max-height:86vh;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,var(--card2),var(--bg2));border:1px solid var(--line2);border-bottom:none;
+  border-radius:26px 26px 0 0;transform:translateY(104%);transition:transform .38s var(--spring);
+  box-shadow:0 -18px 50px rgba(0,0,0,.5)}
+.sheet.show{transform:translateY(0)}
+.sheet-grab{width:38px;height:4px;border-radius:2px;background:rgba(146,170,205,.3);margin:10px auto 4px;flex-shrink:0}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;padding:6px 20px 12px}
+.sheet-head h3{font-size:16px;font-weight:800;display:flex;align-items:center;gap:9px}
+.sheet-head h3 svg{width:18px;height:18px}
+.sheet-close{width:32px;height:32px;border-radius:10px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--txt2)}
+.sheet-close:active{transform:scale(.9)}
+.sheet-body{padding:4px 20px 24px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sr-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(146,170,205,.08);font-size:13px}
+.sr-item:last-child{border-bottom:none}
+.sr-item .k{color:var(--txt2);font-weight:600;flex-shrink:0}
+.sr-item .v{text-align:right;font-weight:800}
+.sr-item .v.mono{font-family:ui-monospace,Menlo,monospace;font-size:12px}
+.sig-result{max-height:52vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sig-card{border-radius:16px;padding:13px 14px;margin-bottom:10px;border:1px solid var(--line)}
+.sig-card.ok{background:var(--okSoft);border-color:rgba(61,220,151,.25)}
+.sig-card.fail{background:var(--errSoft);border-color:rgba(249,112,106,.28)}
+.sig-card .h{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:800;margin-bottom:6px}
+.sig-card .h .r{font-size:12px}
+.sig-card.ok .h .r{color:var(--ok)} .sig-card.fail .h .r{color:var(--err)}
+.sig-card .steps{font-size:12px;color:var(--txt2);line-height:1.8}
+.sig-card .steps i{font-style:normal;color:var(--brand);margin-right:5px}
+.sig-card .steps .err{color:var(--err)}
+#toast{position:fixed;left:50%;top:calc(18px + var(--safe-t));transform:translateX(-50%) translateY(-16px);z-index:200;
+  display:flex;align-items:center;gap:8px;max-width:86vw;padding:11px 18px;border-radius:14px;font-size:13px;font-weight:700;
+  background:rgba(17,26,46,.92);border:1px solid var(--line2);box-shadow:0 10px 34px rgba(0,0,0,.45);
+  opacity:0;pointer-events:none;transition:opacity .25s,transform .3s var(--spring)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast svg{width:16px;height:16px;flex-shrink:0}
+#toast.ok{color:var(--ok)} #toast.err{color:var(--err)} #toast.info{color:var(--brand)}
+#toast.ok svg{color:var(--ok)} #toast.err svg{color:var(--err)} #toast.info svg{color:var(--brand)}
+.confirm-layer{position:fixed;inset:0;z-index:150;display:flex;align-items:center;justify-content:center;padding:30px}
+.confirm{width:min(340px,90vw);background:var(--card2);border:1px solid var(--line2);border-radius:20px;padding:22px 20px 18px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.55);animation:card-in .3s var(--spring) both}
+.confirm .ct{font-size:15px;font-weight:800;margin-bottom:6px}
+.confirm .cd{font-size:12.5px;color:var(--txt2);line-height:1.7;margin-bottom:18px}
+.confirm .cb{display:flex;gap:10px}
+.confirm .cb button{flex:1;height:42px;border-radius:13px;font-size:14px;font-weight:700}
+.confirm .cb .no{background:var(--card);border:1px solid var(--line);color:var(--txt2)}
+.confirm .cb .yes{background:var(--grad);color:#04121C}
+
+/* ============ misc ============ */
+.foot{text-align:center;padding:10px 0 4px;font-size:10.5px;color:var(--txt3);line-height:1.8}
+.foot .link{color:var(--brand);text-decoration:none;font-weight:700}
+.hidden{display:none!important}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.pulse{animation:pulse 1.6s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+@media (min-width:700px){
+  main{max-width:680px;margin:0 auto}
+}
+@media (max-width:699px){
+  input[type=text],input[type=password],input[type=number],textarea{font-size:16px!important}
+}
+
+/* ============ v2.14.9 积分 / 车辆页组件 ============ */
+.acc-chips{display:flex;gap:7px;overflow-x:auto;padding:2px 0 12px;-webkit-overflow-scrolling:touch}
+.acc-chips::-webkit-scrollbar{display:none}
+.acc-chip{flex-shrink:0;padding:7px 15px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-size:12px;font-weight:700;color:var(--txt2)}
+.acc-chip.on{background:var(--grad);color:#fff;border-color:transparent;box-shadow:0 4px 14px var(--brandSoft)}
+.pt-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.pt-cell{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:13px 14px;animation:card-in .4s var(--ease) both}
+.pt-cell .lb{font-size:11px;color:var(--txt3);font-weight:600;margin-bottom:5px}
+.pt-cell .vl{font-size:22px;font-weight:800;line-height:1.15}
+.pt-cell .sub{font-size:10px;color:var(--txt3);margin-top:3px}
+.panel-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:15px;margin-bottom:14px;animation:card-in .4s var(--ease) both}
+.panel-card .pc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.panel-card .pc-head h4{font-size:14px;font-weight:800;display:flex;align-items:center;gap:7px}
+.panel-card .pc-head h4 svg{width:16px;height:16px;color:var(--brand)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.cal-wd{font-size:10px;color:var(--txt3);text-align:center;font-weight:700;padding-bottom:3px}
+.cal-d{aspect-ratio:1;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:var(--card3);color:var(--txt2);border:1.5px solid transparent}
+.cal-d.signed{background:var(--okSoft);color:var(--ok)}
+.cal-d.miss{background:var(--errSoft);color:var(--err)}
+.cal-d.today{border-color:var(--brand)}
+.cal-d.future{opacity:.38}
+.cal-d.blank{background:transparent}
+.cal-d .dot{font-size:8px;line-height:1;margin-top:1px}
+.vc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.vc-btn{background:var(--card3);border:1px solid var(--line);border-radius:var(--r-md);padding:13px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--txt)}
+.vc-btn svg{width:21px;height:21px;color:var(--brand)}
+.vc-btn:active{transform:scale(.94)}
+.opt-row{display:flex;flex-wrap:wrap;gap:8px;margin:9px 0}
+.opt-chip{padding:8px 14px;border-radius:10px;background:var(--card3);border:1px solid var(--line);font-size:12px;font-weight:700;color:var(--txt2)}
+.opt-chip.on{background:var(--brandSoft);border-color:var(--brand);color:var(--brand)}
+.flow-item{display:flex;justify-content:space-between;align-items:center;padding:11px 2px;border-bottom:1px solid var(--line)}
+.flow-item:last-child{border-bottom:none}
+.flow-item .nm{font-size:13px;font-weight:600}
+.flow-item .tm{font-size:10px;color:var(--txt3);margin-top:2px}
+.flow-item .sc{font-size:14px;font-weight:800}
+.flow-item .sc.plus{color:var(--ok)}
+.flow-item .sc.minus{color:var(--err)}
+.mon-row{display:flex;justify-content:space-between;align-items:center;padding:9px 2px;border-bottom:1px solid var(--line);font-size:13px}
+.mon-row:last-child{border-bottom:none}
+.mon-row .k{color:var(--txt3);font-weight:600}
+.mon-row .v{font-weight:700}
+/* ============ 入场闪屏：首帧即显示，数据就绪后淡出 ============ */
+#splash{position:fixed;inset:0;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(120% 60% at 50% 0%,rgba(14,143,178,.16),transparent 60%),var(--bg);transition:opacity .4s var(--ease),transform .4s var(--ease)}
+#splash.out{opacity:0;transform:scale(1.04);pointer-events:none}
+.sp-mark{width:84px;height:84px;border-radius:24px;background:var(--grad);display:flex;align-items:center;justify-content:center;box-shadow:0 14px 40px rgba(14,143,178,.4);animation:sp-in .6s var(--spring) both}
+.sp-mark svg{width:46px;height:46px}
+.sp-title{margin-top:20px;font-size:21px;font-weight:900;letter-spacing:1px;animation:sp-up .5s .12s var(--ease) both}
+.sp-sub{margin-top:7px;font-size:12px;color:var(--txt3);letter-spacing:3px;animation:sp-up .5s .2s var(--ease) both}
+.sp-load{margin-top:34px;display:flex;align-items:center;gap:9px;font-size:12px;color:var(--txt2);animation:sp-up .5s .3s var(--ease) both}
+.sp-load .spinner{width:16px;height:16px;border:2px solid var(--line2);border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes sp-in{from{opacity:0;transform:scale(.6) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes sp-up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div class="bg-glow"></div>
+<div id="splash">
+  <div class="sp-mark"><svg viewBox="0 0 24 24" fill="none"><path d="M4 13.5C4 9.08 7.58 5.5 12 5.5s8 3.58 8 8" stroke="#04121C" stroke-width="2.4" stroke-linecap="round"/><path d="M12 13l7.5 5.5" stroke="#04121C" stroke-width="2.4" stroke-linecap="round"/><circle cx="7.5" cy="16.5" r="2.2" fill="#04121C"/><circle cx="17" cy="19" r="2.2" fill="#04121C"/></svg></div>
+  <div class="sp-title">极核 ZEEHO</div>
+  <div class="sp-sub">签到 · 车辆 · 控车</div>
+  <div class="sp-load"><span class="spinner"></span>正在加载数据…</div>
+</div>
+<div id="app">
+  <header class="app-header">
+    <div class="brand-mark"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJAAAACQCAYAAADnRuK4AAAAAXNSR0IArs4c6QAAAFBlWElmTU0AKgAAAAgAAgESAAMAAAABAAEAAIdpAAQAAAABAAAAJgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAkKADAAQAAAABAAAAkAAAAAAt4iSWAAABWWlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iWE1QIENvcmUgNi4wLjAiPgogICA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPgogICAgICA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIgogICAgICAgICAgICB4bWxuczp0aWZmPSJodHRwOi8vbnMuYWRvYmUuY29tL3RpZmYvMS4wLyI+CiAgICAgICAgIDx0aWZmOk9yaWVudGF0aW9uPjE8L3RpZmY6T3JpZW50YXRpb24+CiAgICAgIDwvcmRmOkRlc2NyaXB0aW9uPgogICA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgoZXuEHAAANCElEQVR4Ae1dW0wVSRouRIKiYkhEomIwizhR4o1VJzqrUXgwWTXe0KhxJEZdvCWjkMyriY9Gxls0EV+cjMYb3jPRlxGdHRPd0Yk87EZWUNdRE0RFERFEYP+v7T6ec7rOpft0w6nT/5/89Om6ddVXX6qqu/76SRI9JN3d3f3oUbmko0lHkWbpmknXdNKBpINI00hTSVN0TaYrtA9pkp/Sz4STbmqRoV30u1PXDrpC20lbSd+RtpA2kzaSNuj6mK51pPVJSUltdHVd0CGuCBFmHBVcRDpV16/o6trzqGyWLwiAhLWkv+v6CxHqP1+infvlaIcSaQqoav8gnUea7Vw1uSQHEHhKZfxMWklk+sOB8rQiYiYQkQZlFJN+R/qNVir/iXcEblIF95FWEZkwWtmWmAhE5PkbPfkHUkxTLOohgCmujEj0m92q2yIQESeDHniQdKXdB3O+uELgBNVmCxGpyWqtLBOIyDOLHnKMdKTVh3H6uEbgT6rdaiLRr1ZqiVfjqIXIU06Jq0mZPFGjpkxC9Gm13sdRVzqqEYgKRboK0u1Rl8wJVUZgD1W+PJoFdkQC6eT5kQr8VmVEuO6WEfiJcpREIlE0UxhGHiaPZfyVz4A+R9+HlbAE0udDnrbCQpjQkdsjrYlCTmGUEW9bWDCHJVlCw8eNAwLYk5sT6u1MSiAiD77z1JBiZc7CCOAVfyKRyPSdKNTogo+ETB4mjoEAuABOmMQ0AtHog+2Jf5pScgAjIMRMGoUCtj0CCETkwf1tUt7bYrrIEMDe2ddEIt8GbPAUhl11Jo8MOg4DAuAGOOKTYALBJIOFEQiHQABHfFMYTV8wBrsbLifHMQI6An+laUwzSvMfgUoZHkYgSgRgdaqJ/wiEd302Q9WB4UtYBJ7SCKR95tFGIJq+8pk8YQHjyEAEsokzODTh26YoDIznO0YgIgJFSGGsgaZFTM4JGIFABDTOGATibz+B4PBdZAQ0ziTRXIYTozjt6FtQR87LKRgB7QRtGkagXFImDzPCKgLgTC4IlGc1J6dnBHQE8kCgHIaDEbCJQA4IBC8ZLIyAHQSymEB2YOM8BgIagTKNO74yAhYRyMQIBOdOLIyAHQTSQSB4BmNhBOwgMBAEGmQnJ+dhBMAdEAg+CVkYATsIaF+i4dCShRGwg0AqRiB4Q2VhBOwgkMIEsgMb5zEQ0AiUbNzxlRGwiEAyRiAmkEXUOLkPAY1AIBELI2AHgT4gD9sC2YGO8wCBJCYQEyEWBJL6gkWxlBApb1VVlWhowP8CYQECnZ2dYtmyZWLYsGFSQO7evStu3boljbMaOHr0aDF37lyr2aykTxJkE+2qTJgwAZ4cWHUMSktLu1tbW6WYE3G6MzMzHcNq4cKF0uc4GYgRyFXp37+/q+WrVDiRRxw6dEj00ZaegTWvqakRS5cuFY2NjYERMdylprq/ycBvYDF0kJWsa9asEQcOHJCSp7a2VixevFg8e/bMSpFxkZYJ1APdUFxcLA4fPixSUsy7Ro8ePRKLFi0SuKooTCCXe23evHni6NGjol8/HL8LFIw4S5YsEffv3w+MUOiOCeRiZ82ZM0ccP35cDBgwwPQUrHUwMt27d88Up1IAE8il3po+fbo4ffq0GDx4sOkJb968EcuXL3fsdd30gB4MYAK5APbkyZMFvn8NGTLEVHpLS4tYtWqVuH79uilOxQAmkMO9NnbsWHHu3DkxfPhwU8ltbW2ipKREXLlyxRSnagATyMGey83NFRcuXBCjRo0yldrR0SE2bNigkcsUqXAAE8ihzsvOzhbnz58XY8aMMZXY1dUltm7dKo4dwz96TCxhAjnQn0OHDhVnz54V48ePl5ZWXl4uKisrpXGqBzKBYuzBjIwMcebMGTFtmtnJ28ePH0VZWZnYu3dvjE+J3+yu74U50fT09HQxe/ZsQZ5BnSjOsTKwp7V582Yxaxb+M5ZZ7ty5I+rq6gRtapojw4S0t7eLa9euCRAw3kUJAuXk5IiLFy/GO5am+s2YMUNcunTJFB4pAN+J8vLyxMuXLyMl7fV4JaYwMj8QeIvximAEQptVECUIpAKQXq2jMgRKTvbO4RGZvVC8ElSJNRDMQF+8eCE1h+gJYDGd4FsOWQuGXMg3Nzc7Ns2+evVKmSlMCQI9ePBAkGlsyM5zk0QGeXbs2KF9DJQ9C/ta69atE9jnckJAViykVRAlCPTp0ydHTT2tdsy2bdvEli1bpASGATx21p00RbVav95Mr8waqLdA2rRpk6ioqJCaosKWx2k75t5qp93nMoHCIIed8/3790vJAytCWBM+f/48TAmJH8UECtHHOLsFO+a+fc2z/MOHD5W2Yw7RZFvBTCAJbPPnz9fsmGXHYgw7ZpykYPny754YCx2BoqIizewiLc3s+Q+fErDmwRkuls8I8AjkxwTsXZ08eVJqx9zU1KS9bd2+fdsvB/9kAukcKCgoiGjHfOPGDWZMEAJMIAIkPz9fMzWVOTyAHTNOlV69ejUIOr4FAp4nEDxYwBQVJiPBAguA9evXa/HBcXz/GQFPE2jkyJHayAPbm2DBdgK+PuNgIEtoBDxLoKysLI08MjtmkAfbF0eOHAmNHMdoCJi/ksUhMDBllX3Qs1tVHPjDqdEpU6aYisDO/86dO8XBgwd7bfcflVLFgE4JAmGdglMPTpAIu+s4bjxixAgTeYwAbI6uWLHCuO3xK8w5FixYoMSOvBIEgmcL2VTjRs/CcA1vZb0pr1+/FqoY0CmxBsKoocqQ7gTxVGqrEgRyolO4DHcQUIJAsBGWefdyB5LeLxX7cPF2Bi4UKkqsgWBzg9dqK+sCwxQVZ9KxCJdJdXW1uHz5ctx11vv37wVUBVGCQDhgt2/fPst44lgxPhbKBHbMcGz59u1bWTSHRYmAEgSKsi0ByeDQYPfu3QFhxo1hx8zkMRCxf1ViDWS1eRs3bhS7du2SZoMdM3wTetUIXgpKDIEJRyDYMYfyx2zYMavojzmGPnY1a0IRyPDHLPtiDT/MWPOo6o/ZVRbEUHjCEMjwxxzKjhnkUdkfcwx97GrWhCBQYWFhWH/MbMfsHoeUJxD8MZ86dUpqx2z4Y2Y7ZiaQFAH4Y8YufSh/zCtXrkwYf8xSAOIgUNkRaNy4cWHtmPE2xnbM7jNMSQLBHzPsmL3kj9l9Kth7gnIEgj9meIL3mj9me93rfi7XCfThwwfHWgF/zCAPfAUFC56DL9CJ6o85uL3R3MPXotvi+l7Y2rVrxZMnTxxpBxweTJ06VVpWfX29wL/XxK69KqYQ0oY4GDhp0iQHS5MXlURmD10UFV8OmOV15dD4Q6AbU5ga/mTjDzyuEXGHCcQ0iAUBjUCYwlgYATsIdGEE6rSTk/MwAuAOE4h5EAsCGoG8808oYoGK88oQ6MAIxASSQcNh0SCgEcj9z5XRVIXTqIhAO0agVhVrznWOCwRaQaB3cVEVroSKCLwDgZz5DyEqNp/rHCsCLSBQc6ylcH7PItAMAjV6tvnc8FgRaASBGmIthfN7FoEGJpBn+96RhmsEeuxIUVyIFxF4jBGozost5zY7gkAdLBL7UVH4mMhWiY5g6plCYIiY1ofsh9vox38902xuqFMI1II7mMIgv3++8F9GIGoENM4YBPpX1Nk4ISPwGYEAAv3CqDACFhHQOONbONNi+k8qINtiIZzcmwg8pfWP5r3UmMIAw8/exIJbbQMBH1f8CVRpoyDO4k0EfFzxEYiGpD8Ii5vexINbbQGBmzpXtCw+AukFWPfmbeHJnDQhEAjgiG8RjabRQhr3+L/Wcg8GSMTiZQTw6v41jUC+4/ABI5AeUeZlhLjtYREo8ycPUgYQCAGU4De6nMBvFkbAD4ETOjf8gkJsoNJUlkGpaki1d/2AHHzjRQTwjXAiEagpuPGmEQgJ9ISr6Sc7XghGzHv34MBqGXkAhZRAiKAMv9Lle/xm8TQC3+tckIIQ8BYmS0HT2Q8Uvl0Wx2EJj8AeIk/Yl6poCIQ0P5J+m/BwcQP9EfiJbkqIQL5Xdv9I43fIKcxIoBdQQvd7jDC+JjwC6OuI5AEKEUcgf6hoOiune/wnt4jE88/Hv5VBAAtmrHkqoq2xJQKhUCLRLLocI+VXfACSOIJXdbxt4eUparE8kugPmEhP4I+NUcMc9wnRl/jOY4k8aJVlAiETPaiJdBX9nEnK9tQARU1B381EX6JP7TTB8hQW/BCa0lBGMel3pN8Ex/N9XCIAsx3sqlcRccK+ZUWqfcwE8n8AkamA7ktJ/07K5rH+4PT+76dUBVgSVhJpYPvliDhKIP8aEZny6b6QdBopzEPGkLr2PCqb5QsCGFVw1g9TFE7cXCPS/JuujkuPdSgRqj/V/i+keaQ5pFm6ZtI1nXQg6SDSNNJU0hRdk+kKxXoN9TWUfiacoOMNxSt1p65whAqFP0ucIoZXOTgGg2+nRlJ4WIH+j/QBaT0RBgdGXZf/A7Y1d/5IJZddAAAAAElFTkSuQmCC" alt="ZEEHO"></div>
+    <div class="brand-txt">
+      <h1>极核 ZEEHO</h1>
+      <p>演示模式 · 示例数据（不联网）</p>
+    </div>
+    <div class="head-actions">
+      <div class="count-chip hidden" id="countChip" onclick="toggleAutoRefresh()">
+        <span class="count-ring"><svg viewBox="0 0 14 14"><circle class="track" cx="7" cy="7" r="5.6"/><circle class="arc" id="countArc" cx="7" cy="7" r="5.6" stroke-dasharray="35.2" stroke-dashoffset="35.2"/></svg></span>
+        <span id="countTxt">60s</span>
+      </div>
+      
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="ptr-wrap" id="ptrWrap">
+      <div class="ptr-indicator" id="ptrInd"><span class="spinner" id="ptrSpin"></span><span id="ptrTxt">下拉刷新</span></div>
+      <div id="pageHome"></div>
+    </div>
+    <div id="pagePoints" class="hidden"></div>
+    <div id="pageVehicle" class="hidden"></div>
+    <div id="pageLogs" class="hidden"></div>
+    <div id="pageCfg" class="hidden"></div>
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab on" data-tab="home" onclick="switchTab('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+      首页<span class="t-ind"></span>
+    </button>
+    <button class="tab" data-tab="points" onclick="switchTab('points')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M9 8.5l3 4 3-4M12 12.5V17M9.6 13.4h4.8M9.6 15.4h4.8"/></svg>
+      积分<span class="t-ind"></span>
+    </button>
+    <button class="tab" data-tab="vehicle" onclick="switchTab('vehicle')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13l1.7-4.6A2 2 0 0 1 7.6 7h8.8a2 2 0 0 1 1.9 1.4L20 13"/><path d="M3.5 13h17a1 1 0 0 1 1 1v3.5h-2.6M2.5 17.5V14a1 1 0 0 1 1-1"/><path d="M5.1 17.5H2.5"/><circle cx="7.3" cy="17.3" r="1.9"/><circle cx="16.7" cy="17.3" r="1.9"/><path d="M9.2 17.3h5.6"/></svg>
+      车辆<span class="t-ind"></span>
+    </button>
+    <button class="tab" data-tab="logs" onclick="switchTab('logs')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>
+      日志<span class="t-ind"></span>
+    </button>
+    <button class="tab" data-tab="cfg" onclick="switchTab('cfg')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      设置<span class="t-ind"></span>
+    </button>
+  </nav>
+
+  <div class="sheet-backdrop" id="sheetBackdrop" onclick="closeSheet()"></div>
+  <div class="sheet" id="sheet">
+    <div class="sheet-grab"></div>
+    <div class="sheet-head">
+      <h3 id="sheetTitle"></h3>
+      <button class="sheet-close" onclick="closeSheet()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </div>
+
+  <div id="toast" role="status"></div>
+  <div class="confirm-layer hidden" id="confirmLayer"></div>
+</div>
+<script>
+"use strict";
+/* ================= 常量 ================= */
+const APP_VERSION = "v2.14.15";
+const KEYS = { cfg:"zeeho_cfg", accounts:"zeeho_accounts", logs:"zeeho_logs" };
+
+/* ================= 工具函数 ================= */
+function getUuid(){const p="xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx",c="abcdef0123456789";let r="";for(const ch of p){if(ch==="x"||ch==="y"){const n=Math.floor(Math.random()*16);r+=(ch==="y"?(n&0x3)|0x8:n).toString(16)}else r+=ch}return r}
+function getRandomChars(n=16){const c="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";let r="";for(let i=0;i<n;i++)r+=c.charAt(Math.floor(Math.random()*c.length));return r}
+function toQuery(p={}){return Object.keys(p).filter(k=>p[k]!==undefined&&p[k]!==null).sort().map(k=>k+"="+p[k]).join("&")}
+function cleanToken(t){return String(t||"").trim().replace(/^[bB]earer\s+/i,"").replace(/[\s"'`]+/g,"")}
+function cleanBarkKey(b){let s=String(b||"").trim().replace(/^[bB]ark\s*(key)?\s*[:：]\s*/i,"").replace(/[\s"'`]+/g,"").trim();return s.replace(/\/+$/,"")}
+function maskVin(v){const s=String(v||"");if(!s)return"";if(s.length<=7)return"****";return s.substring(0,3)+"****"+s.substring(s.length-4)}
+function deepPick(obj,keys,depth){if(!obj||typeof obj!=="object"||(depth||0)>5)return"";for(const k of keys){if(obj[k]!==undefined&&obj[k]!==null&&obj[k]!=="")return String(obj[k])}for(const k in obj){if(obj[k]&&typeof obj[k]==="object"){const r=deepPick(obj[k],keys,(depth||0)+1);if(r)return r}}return""}
+function pickIotProp(d,identify){const arr=d&&d.iotProperties;if(Array.isArray(arr)){const key=String(identify).toLowerCase();for(const it of arr){if(it&&String(it.identify||"").toLowerCase()===key&&it.value!==null&&it.value!==undefined&&it.value!=="")return String(it.value)}}return""}
+function getDeviceIdentify(acc){const seed=String(acc.userId||acc.vinNo||"zeeho-device");let h=0;for(let i=0;i<seed.length;i++){h=((h<<5)-h+seed.charCodeAt(i))|0}return(Math.abs(h).toString(16)+"0000000000000000").slice(0,16)}
+function hasValidCoord(lat,lng){if(lat===""||lat===null||lat===undefined||lng===""||lng===null||lng===undefined)return false;const la=Number(lat),ln=Number(lng);return isFinite(la)&&isFinite(ln)&&Math.abs(la)<=90&&Math.abs(ln)<=180&&!(la===0&&ln===0)}
+function normalizeRefreshSec(v){const n=Number(v);if(!isFinite(n)||n<=0)return 60;return Math.max(15,Math.min(3600,Math.round(n)))}
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+
+/* ================= MD5 ================= */
+function md5(t,e){function n(t,e){return t<<e|t>>>32-e}function r(t,e){var n,r,o,i,a;return o=2147483648&t,i=2147483648&e,a=(1073741823&t)+(1073741823&e),(n=1073741824&t)&(r=1073741824&e)?2147483648^a^o^i:n|r?1073741824&a?3221225472^a^o^i:1073741824^a^o^i:a^o^i}function o(t,e,o,i,a,u,c){return t=r(t,r(r(function(t,e,n){return t&e|~t&n}(e,o,i),a),c)),r(n(t,u),e)}function i(t,e,o,i,a,u,c){return t=r(t,r(r(function(t,e,n){return t&n|e&~n}(e,o,i),a),c)),r(n(t,u),e)}function a(t,e,o,i,a,u,c){return t=r(t,r(r(function(t,e,n){return t^e^n}(e,o,i),a),c)),r(n(t,u),e)}function u(t,e,o,i,a,u,c){return t=r(t,r(r(function(t,e,n){return e^(t|~n)}(e,o,i),a),c)),r(n(t,u),e)}function c(t){var e,n="",r="";for(e=0;e<=3;e++)n+=(r="0"+(t>>>8*e&255).toString(16)).substr(r.length-2,2);return n}var s,l,f,p,d,h,v,y,g,m=Array();for(m=function(t){for(var e,n=t.length,r=n+8,o=16*((r-r%64)/64+1),i=Array(o-1),a=0,u=0;u<n;)a=u%4*8,i[e=(u-u%4)/4]=i[e]|t.charCodeAt(u)<<a,u++;return a=u%4*8,i[e=(u-u%4)/4]=i[e]|128<<a,i[o-2]=n<<3,i[o-1]=n>>>29,i}(t=function(t){t=t.replace(/\r\n/g,"\n");for(var e="",n=0;n<t.length;n++){var r=t.charCodeAt(n);r<128?e+=String.fromCharCode(r):r>127&&r<2048?(e+=String.fromCharCode(r>>6|192),e+=String.fromCharCode(63&r|128)):(e+=String.fromCharCode(r>>12|224),e+=String.fromCharCode(r>>6&63|128),e+=String.fromCharCode(63&r|128))}return e}(t)),h=1732584193,v=4023233417,y=2562383102,g=271733878,s=0;s<m.length;s+=16)l=h,f=v,p=y,d=g,h=o(h,v,y,g,m[s+0],7,3614090360),g=o(g,h,v,y,m[s+1],12,3905402710),y=o(y,g,h,v,m[s+2],17,606105819),v=o(v,y,g,h,m[s+3],22,3250441966),h=o(h,v,y,g,m[s+4],7,4118548399),g=o(g,h,v,y,m[s+5],12,1200080426),y=o(y,g,h,v,m[s+6],17,2821735955),v=o(v,y,g,h,m[s+7],22,4249261313),h=o(h,v,y,g,m[s+8],7,1770035416),g=o(g,h,v,y,m[s+9],12,2336552879),y=o(y,g,h,v,m[s+10],17,4294925233),v=o(v,y,g,h,m[s+11],22,2304563134),h=o(h,v,y,g,m[s+12],7,1804603682),g=o(g,h,v,y,m[s+13],12,4254626195),y=o(y,g,h,v,m[s+14],17,2792965006),h=i(h,v=o(v,y,g,h,m[s+15],22,1236535329),y,g,m[s+1],5,4129170786),g=i(g,h,v,y,m[s+6],9,3225465664),y=i(y,g,h,v,m[s+11],14,643717713),v=i(v,y,g,h,m[s+0],20,3921069994),h=i(h,v,y,g,m[s+5],5,3593408605),g=i(g,h,v,y,m[s+10],9,38016083),y=i(y,g,h,v,m[s+15],14,3634488961),v=i(v,y,g,h,m[s+4],20,3889429448),h=i(h,v,y,g,m[s+9],5,568446438),g=i(g,h,v,y,m[s+14],9,3275163606),y=i(y,g,h,v,m[s+3],14,4107603335),v=i(v,y,g,h,m[s+8],20,1163531501),h=i(h,v,y,g,m[s+13],5,2850285829),g=i(g,h,v,y,m[s+2],9,4243563512),y=i(y,g,h,v,m[s+7],14,1735328473),h=a(h,v=i(v,y,g,h,m[s+12],20,2368359562),y,g,m[s+5],4,4294588738),g=a(g,h,v,y,m[s+8],11,2272392833),y=a(y,g,h,v,m[s+11],16,1839030562),v=a(v,y,g,h,m[s+14],23,4259657740),h=a(h,v,y,g,m[s+1],4,2763975236),g=a(g,h,v,y,m[s+4],11,1272893353),y=a(y,g,h,v,m[s+7],16,4139469664),v=a(v,y,g,h,m[s+10],23,3200236656),h=a(h,v,y,g,m[s+13],4,681279174),g=a(g,h,v,y,m[s+0],11,3936430074),y=a(y,g,h,v,m[s+3],16,3572445317),v=a(v,y,g,h,m[s+6],23,76029189),h=a(h,v,y,g,m[s+9],4,3654602809),g=a(g,h,v,y,m[s+12],11,3873151461),y=a(y,g,h,v,m[s+15],16,530742520),h=u(h,v=a(v,y,g,h,m[s+2],23,3299628645),y,g,m[s+0],6,4096336452),g=u(g,h,v,y,m[s+7],10,1126891415),y=u(y,g,h,v,m[s+14],15,2878612391),v=u(v,y,g,h,m[s+5],21,4237533241),h=u(h,v,y,g,m[s+12],6,1700485571),g=u(g,h,v,y,m[s+3],10,2399980690),y=u(y,g,h,v,m[s+10],15,4293915773),v=u(v,y,g,h,m[s+1],21,2240044497),h=u(h,v,y,g,m[s+8],6,1873313359),g=u(g,h,v,y,m[s+15],10,4264355552),y=u(y,g,h,v,m[s+6],15,2734768916),v=u(v,y,g,h,m[s+13],21,1309151649),h=u(h,v,y,g,m[s+4],6,4149444226),g=u(g,h,v,y,m[s+11],10,3174756917),y=u(y,g,h,v,m[s+2],15,718787259),v=u(v,y,g,h,m[s+9],21,3951481745),h=r(h,l),v=r(v,f),y=r(y,p),g=r(g,d);return 32==e?(c(h)+c(v)+c(y)+c(g)).toLowerCase():(c(v)+c(y)).toLowerCase()}
+/* ================= SHA1 ================= */
+function sha1(msg){function rotate_left(n,s){var t4=(n<<s)|(n>>>(32-s));return t4};function cvt_hex(val){var str='';var i;var v;for(i=7;i>=0;i--){v=(val>>>(i*4))&0x0f;str+=v.toString(16)}return str};function Utf8Encode(string){string=string.replace(/\r\n/g,'\n');var utftext='';for(var n=0;n<string.length;n++){var c=string.charCodeAt(n);if(c<128){utftext+=String.fromCharCode(c)}else if((c>127)&&(c<2048)){utftext+=String.fromCharCode((c>>6)|192);utftext+=String.fromCharCode((c&63)|128)}else{utftext+=String.fromCharCode((c>>12)|224);utftext+=String.fromCharCode(((c>>6)&63)|128);utftext+=String.fromCharCode((c&63)|128)}}return utftext};var blockstart;var i,j;var W=new Array(80);var H0=0x67452301;var H1=0xEFCDAB89;var H2=0x98BADCFE;var H3=0x10325476;var H4=0xC3D2E1F0;var A,B,C,D,E;var temp;msg=Utf8Encode(msg);var msg_len=msg.length;var word_array=new Array();for(i=0;i<msg_len-3;i+=4){j=msg.charCodeAt(i)<<24|msg.charCodeAt(i+1)<<16|msg.charCodeAt(i+2)<<8|msg.charCodeAt(i+3);word_array.push(j)}switch(msg_len%4){case 0:i=0x080000000;break;case 1:i=msg.charCodeAt(msg_len-1)<<24|0x0800000;break;case 2:i=msg.charCodeAt(msg_len-2)<<24|msg.charCodeAt(msg_len-1)<<16|0x08000;break;case 3:i=msg.charCodeAt(msg_len-3)<<24|msg.charCodeAt(msg_len-2)<<16|msg.charCodeAt(msg_len-1)<<8|0x80;break}word_array.push(i);while((word_array.length%16)!=14)word_array.push(0);word_array.push(msg_len>>>29);word_array.push((msg_len<<3)&0x0ffffffff);for(blockstart=0;blockstart<word_array.length;blockstart+=16){for(i=0;i<16;i++)W[i]=word_array[blockstart+i];for(i=16;i<=79;i++)W[i]=rotate_left(W[i-3]^W[i-8]^W[i-14]^W[i-16],1);A=H0;B=H1;C=H2;D=H3;E=H4;for(i=0;i<=19;i++){temp=(rotate_left(A,5)+((B&C)|(~B&D))+E+W[i]+0x5A827999)&0x0ffffffff;E=D;D=C;C=rotate_left(B,30);B=A;A=temp}for(i=20;i<=39;i++){temp=(rotate_left(A,5)+(B^C^D)+E+W[i]+0x6ED9EBA1)&0x0ffffffff;E=D;D=C;C=rotate_left(B,30);B=A;A=temp}for(i=40;i<=59;i++){temp=(rotate_left(A,5)+((B&C)|(B&D)|(C&D))+E+W[i]+0x8F1BBCDC)&0x0ffffffff;E=D;D=C;C=rotate_left(B,30);B=A;A=temp}for(i=60;i<=79;i++){temp=(rotate_left(A,5)+(B^C^D)+E+W[i]+0xCA62C1D6)&0x0ffffffff;E=D;D=C;C=rotate_left(B,30);B=A;A=temp}H0=(H0+A)&0x0ffffffff;H1=(H1+B)&0x0ffffffff;H2=(H2+C)&0x0ffffffff;H3=(H3+D)&0x0ffffffff;H4=(H4+E)&0x0ffffffff}var temp=cvt_hex(H0)+cvt_hex(H1)+cvt_hex(H2)+cvt_hex(H3)+cvt_hex(H4);return temp.toLowerCase()}
+/* ================= AES-256-ECB + PKCS7 ================= */
+const AES_SBOX=new Uint8Array([0x63,0x7c,0x77,0x7b,0xf2,0x6b,0x6f,0xc5,0x30,0x01,0x67,0x2b,0xfe,0xd7,0xab,0x76,0xca,0x82,0xc9,0x7d,0xfa,0x59,0x47,0xf0,0xad,0xd4,0xa2,0xaf,0x9c,0xa4,0x72,0xc0,0xb7,0xfd,0x93,0x26,0x36,0x3f,0xf7,0xcc,0x34,0xa5,0xe5,0xf1,0x71,0xd8,0x31,0x15,0x04,0xc7,0x23,0xc3,0x18,0x96,0x05,0x9a,0x07,0x12,0x80,0xe2,0xeb,0x27,0xb2,0x75,0x09,0x83,0x2c,0x1a,0x1b,0x6e,0x5a,0xa0,0x52,0x3b,0xd6,0xb3,0x29,0xe3,0x2f,0x84,0x53,0xd1,0x00,0xed,0x20,0xfc,0xb1,0x5b,0x6a,0xcb,0xbe,0x39,0x4a,0x4c,0x58,0xcf,0xd0,0xef,0xaa,0xfb,0x43,0x4d,0x33,0x85,0x45,0xf9,0x02,0x7f,0x50,0x3c,0x9f,0xa8,0x51,0xa3,0x40,0x8f,0x92,0x9d,0x38,0xf5,0xbc,0xb6,0xda,0x21,0x10,0xff,0xf3,0xd2,0xcd,0x0c,0x13,0xec,0x5f,0x97,0x44,0x17,0xc4,0xa7,0x7e,0x3d,0x64,0x5d,0x19,0x73,0x60,0x81,0x4f,0xdc,0x22,0x2a,0x90,0x88,0x46,0xee,0xb8,0x14,0xde,0x5e,0x0b,0xdb,0xe0,0x32,0x3a,0x0a,0x49,0x06,0x24,0x5c,0xc2,0xd3,0xac,0x62,0x91,0x95,0xe4,0x79,0xe7,0xc8,0x37,0x6d,0x8d,0xd5,0x4e,0xa9,0x6c,0x56,0xf4,0xea,0x65,0x7a,0xae,0x08,0xba,0x78,0x25,0x2e,0x1c,0xa6,0xb4,0xc6,0xe8,0xdd,0x74,0x1f,0x4b,0xbd,0x8b,0x8a,0x70,0x3e,0xb5,0x66,0x48,0x03,0xf6,0x0e,0x61,0x35,0x57,0xb9,0x86,0xc1,0x1d,0x9e,0xe1,0xf8,0x98,0x11,0x69,0xd9,0x8e,0x94,0x9b,0x1e,0x87,0xe9,0xce,0x55,0x28,0xdf,0x8c,0xa1,0x89,0x0d,0xbf,0xe6,0x42,0x68,0x41,0x99,0x2d,0x0f,0xb0,0x54,0xbb,0x16]);
+const AES_RCON=new Uint8Array([0x00,0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x1b,0x36,0x6c,0xd8,0xab,0x4d]);
+function aesGMul(a,b){let p=0;for(let i=0;i<8;i++){if(b&1)p^=a;const hi=a&0x80;a=(a<<1)&0xff;if(hi)a^=0x1b;b>>=1}return p}
+function aesKeyExpansion256(key){const Nk=8,Nb=4,Nr=14;const w=new Uint8Array(4*Nb*(Nr+1));for(let i=0;i<Nk*4;i++)w[i]=key[i];for(let i=Nk;i<Nb*(Nr+1);i++){let t0=w[4*(i-1)],t1=w[4*(i-1)+1],t2=w[4*(i-1)+2],t3=w[4*(i-1)+3];if(i%Nk===0){const tmp=t0;t0=AES_SBOX[t1]^AES_RCON[i/Nk];t1=AES_SBOX[t2];t2=AES_SBOX[t3];t3=AES_SBOX[tmp]}else if(i%Nk===4){t0=AES_SBOX[t0];t1=AES_SBOX[t1];t2=AES_SBOX[t2];t3=AES_SBOX[t3]}w[4*i]=w[4*(i-Nk)]^t0;w[4*i+1]=w[4*(i-Nk)+1]^t1;w[4*i+2]=w[4*(i-Nk)+2]^t2;w[4*i+3]=w[4*(i-Nk)+3]^t3}return w}
+function aesEncryptBlock(input,w){const Nb=4,Nr=14;const s=new Uint8Array(16);for(let i=0;i<16;i++)s[i]=input[i];for(let i=0;i<16;i++)s[i]^=w[i];for(let round=1;round<=Nr;round++){for(let i=0;i<16;i++)s[i]=AES_SBOX[s[i]];let t=s[1];s[1]=s[5];s[5]=s[9];s[9]=s[13];s[13]=t;t=s[2];s[2]=s[10];s[10]=t;t=s[6];s[6]=s[14];s[14]=t;t=s[3];s[3]=s[15];s[15]=s[11];s[11]=s[7];s[7]=t;if(round!==Nr){for(let c=0;c<4;c++){const i=4*c;const a0=s[i],a1=s[i+1],a2=s[i+2],a3=s[i+3];s[i]=aesGMul(a0,2)^aesGMul(a1,3)^a2^a3;s[i+1]=a0^aesGMul(a1,2)^aesGMul(a2,3)^a3;s[i+2]=a0^a1^aesGMul(a2,2)^aesGMul(a3,3);s[i+3]=aesGMul(a0,3)^a1^a2^aesGMul(a3,2)}}const off=round*16;for(let i=0;i<16;i++)s[i]^=w[off+i]}return s}
+function aesUtf8Bytes(str){const out=[];for(let i=0;i<str.length;i++){let c=str.charCodeAt(i);if(c<0x80)out.push(c);else if(c<0x800)out.push(0xc0|(c>>6),0x80|(c&0x3f));else if(c>=0xd800&&c<=0xdbff){const c2=str.charCodeAt(++i);c=0x10000+((c-0xd800)<<10)+(c2-0xdc00);out.push(0xf0|(c>>18),0x80|((c>>12)&0x3f),0x80|((c>>6)&0x3f),0x80|(c&0x3f))}else out.push(0xe0|(c>>12),0x80|((c>>6)&0x3f),0x80|(c&0x3f))}return new Uint8Array(out)}
+function aesBytesToBase64(bytes){const chars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";let result="",i=0;for(;i+2<bytes.length;i+=3){const n=(bytes[i]<<16)|(bytes[i+1]<<8)|bytes[i+2];result+=chars[(n>>18)&63]+chars[(n>>12)&63]+chars[(n>>6)&63]+chars[n&63]}const rem=bytes.length-i;if(rem===1){const n=bytes[i]<<16;result+=chars[(n>>18)&63]+chars[(n>>12)&63]+"=="}else if(rem===2){const n=(bytes[i]<<16)|(bytes[i+1]<<8);result+=chars[(n>>18)&63]+chars[(n>>12)&63]+chars[(n>>6)&63]+"="}return result}
+function aes256EcbEncryptBase64(plaintext,keyStr){const key=aesUtf8Bytes(keyStr);if(key.length!==32)throw new Error("AES-256需要32字节密钥，当前"+key.length);const w=aesKeyExpansion256(key);const data=aesUtf8Bytes(plaintext);const padLen=16-(data.length%16);const padded=new Uint8Array(data.length+padLen);padded.set(data);for(let i=data.length;i<padded.length;i++)padded[i]=padLen;const out=new Uint8Array(padded.length);for(let off=0;off<padded.length;off+=16){out.set(aesEncryptBlock(padded.slice(off,off+16),w),off)}return aesBytesToBase64(out)}
+
+/* ================= 存储 ================= */
+function loadJSON(k,fallback){try{const raw=localStorage.getItem(k);if(!raw)return fallback;const v=JSON.parse(raw);return v===undefined||v===null?fallback:v}catch(e){return fallback}}
+function saveJSON(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
+const DEFAULT_CFG={app:{appId:"S7qPWPU1",appSecret:"c5e0da7f4da28df805694ec3dd1fc6792e9df99d"},h5:{appId:"Sw5F9uJi",appSecret:"46870a8f678a09109468f5b0168818b91c292845"},community:{enablePost:true,enableLike:true,enableComment:true,enableShare:true,enableDelete:true},vehicleAesKey:"",autoRefreshSec:60,serverBase:"",autoSignin:false,autoSigninTime:"07:00",vehicleMonitor:false};
+function getCfg(){const c=loadJSON(KEYS.cfg,null);if(!c)return JSON.parse(JSON.stringify(DEFAULT_CFG));return{app:{appId:c.app?.appId||DEFAULT_CFG.app.appId,appSecret:c.app?.appSecret||DEFAULT_CFG.app.appSecret},h5:{appId:c.h5?.appId||DEFAULT_CFG.h5.appId,appSecret:c.h5?.appSecret||DEFAULT_CFG.h5.appSecret},community:{enablePost:c.community?.enablePost!==false,enableLike:c.community?.enableLike!==false,enableComment:c.community?.enableComment!==false,enableShare:c.community?.enableShare!==false,enableDelete:c.community?.enableDelete!==false},vehicleAesKey:(typeof c.vehicleAesKey==="string"?c.vehicleAesKey:"").trim(),autoRefreshSec:normalizeRefreshSec(c.autoRefreshSec),serverBase:String(c.serverBase||"").trim(),autoSignin:c.autoSignin===true,autoSigninTime:(typeof c.autoSigninTime==="string"&&/^\d{1,2}:\d{2}$/.test(c.autoSigninTime)?c.autoSigninTime:"07:00"),vehicleMonitor:c.vehicleMonitor===true}}
+function saveCfg(c){return saveJSON(KEYS.cfg,c)}
+function getAccounts(){const a=loadJSON(KEYS.accounts,[]);return Array.isArray(a)?a:[]}
+function saveAccounts(list){return saveJSON(KEYS.accounts,list)}
+function getLogs(){const a=loadJSON(KEYS.logs,[]);return Array.isArray(a)?a:[]}
+function addLog(entry){const logs=getLogs();logs.unshift(entry);if(logs.length>50)logs.length=50;saveJSON(KEYS.logs,logs)}
+function clearLogs(){return saveJSON(KEYS.logs,[])}
+function isProxyMode(){return !!(window.__PANEL_MODE__)||!!getCfg().serverBase}
+/* ================= 签名 ================= */
+function getSign(type,params={},body='',cfg){const c=cfg||getCfg();const ac=c[type]||c.app;const query=toQuery(params);const timestamp=new Date().getTime();const nonce=type==="h5"?getUuid():timestamp+getRandomChars();const param="appId="+ac.appId+"&nonce="+nonce+"&timestamp="+timestamp;const bodyStr=body?(typeof body==="string"?body:JSON.stringify(body)):'';const signature=type==="h5"?(query+param+ac.appSecret):(bodyStr+param+ac.appSecret);const sign=md5(sha1(signature),32).toString();return{'cfmoto-x-param':param,'cfmoto-x-sign':sign,'cfmoto-x-sign-type':'0','timestamp':String(timestamp),'nonce':nonce,'signature':sign}}
+
+// H5 端含 body 签名（loginByPhone 等接口必须把请求体纳入签名，否则返回 permit error）
+function h5SignWithBody(body,cfg){const c=cfg||getCfg();const ac=c.h5||c.app;const timestamp=new Date().getTime();const nonce=getUuid();const param="appId="+ac.appId+"&nonce="+nonce+"&timestamp="+timestamp;const bodyStr=typeof body==="string"?body:JSON.stringify(body);const sign=md5(sha1(bodyStr+param+ac.appSecret),32).toString();return{'cfmoto-x-param':param,'cfmoto-x-sign':sign,'cfmoto-x-sign-type':'0','timestamp':String(timestamp),'nonce':nonce,'appId':ac.appId}}
+
+// App 网关完整签名（发码与登录同网关，避免 H5 authCode 发码进 App 池而 H5 loginByPhone 查不到）
+function appGatewaySign(url,method,params={},body='',cfg){const c=cfg||getCfg();const ac=c.app||c.h5;const timestamp=new Date().getTime();const nonce=timestamp+getRandomChars();const param="appId="+ac.appId+"&nonce="+nonce+"&timestamp="+timestamp;const query=toQuery(params);let preSign="";if(String(method).toUpperCase()==="GET"){const u=new URL(url);preSign=u.origin+u.pathname+(query?"?"+query:"");}else{preSign=query+(body?(typeof body==="string"?body:JSON.stringify(body)):"");}const sign=md5(sha1(preSign+param+ac.appSecret),32).toString();return{'appId':ac.appId,'nonce':nonce,'timestamp':String(timestamp),'signature':sign,'Cfmoto-X-Param':param,'Cfmoto-X-Sign':sign,'Cfmoto-X-Sign-Type':'0'}}
+
+/* ================= HTTP（fetch 版） ================= */
+async function httpGet(url,headers,timeoutMs){const ctrl=timeoutMs?AbortSignal.timeout(timeoutMs):undefined;try{const r=await fetch(url,{method:"GET",headers:headers||{},signal:ctrl});const t=await r.text();try{return JSON.parse(t)}catch(e){return{error:"parse error",raw:t}}}catch(e){return{error:String((e&&e.message)||e)}}}
+async function httpPost(url,headers,body,timeoutMs){const ctrl=timeoutMs?AbortSignal.timeout(timeoutMs):undefined;try{const r=await fetch(url,{method:"POST",headers:headers||{},body:typeof body==="string"?body:JSON.stringify(body==null?{}:body),signal:ctrl});const t=await r.text();try{return JSON.parse(t)}catch(e){return{error:"parse error",raw:t}}}catch(e){return{error:String((e&&e.message)||e)}}}
+async function httpPut(url,headers,body,timeoutMs){const ctrl=timeoutMs?AbortSignal.timeout(timeoutMs):undefined;try{const r=await fetch(url,{method:"PUT",headers:headers||{},body:body!==undefined&&body!==null?(typeof body==="string"?body:JSON.stringify(body)):undefined,signal:ctrl});const t=await r.text();try{return JSON.parse(t)}catch(e){return{error:"parse error",raw:t}}}catch(e){return{error:String((e&&e.message)||e)}}}
+async function httpDelete(url,headers,timeoutMs){const ctrl=timeoutMs?AbortSignal.timeout(timeoutMs):undefined;try{const r=await fetch(url,{method:"DELETE",headers:headers||{},signal:ctrl});const t=await r.text();try{return JSON.parse(t)}catch(e){return{error:"parse error",raw:t}}}catch(e){return{error:String((e&&e.message)||e)}}}
+function networkHint(res){const m=String((res&&res.error)||"");if(/failed to fetch|networkerror|cors|load failed|无法连接|网络/i.test(m))return"网络/跨域受限：直连模式需 ZEEHO 服务端放行 CORS，请检查网络连接后重试";return""}
+
+/* ================= 直连后端（浏览器直接调 ZEEHO API） ================= */
+function baseHeaders(acc){const ua=acc.userAgent||"MOBILE|iOS|16.1.1|ZEEHO_APP|3.0.1|iPhone|WWAN|iOS";const h={"Authorization":"Bearer "+cleanToken(acc.token),"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2","Accept-Language":"zh-CN","Accept":"*/*","User-Agent":ua,"x-app-info":ua};if(acc.userId){h["user_id"]=String(acc.userId);h["Cookie"]="user_id="+acc.userId}return h}
+
+async function fetchVehicleList(acc,cfg){try{const token=cleanToken(acc.token);const signH=getSign("app",{},'',cfg);const headers={"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2",...signH};if(acc.userId)headers["user_id"]=String(acc.userId);const res=await httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/vehicle/list",headers);let list=[];if(res.code=="10000"||res.code===10000){if(Array.isArray(res.data))list=res.data;else if(res.data&&Array.isArray(res.data.list))list=res.data.list;else if(res.data&&Array.isArray(res.data.records))list=res.data.records;else if(res.data&&Array.isArray(res.data.rows))list=res.data.rows}return list.map(v=>({vinNo:String(v.vinNo||v.frameNo||v.vin||"").trim(),name:String(v.vehicleName||v.vehicleType||v.deviceName||v.name||"车辆").trim()||"车辆",pic:String(v.vehiclePicUrl||v.pic||v.imageUrl||"").trim(),vehicleType:String(v.vehicleType||v.type||"").trim(),licensePlate:v.licensePlate||null})).filter(v=>v.vinNo)}catch(e){return[]}}
+
+async function fetchVehicleWidgets(acc,cfg,vinNo){try{const token=cleanToken(acc.token);const signH=getSign("app",{},'',cfg);const res=await httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/vehicle/widgets/"+encodeURIComponent(vinNo),{"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2","user_id":acc.userId||"",...signH});if((res.code=="10000"||res.code===10000)&&res.data){const d=res.data;const soc=Number(d.bmssoc||d.batteryLevel||0);const range=Number(d.hmiRidableMile||d.vehicleRidableMile||d.ridableMileage||0);const voltage=Number(d.voltage||d.batteryVoltage||d.bmsVoltage||d.totalVoltage||d.batteryTotalVoltage||0);const lngStr=deepPick(d,["longitude","lng","lon","gpsX","longitudeValue","coordX","x"]);const latStr=deepPick(d,["latitude","lat","gpsY","latitudeValue","coordY","y"]);const longitude=Number(lngStr),latitude=Number(latStr);return{batteryPercent:Math.max(0,Math.min(100,isFinite(soc)?soc:0)),residualRangeKm:isFinite(range)?range:0,voltage:isFinite(voltage)&&voltage>0?voltage:0,address:String(d.address||"").trim(),locationTime:String(d.location?.locationTime||"").trim(),vehicleName:String(d.vehicleName||"").trim(),vehicleImageUrl:String(d.vehicleScalePicUrl||d.vehiclePicUrl||"").trim(),headLockState:String(d.headLockState||"").trim(),batteryPullOut:String(d.batteryPullOutFlag||"")==="1",online:String(d.onlineStatus||d.online||d.netStatus||d.tboxStatus||d.deviceOnline||"").trim(),cushionState:deepPick(d,["cushionState","cushionStatus","cushionLockState","seatState","seatStatus","seatLockState","saddleState","saddleStatus","saddleLockState"]),longitude:(isFinite(longitude)&&Math.abs(longitude)<=180&&longitude!==0)?longitude:"",latitude:(isFinite(latitude)&&Math.abs(latitude)<=90&&latitude!==0)?latitude:"",powerStatus:String(d.accStatus||d.powerStatus||d.vehicleStatus||d.ignitionStatus||d.powerMode||d.accState||d.powerState||d.vehicleState||d.engineStatus||d.isPowerOn||d.powerOn||"").trim(),lockState:String(d.headLockState||d.lockState||d.lockStatus||d.vehicleLockState||d.carLockState||d.doorLockState||d.lockFlag||d.isLocked||d.locked||d.centralLockingStatus||"").trim()}}return null}catch(e){return null}}
+
+async function fetchVehicleHomePage(acc,cfg,vinNo){try{const token=cleanToken(acc.token);const signH=getSign("app",{},'',cfg);const deviceId=getDeviceIdentify(acc);const headers={"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2","user_id":acc.userId||"",...signH};const url="https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/vehicleHomePageV2/"+encodeURIComponent(vinNo)+"?uniqueIdentify="+deviceId+"&phoneDeviceName=ios_"+deviceId;const res=await httpGet(url,headers);if(res&&(res.code=="10000"||res.code===10000)&&res.data){const d=res.data;const vehicleLock=pickIotProp(d,"VehicleLock_S");const headLockIot=pickIotProp(d,"HeadLockState");const topLock=String(d.headLockState||d.lockState||d.lockStatus||d.vehicleLockState||headLockIot||vehicleLock||"").trim();const lngStr=deepPick(d,["longitude","lng","lon","gpsX","longitudeValue","coordX","x"]);const latStr=deepPick(d,["latitude","lat","gpsY","latitudeValue","coordY","y"]);const longitude=Number(lngStr),latitude=Number(latStr);return{powerStatus:deepPick(d,["accStatus","powerStatus","vehicleStatus","ignitionStatus","powerMode","accState","powerState","vehicleState","engineStatus","isPowerOn","powerOn","acc"]).trim(),lockState:topLock,online:String(d.onlineStatus||d.rideState||d.online||d.netStatus||d.tboxStatus||"").trim(),rideState:String(d.rideState||"").trim(),cushionState:deepPick(d,["cushionState","cushionStatus","cushionLockState","seatState","seatStatus","seatLockState","saddleState","saddleStatus","saddleLockState"]),longitude:(isFinite(longitude)&&Math.abs(longitude)<=180&&longitude!==0)?longitude:"",latitude:(isFinite(latitude)&&Math.abs(latitude)<=90&&latitude!==0)?latitude:""}}return null}catch(e){return null}}
+
+async function fetchTirePressure(acc,cfg,vinNo){try{const token=cleanToken(acc.token);const signH=getSign("app",{},'',cfg);const res=await httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/app/vehicle/tire/monitoring?vinNo="+encodeURIComponent(vinNo)+"&timePeriodType=1",{"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2","user_id":acc.userId||"",...signH});if((res.code=="10000"||res.code===10000)&&res.data){const list=Array.isArray(res.data.realTimeData)?res.data.realTimeData:(Array.isArray(res.data)?res.data:[]);const byPos={};for(const it of list){const pos=Number(it?.sensorPosition);if(pos)byPos[pos]=it}const fmt=(it)=>{const warn=Number(it?.warningType??0);const v=String(it?.tirePressure??"").trim();const n=parseFloat(v);if(warn!==0||!v||!isFinite(n)||n<=0)return"未绑定";return v+"bar"};const fmtTemp=(it)=>{const warn=Number(it?.warningType??0);const v=it?.tireTemp;if(warn!==0||v==null)return"";const s=String(v).trim();const n=parseFloat(s);if(!s||s.toLowerCase()==="null"||!isFinite(n)||n<=0)return"";return s+"°C"};const front=byPos[1]||list[0];const rear=byPos[2]||list[1];return{frontPressure:front?fmt(front):"未绑定",rearPressure:rear?fmt(rear):"未绑定",frontTemp:front?fmtTemp(front):"",rearTemp:rear?fmtTemp(rear):""}}return null}catch(e){return null}}
+
+async function fetchRideInfo(acc,cfg,vinNo){try{const token=cleanToken(acc.token);const signH=getSign("app",{},'',cfg);const month=new Date().getFullYear()+"."+String(new Date().getMonth()+1).padStart(2,"0");const [homeRes,myRes]=await Promise.all([httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/homeRideInfo?vinNo="+encodeURIComponent(vinNo),{"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2","user_id":acc.userId||"",...signH}),httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/myRideInfo?vinNo="+encodeURIComponent(vinNo)+"&month="+month,{"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2","user_id":acc.userId||"",...signH})]);const h=homeRes?.data||homeRes||{};const d=myRes?.data||myRes||{};const list=Array.isArray(d.rideRecordList)?d.rideRecordList:[];const todayKey=new Date().getFullYear()+"."+String(new Date().getMonth()+1).padStart(2,"0")+"."+String(new Date().getDate()).padStart(2,"0");const day=list.find(x=>String(x?.date||"")===todayKey)||list[list.length-1]||{};return{todayDistance:Number(day.rideMileage??h.rideMileageDay??0),todayDuration:Number(day.ridingTimeDayUnitMinute??h.lastRidingTimeUnitMinute??0),todayMaxSpeed:Number(day.maxSpeed??0),lastRideMileage:Number(h.lastRideMileage??0),lastRideDuration:Number(h.lastRidingTimeUnitMinute??0)}}catch(e){return null}}
+
+async function fetchBatteryChargeState(acc,cfg,vinNo){try{const token=cleanToken(acc.token);const signH=getSign("app",{},'',cfg);const headers={"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2","appid":cfg.app.appId,"user_id":acc.userId||"",...signH};const res=await httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/batteryInfo/"+encodeURIComponent(vinNo),headers);if(res.code=="10000"&&res.data){const d=res.data;const voltage=Number(d.voltage||d.batteryVoltage||d.bmsVoltage||d.totalVoltage||d.batteryTotalVoltage||d.vol||d.batVoltage||d.batteryVol||0);const current=Number(d.current||d.batteryCurrent||d.bmsCurrent||d.cur||d.batteryCur||0);const batteryTemp=Number(d.batteryTemp||d.batTemp||d.temp||d.temperature||d.bmsTemp||d.batteryTemperature||0);const range=Number(d.hmiRidableMile||d.vehicleRidableMile||d.ridableMileage||d.residualRange||0);return{chargeState:String(d.chargeStateStr||d.chargeState||"未充电"),voltage:isFinite(voltage)&&voltage>0?voltage:0,current:isFinite(current)?current:0,batteryTemp:isFinite(batteryTemp)?batteryTemp:0,soc:Number(d.soc||d.batteryLevel||d.bmssoc||0),residualRangeKm:isFinite(range)?range:0}}return{chargeState:"未充电",voltage:0,current:0,batteryTemp:0,soc:0,residualRangeKm:0}}catch(e){return{chargeState:"未充电",voltage:0,current:0,batteryTemp:0,soc:0,residualRangeKm:0}}}
+
+async function fetchServiceRechargeDetail(acc,cfg,vinNo){try{const token=cleanToken(acc.token);const signH=getSign("h5",{vinNo:vinNo},'',cfg);const headers={"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2",...signH};if(acc.userId)headers["user_id"]=String(acc.userId);const res=await httpGet("https://h5.zeehoev.com/cfmotoserverapp/app/service/recharge/vehicle/detail?vinNo="+encodeURIComponent(vinNo),headers);if(res.code=="10000"&&res.data){return{rechargeEndDate:String(res.data.rechargeEndDate||""),lastUseDate:Number(res.data.lastUseDate)||0,serviceRechargeStatus:String(res.data.serviceRechargeStatus||""),vehicleName:String(res.data.vehicleName||"")}}return null}catch(e){return null}}
+
+async function fetchVehicleInfo(acc,cfg){const result={hasVehicle:false,vehicleName:"",vehicleModel:"",vinNo:"",voltage:0,current:0,batteryTemp:0,batteryPercent:0,residualRangeKm:0,rangeEstimated:false,address:"",locationTime:"",chargeState:"未充电",frontPressure:"",rearPressure:"",frontTemp:"",rearTemp:"",todayDistance:0,todayDuration:0,todayMaxSpeed:0,lastRideMileage:0,lastRideDuration:0,vehicleImageUrl:"",serviceEndDate:"",serviceRemainDays:0,serviceStatus:"",powerStatus:"",lockState:"",online:"",rideState:"",cushionState:"",longitude:"",latitude:""};try{const allVehicles=await fetchVehicleList(acc,cfg);const vehicles=allVehicles.filter(x=>!/模拟/.test(String(x.name||"")+" "+String(x.vehicleType||"")));if(vehicles.length===0)return result;const v=vehicles[0];result.hasVehicle=true;result.vehicleName=v.name;result.vinNo=v.vinNo;result.vehicleImageUrl=v.pic;result.vehicleModel=v.vehicleType||"";const [widgets,tire,ride,battery,service,homePage]=await Promise.all([fetchVehicleWidgets(acc,cfg,v.vinNo).catch(()=>null),fetchTirePressure(acc,cfg,v.vinNo).catch(()=>null),fetchRideInfo(acc,cfg,v.vinNo).catch(()=>null),fetchBatteryChargeState(acc,cfg,v.vinNo).catch(()=>({chargeState:"未充电",voltage:0,current:0,batteryTemp:0,soc:0})),fetchServiceRechargeDetail(acc,cfg,v.vinNo).catch(()=>null),fetchVehicleHomePage(acc,cfg,v.vinNo).catch(()=>null)]);if(widgets){result.batteryPercent=widgets.batteryPercent;result.residualRangeKm=widgets.residualRangeKm;result.voltage=widgets.voltage;result.address=widgets.address;result.locationTime=widgets.locationTime;result.powerStatus=widgets.powerStatus||"";result.lockState=widgets.lockState||"";if(widgets.vehicleName)result.vehicleName=widgets.vehicleName;if(widgets.vehicleImageUrl)result.vehicleImageUrl=widgets.vehicleImageUrl;if(widgets.online)result.online=widgets.online;if(widgets.cushionState)result.cushionState=widgets.cushionState;if(widgets.longitude!==""&&widgets.longitude!==undefined)result.longitude=widgets.longitude;if(widgets.latitude!==""&&widgets.latitude!==undefined)result.latitude=widgets.latitude}if(homePage){if(homePage.powerStatus)result.powerStatus=homePage.powerStatus;if(homePage.lockState)result.lockState=homePage.lockState;if(homePage.online)result.online=homePage.online;if(homePage.rideState)result.rideState=homePage.rideState;if(homePage.cushionState)result.cushionState=homePage.cushionState;if((result.longitude===""||result.longitude===undefined)&&homePage.longitude!==""&&homePage.longitude!==undefined)result.longitude=homePage.longitude;if((result.latitude===""||result.latitude===undefined)&&homePage.latitude!==""&&homePage.latitude!==undefined)result.latitude=homePage.latitude}if(tire){result.frontPressure=tire.frontPressure;result.rearPressure=tire.rearPressure;result.frontTemp=tire.frontTemp;result.rearTemp=tire.rearTemp}if(ride){result.todayDistance=ride.todayDistance;result.todayDuration=ride.todayDuration;result.todayMaxSpeed=ride.todayMaxSpeed;result.lastRideMileage=ride.lastRideMileage;result.lastRideDuration=ride.lastRideDuration||0}result.chargeState=battery.chargeState||"未充电";if(battery.voltage)result.voltage=battery.voltage;if(battery.current)result.current=battery.current;if(battery.batteryTemp)result.batteryTemp=battery.batteryTemp;if((!result.residualRangeKm||result.residualRangeKm===0)&&battery.residualRangeKm)result.residualRangeKm=battery.residualRangeKm;if((!result.residualRangeKm||result.residualRangeKm===0)&&result.batteryPercent>0){result.residualRangeKm=Math.round(result.batteryPercent*1.5);result.rangeEstimated=true}if(service){result.serviceEndDate=service.rechargeEndDate||"";result.serviceStatus=service.serviceRechargeStatus||"";result.serviceRemainDays=service.lastUseDate||0;if(service.vehicleName)result.vehicleName=service.vehicleName}}catch(e){}return result}
+
+async function checkToken(acc,cfg){try{const token=cleanToken(acc.token);const userId=acc.userId||"";if(!userId)return{valid:true,score:0,userName:acc.userName};const signH=getSign("app",{},'',cfg);const headers={"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2","user_id":userId,...signH};const res=await httpGet("https://tapi.zeehoev.com/v1.0/mine/cfmotoservermine/setting/"+userId,headers);if(res.code=="10000"&&res.data)return{valid:true,score:Number(res.data.score)||0,userName:res.data.nickName||acc.userName};if(res.code=="40001"||res.code==401)return{valid:false,reason:"token已过期"};return{valid:true,reason:res.message||"请求异常"}}catch(e){return{valid:true,reason:String(e)}}}
+
+async function getUseridByToken(token,cfg){const t=cleanToken(token);const baseHeaders={"Authorization":"Bearer "+t,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2"};let userId="",userName="",error=null;try{const signH0=getSign("h5",{server_name:"SMART"},'',cfg);const res0=await httpGet("https://h5.zeehoev.com/cfmotoservermine/baseInfo?server_name=SMART",{...baseHeaders,...signH0});if(res0&&String(res0.code)==="10000"&&res0.data){userId=String(res0.data.id||"");userName=String(res0.data.nickName||"")}}catch(e){}if(!userId){try{const signH=getSign("app",{},'',cfg);const res=await httpGet("https://tapi.zeehoev.com/v1.0/mine/cfmotoservermine/setting",{...baseHeaders,...signH});if(res.code=="10000"&&res.data){userId=String(res.data.id||res.data.userId||"");userName=String(res.data.nickName||"")}}catch(e){}}if(!userId){try{const signH=getSign("app",{},'',cfg);const res=await httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/vehicle/list",{...baseHeaders,...signH});const find=(obj,depth)=>{if(!obj||depth>5)return"";for(const key of Object.keys(obj)){const val=obj[key];if(/user.?id|uid|create.?by|owner.?id/i.test(key)&&val&&typeof val!=="object"){const s=String(val);if(s.length>=10&&/^\d+$/.test(s))return s}if(val&&typeof val==="object"){const f=find(val,depth+1);if(f)return f}}return""};const uid=find(res,0);if(uid){userId=uid;const findName=(obj,depth)=>{if(!obj||depth>4)return"";for(const key of Object.keys(obj)){if(/nick.?name|user.?name/i.test(key)&&obj[key]&&typeof obj[key]==="string")return obj[key];if(obj[key]&&typeof obj[key]==="object"){const n=findName(obj[key],depth+1);if(n)return n}}return""};userName=findName(res,0)}}catch(e){}}if(!userId)error="自动获取失败，请手动填写用户ID";return{ok:!!userId,userId,userName,error}}
+/* ================= 账号数据拉取 ================= */
+async function fetchAccountData(acc,cfg,vinNo){const token=cleanToken(acc.token);let userId=acc.userId||"";const now=new Date();const today=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0");const result={userName:acc.userName||"未知用户",userId,score:0,signedToday:false,continueDays:0,todayScore:0,signCount:0,last7:[],error:null,vehicle:{hasVehicle:false}};
+if(!userId){try{const signH=getSign("app",{},'',cfg);const vehicleRes=await httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/vehicle/list",{"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2",...signH});if(vehicleRes.code=="10000"&&vehicleRes.data){const autoUid=String(vehicleRes.data.userId||vehicleRes.data.uid||vehicleRes.data.id||"");if(autoUid){userId=autoUid;result.userId=userId;const accounts=getAccounts();const idx=accounts.findIndex(a=>cleanToken(a.token)===token);if(idx>=0&&!accounts[idx].userId){accounts[idx].userId=userId;saveAccounts(accounts)}}}}catch(e){}}
+try{result.vehicle=await fetchVehicleInfo(acc,cfg,vinNo)}catch(e){result.vehicle={hasVehicle:false}}
+try{if(!userId){result.error="请在设置页填写用户ID"}else{const signH=getSign("app",{},'',cfg);const infoRes=await httpGet("https://tapi.zeehoev.com/v1.0/mine/cfmotoservermine/setting/"+userId,{"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2","user_id":userId,...signH});if(infoRes.code=="10000"&&infoRes.data){result.score=Number(infoRes.data.score||infoRes.data.integral||infoRes.data.point||infoRes.data.points||infoRes.data.totalScore||infoRes.data.totalIntegral||0)}else if(infoRes.code=="40001"||infoRes.code==401){result.error="Token已过期"}else{result.error="积分获取失败: "+(infoRes.message||infoRes.code||"未知错误")}}}catch(e){if(!result.error)result.error="积分获取异常: "+String(e)}
+try{const curMonth=now.getFullYear()+"-"+(now.getMonth()+1);const lastDate=new Date(now.getFullYear(),now.getMonth()-1,1);const lastMonth=lastDate.getFullYear()+"-"+(lastDate.getMonth()+1);const baseHeaders={"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2","user_id":userId};const [curRes,lastRes]=await Promise.all([httpGet("https://h5.zeehoev.com/cfmotoservermine/signin/info?month="+curMonth,{...baseHeaders,...getSign("h5",{month:curMonth},'',cfg)}),httpGet("https://h5.zeehoev.com/cfmotoservermine/signin/info?month="+lastMonth,{...baseHeaders,...getSign("h5",{month:lastMonth},'',cfg)})]);const lastList=(lastRes.code=="10000"&&lastRes.data)?(lastRes.data.nowSignDetailVos||[]):[];const curList=(curRes.code=="10000"&&curRes.data)?(curRes.data.nowSignDetailVos||[]):[];const list=[...lastList,...curList];if(curRes.code=="10000"&&curRes.data){result.signCount=Number(curRes.data.signCount)||0}const todayEntry=curList.find(x=>x.createDate===today);result.signedToday=!!(todayEntry&&(todayEntry.signStatue==3||todayEntry.signStatue==5||todayEntry.signStatue==0));result.todayScore=todayEntry?(Number(todayEntry.integralScore)||0):0;try{const _todayLogs=(getLogs()||[]).filter(l=>l&&l.date===today&&String(l.userId||"")===String(userId)&&l.success);if(_todayLogs.length>0){const _tl=_todayLogs[0];result.todayScore=Number(_tl.totalGain)||result.todayScore;result.todayDetail={signinScore:Number(_tl.signinScore)||0,blindBoxScore:Number(_tl.blindBoxScore)||0,interactScore:Number(_tl.interactScore)||0}}}catch(e){}const todayIdx=list.findIndex(x=>x.createDate===today);let cont=0;if(todayIdx>=0){for(let i=todayIdx;i>=0;i--){const st=list[i]?.signStatue;if(st==3||st==5||(i===todayIdx&&st==0))cont++;else break}}result.continueDays=cont;for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const ds=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");const entry=list.find(x=>x.createDate===ds);result.last7.push({date:ds.slice(5),signed:!!(entry&&(entry.signStatue==3||entry.signStatue==5||entry.signStatue==0)),isToday:i===0})}}catch(e){if(!result.error)result.error="签到状态获取失败"}
+try{const tokenCheck=await checkToken(acc,cfg);result.tokenValid=tokenCheck.valid;result.tokenReason=tokenCheck.reason||null;if(tokenCheck.valid&&tokenCheck.userName&&(!result.userName||result.userName==="未知用户"))result.userName=tokenCheck.userName}catch(e){result.tokenValid=true}
+return result}
+
+function getPostIdFromData(data){if(!data)return null;if(typeof data==="string"||typeof data==="number")return String(data);if(Array.isArray(data))return getPostIdFromData(data[0]);const direct=data.uuid||data.tuuid||data.postId||data.postid||data.articleId||data.articleID||data.id||data.dataId||data.tid;if(direct)return String(direct);for(const key of ["records","list","rows","data","result"]){const v=data[key];const pid=getPostIdFromData(v);if(pid)return pid}return null}
+
+/* ================= 签到执行 ================= */
+async function runSigninForAccount(acc,cfg){const result={userName:acc.userName||"未知",userId:acc.userId,success:false,signinScore:0,blindBoxScore:0,interactScore:0,totalGain:0,continueDays:0,error:null,steps:[]};try{const token=cleanToken(acc.token);const userId=acc.userId||"";const baseHeaders={"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2","user_id":userId};const now=new Date();const today=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0");const month=today.slice(0,7);
+try{const infoRes=await httpGet("https://h5.zeehoev.com/cfmotoservermine/signin/info?month="+month,{...baseHeaders,...getSign("h5",{month},'',cfg)});const todayEntry=(infoRes?.data?.nowSignDetailVos||[]).find(x=>x.createDate===today);if(todayEntry&&(todayEntry.signStatue==3||todayEntry.signStatue==5||todayEntry.signStatue==0)){result.steps.push("今日已签到")}else{let signRes=null,signMsg="未知";for(let at=1;at<=3;at++){signRes=await httpPost("https://h5.zeehoev.com/cfmotoservermine/signin",{...baseHeaders,...getSign("h5",{},'',cfg)},{});if(signRes?.code=="10000")break;signMsg=signRes?.message||"未知";if(/请稍|稍后|稍候|频繁|繁忙|重试/.test(signMsg)&&at<3){await new Promise(r=>setTimeout(r,(at+1)*2000));continue}break}if(signRes?.code=="10000"){const infoRes2=await httpGet("https://h5.zeehoev.com/cfmotoservermine/signin/info?month="+month,{...baseHeaders,...getSign("h5",{month},'',cfg)});const te=(infoRes2?.data?.nowSignDetailVos||[]).find(x=>x.createDate===today);result.signinScore=te?(Number(te.integralScore)||0):0;result.steps.push("签到成功 +"+result.signinScore)}else{try{const chk=await httpGet("https://h5.zeehoev.com/cfmotoservermine/signin/info?month="+month,{...baseHeaders,...getSign("h5",{month},'',cfg)});const ce=(chk?.data?.nowSignDetailVos||[]).find(x=>x.createDate===today);if(ce&&(ce.signStatue==3||ce.signStatue==5||ce.signStatue==0))result.steps.push("今日已签到");else result.steps.push("签到失败: "+signMsg)}catch(e){result.steps.push("签到失败: "+signMsg)}}}
+}catch(e){result.steps.push("签到异常: "+e)}
+try{const infoRes=await httpGet("https://h5.zeehoev.com/cfmotoservermine/signin/info?month="+month,{...baseHeaders,...getSign("h5",{month},'',cfg)});const list=infoRes?.data?.nowSignDetailVos||[];const todayIdx=list.findIndex(x=>x.createDate===today);let cont=0;for(let i=todayIdx;i>=0;i--){const st=list[i]?.signStatue;if(st==3||st==5||(i===todayIdx&&st==0))cont++;else break}result.continueDays=cont;const signCount=Number(infoRes?.data?.signCount)||0;if(signCount>=30){const blindRes=await httpGet("https://h5.zeehoev.com/cfmotoservermine/signin/supplementPrize?supplementDate="+today,{...baseHeaders,...getSign("h5",{supplementDate:today},'',cfg)});if(blindRes?.code=="10000"){result.blindBoxScore=Number(blindRes?.data?.integral||blindRes?.data?.integralScore||0);result.steps.push("盲盒获得 +"+result.blindBoxScore+" ("+(blindRes?.data?.prizesName||"积分")+")")}}else{result.steps.push("盲盒未解锁("+signCount+"/30)")}}catch(e){result.steps.push("盲盒异常: "+e)}
+const comm=cfg.community||{};let postId=null;
+if(comm.enablePost!==false){try{const postRes=await httpPost("https://tapi.zeehoev.com/v1.0/social/cfmotoserversocial/commonArticle",{...baseHeaders,...getSign("app",{},'',cfg)},{postcontent:"开心的一天"});if(postRes?.code=="10000"){postId=getPostIdFromData(postRes.data);result.interactScore+=1;result.steps.push("发帖成功 +1")}}catch(e){result.steps.push("发帖异常: "+e)}}
+if(!postId){try{const listRes=await httpGet("https://tapi.zeehoev.com/v1.0/social/cfmotoserversocial/community/mineArticleInfo?userId="+userId+"&page=1&pageSize=10",{...baseHeaders,...getSign("app",{},'',cfg)});const rawList=Array.isArray(listRes?.data)?listRes.data:(listRes?.data?.records||listRes?.data?.list||[]);const list=Array.isArray(rawList)?rawList:[];const mine=list.find(it=>String(it.userId||it.createBy||it.uid||"")===String(userId));postId=getPostIdFromData(mine||list[0]||listRes?.data)}catch(e){}}
+if(postId){if(comm.enableLike!==false){try{const likeRes=await httpPost("https://tapi.zeehoev.com/v1.0/social/cfmotoserversocial/socialCommu/likeFavoriteInfo",{...baseHeaders,...getSign("app",{},'',cfg)},{postId:String(postId),kindFlag:"0"});if(likeRes?.code=="10000"){result.interactScore+=1;result.steps.push("点赞成功 +1")}}catch(e){result.steps.push("点赞异常: "+e)}}if(comm.enableComment!==false){try{await httpPost("https://tapi.zeehoev.com/v1.0/social/cfmotoserversocial/commentInfo",{...baseHeaders,...getSign("app",{},'',cfg)},{postid:String(postId),userId:String(userId),comments:"厉害",sendTos:"[\n\n]"});result.steps.push("评论完成")}catch(e){result.steps.push("评论异常: "+e)}}if(comm.enableShare!==false){try{const shareRes=await httpPut("https://tapi.zeehoev.com/v1.0/social/cfmotoserversocial/article/share/"+postId,{...baseHeaders,...getSign("app",{},'',cfg)});if(shareRes?.code=="10000"){result.interactScore+=1;result.steps.push("分享成功 +1")}await httpGet("https://tapi.zeehoev.com/v1.0/mine/cfmotoservermine/integral/adjustByShare",{...baseHeaders,...getSign("app",{},'',cfg)})}catch(e){result.steps.push("分享异常: "+e)}}if(comm.enableDelete!==false&&postId){try{await httpDelete("https://tapi.zeehoev.com/v1.0/social/cfmotoserversocial/commonArticle/deleteArticle?articleId="+postId+"&postType=1",{...baseHeaders,...getSign("app",{},'',cfg)});result.steps.push("动态已删除")}catch(e){result.steps.push("删除异常: "+e)}}}
+result.totalGain=result.signinScore+result.blindBoxScore+result.interactScore;result.success=true}catch(e){result.error=String(e);result.steps.push("执行异常: "+e)}return result}
+
+/* ================= 车辆控制 ================= */
+const VEHICLE_ACTION_TEXT={find:"短按寻车",loudFind:"鸣笛闪灯",cushion:"打开坐垫",unlock:"云端开锁",lock:"云端关锁"};
+function vehicleCheckRes(res,okMsg){if(res&&!res.error&&(res.code=="10000"||res.code===10000))return{ok:true,message:okMsg};const errText=String((res&&(res.error||res.message||res.msg))||"").toLowerCase();if(res&&res.error&&/timeout|timed out|time out|请求超时/.test(errText))return{ok:true,message:okMsg+"（响应超时但车辆通常已执行，可下拉刷新确认）"};return{ok:false,message:(res&&(res.message||res.msg))||(res&&res.error)||"指令下发失败",code:res&&res.code}}
+async function vehicleControl(acc,action,cfg){try{const c=cfg||getCfg();let vin=acc.vinNo||"";if(!vin){const list=await fetchVehicleList(acc,c);if(!list||!list.length)return{ok:false,message:"未获取到绑定车辆(VIN)，请确认账号已绑定车辆"};vin=list[0].vinNo}const base=baseHeaders(acc);if(action==="find"){const h={...base,...getSign("app",{},"",c)};const res=await httpPut("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/vehicleInfo/control/"+vin,h);return vehicleCheckRes(res,"寻车指令已下发，车辆应闪灯提示")}if(action==="loudFind"){const bodyStr=JSON.stringify({param:"4",vin:vin});const h={...base,...getSign("app",{},bodyStr,c)};const res=await httpPost("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/vehicleInfo/controlV2",h,bodyStr);return vehicleCheckRes(res,"鸣笛闪灯指令已下发")}if(action==="cushion"){const bodyStr=JSON.stringify({commond:"28",commondParam:"1",vcu:vin,version:"v2"});const h={...base,...getSign("app",{},bodyStr,c)};const res=await httpPut("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/vehicleSet/propertyTwo/one",h,bodyStr);return vehicleCheckRes(res,"开坐垫指令已下发，坐垫应弹起")}if(action==="unlock"||action==="lock"){const vKey=(c.vehicleAesKey||"").trim();if(!vKey)return{ok:false,message:"尚未配置云端控车密钥：请到「设置-签名密钥配置」填写云端控车AES密钥并保存后再使用开/关锁"};if(!/^[0-9a-fA-F]{32}$/.test(vKey))return{ok:false,message:"云端控车密钥格式错误（应为32位十六进制），请到设置页核对后保存"};const lockFlag=action==="unlock"?"1":"0";const plain='{\n  "lockFlag" : "'+lockFlag+'",\n  "vinNo" : "'+vin+'"\n}';const secret=aes256EcbEncryptBase64(plain,vKey);const sendBody=JSON.stringify({secret:secret});const h={...base,...getSign("app",{},plain,c)};const res=await httpPost("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/vehicleSet/network/unlock",h,sendBody,25000);return vehicleCheckRes(res,action==="unlock"?"云端开锁指令已下发":"云端关锁指令已下发")}return{ok:false,message:"未知操作类型: "+action}}catch(e){return{ok:false,message:"控制异常: "+String(e)}}}
+
+async function barkPush(barkKey,title,body){try{let s=String(barkKey||"").trim().replace(/\/+$/,"");s=s.replace(/^https?:\/\/api\.day\.app\//i,"");if(!s)return{skipped:true};let base="https://api.day.app",key=s;const m=s.match(/^(https?:\/\/[^/]+)\/(.+)$/i);if(m){base=m[1];key=m[2]}key=key.replace(/^\/+/,"");const u=base+"/"+encodeURIComponent(key)+"/"+encodeURIComponent(title)+"/"+encodeURIComponent(body)+"?group=ZEEHO&sound=birdsong";return await httpGet(u,{})}catch(e){return{error:String(e)}}}
+
+/* ================= 代理模式（指向原脚本 zeeho.box 后端） ================= */
+async function proxyFetch(path,opts){const rawBase=getCfg().serverBase.replace(/\/+$/,"");const base=(window.__PANEL_MODE__&&!rawBase)?"":rawBase;const r=await fetch(base+path,opts||{});const t=await r.text();try{return JSON.parse(t)}catch(e){return{error:"parse error",raw:t}}}
+function proxyPost(path,body){return proxyFetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body||{})})}
+
+async function fetchAllAccounts(accounts,cfg,limit){const out=new Array(accounts.length);let i=0;async function worker(){while(i<accounts.length){const idx=i++;try{out[idx]=await fetchAccountData(accounts[idx],cfg)}catch(e){out[idx]={userName:accounts[idx].userName||"未知",userId:accounts[idx].userId,success:false,error:String(e)}}}}const n=Math.max(1,Math.min(limit||3,accounts.length));await Promise.all(Array.from({length:n},worker));return out}
+
+const Backend={
+  async sendCode(phone){
+    if(isProxyMode()){const d=await proxyPost("/api/send-code",{phone:phone});return{ok:!!d.ok,message:d.message||(d.ok?"验证码已发送":"发送失败")};}
+    const cfg=getCfg();const url="https://tapi.zeehoev.com/v1.0/mine/cfmotoservermine/authCode/"+encodeURIComponent(phone);
+    const d=await httpGet(url,{"Content-Type":"application/json;charset=UTF-8","User-Agent":"okhttp/4.9.2",...appGatewaySign(url,"GET",{},"",cfg)});
+    return{ok:String(d.code)==="10000",message:String(d.code)==="10000"?"验证码已发送，请查收短信":((d&&(d.message||d.msg))||"发送失败")};
+  },
+  async phoneLogin(phone,code,basicAuth){
+    const basic=String(basicAuth||"").trim().replace(/^Basic\s+/i,"");
+    if(isProxyMode()){const d=await proxyPost("/api/phone-login",{phone:phone,code:code,basicAuth:basic});return{ok:!!d.ok,message:d.message||(d.ok?"登录成功":"登录失败")};}
+    const cfg=getCfg();const payload={phone:phone,authCode:code};
+    const url="https://tapi.zeehoev.com/v1.0/mine/cfmotoservermine/user/loginByPhone";
+    const hdr={"Content-Type":"application/json;charset=UTF-8","User-Agent":"okhttp/4.9.2",...appGatewaySign(url,"POST",{},payload,cfg)};
+    if(basic)hdr["Authorization"]="Basic "+basic;
+    const res=await httpPost(url,hdr,payload,20000);
+    const tokenInfo=res&&res.data&&res.data.tokenInfo;const accessToken=tokenInfo&&String(tokenInfo.access_token||"");
+    if(!res||String(res.code)!=="10000"||!accessToken)return{ok:false,message:"登录失败："+((res&&(res.message||res.msg))||"验证码有误或已过期")};
+    let userId="",userName="";
+    try{const signH0=getSign("h5",{server_name:"SMART"},"",cfg);const infoRes=await httpGet("https://h5.zeehoev.com/cfmotoservermine/baseInfo?server_name=SMART",{"Authorization":"Bearer "+accessToken,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2",...signH0});if(infoRes&&String(infoRes.code)==="10000"&&infoRes.data){userId=String(infoRes.data.id||"");userName=String(infoRes.data.nickName||"");}}catch(e){}
+    const list=getAccounts();let replaced=false;
+    for(let i=0;i<list.length;i++){if(list[i]&&(String(list[i].token||"")===accessToken||(list[i].userId&&userId&&String(list[i].userId)===userId))){list[i].token=accessToken;if(userId)list[i].userId=userId;if(userName)list[i].userName=userName;replaced=true;break;}}
+    const newAcc={userName:userName||phone,userId:userId,token:accessToken,barkKey:"",userAgent:""};
+    if(!replaced)list.push(newAcc);
+    saveAccounts(list);
+    return{ok:true,message:replaced?"登录成功，已更新该账号":"登录成功，已添加账号"};
+  },
+  async getDashboard(){
+    if(isProxyMode()){
+      const d=await proxyFetch("/api/data");
+      if(d&&d.accounts)return{accounts:d.accounts,timestamp:d.timestamp||new Date().toISOString(),config:d.config||null,ok:true};
+      return{ok:false,error:(d&&d.error)||"代理服务无响应",raw:d};
+    }
+    const cfg=getCfg();const accounts=getAccounts();const data=await fetchAllAccounts(accounts,cfg,3);
+    return{accounts:data,timestamp:new Date().toISOString(),ok:true};
+  },
+  async runSignin(userId,all){
+    if(isProxyMode()){const d=await proxyPost("/api/run-signin",all?{all:true}:{userId:userId});if(d&&d.results)return{ok:true,results:d.results};return{ok:false,error:(d&&d.error)||"执行失败"}}
+    const cfg=getCfg();const accounts=getAccounts();const results=[];const targets=all?accounts:accounts.filter(a=>String(a.userId)===String(userId));
+    if(!targets.length)return{ok:true,results:[]};
+    for(const acc of targets){const r=await runSigninForAccount(acc,cfg);results.push(r);const _d=new Date();const _ds=_d.getFullYear()+"-"+String(_d.getMonth()+1).padStart(2,"0")+"-"+String(_d.getDate()).padStart(2,"0");addLog({time:_d.toLocaleString("zh-CN",{hour12:false}),date:_ds,type:"signin",userName:r.userName,userId:r.userId,success:r.success,totalGain:r.totalGain,signinScore:r.signinScore,blindBoxScore:r.blindBoxScore,interactScore:r.interactScore,continueDays:r.continueDays,error:r.error,steps:r.steps});if(r.success&&acc.barkKey&&String(acc.barkKey).trim()){try{await barkPush(acc.barkKey,"极核签到成功 · "+(r.userName||""),"今日获得 "+r.totalGain+" 分（签到"+r.signinScore+" / 盲盒"+r.blindBoxScore+" / 互动"+r.interactScore+"），连签 "+r.continueDays+" 天")}catch(e){}}}
+    return{ok:true,results};
+  },
+  async vehicleCtrl(userId,action){
+    if(isProxyMode()){const d=await proxyPost("/api/vehicle-control",{userId:userId,action:action});return{ok:!!d.ok,message:d.message||(d.ok?"指令已下发":"指令失败")}}
+    const cfg=getCfg();const accounts=getAccounts();let acc=accounts.find(a=>String(a.userId)===String(userId));if(!acc&&accounts.length)acc=accounts[0];if(!acc)return{ok:false,message:"未找到账号，请先在设置页添加"};if(!VEHICLE_ACTION_TEXT[action])return{ok:false,message:"非法操作类型"};const r=await vehicleControl(acc,action,cfg);const _vd=new Date();const _vds=_vd.getFullYear()+"-"+String(_vd.getMonth()+1).padStart(2,"0")+"-"+String(_vd.getDate()).padStart(2,"0");addLog({time:_vd.toLocaleString("zh-CN",{hour12:false}),date:_vds,type:"vehicle",action:action,actionText:VEHICLE_ACTION_TEXT[action]||"车辆控制",userName:acc.userName||"未知",userId:acc.userId,success:!!r.ok,message:r.message||"",error:r.ok?"":(r.message||"指令失败")});return r;
+  },
+  async getLogs(){if(isProxyMode()){const d=await proxyFetch("/api/get-logs");return d&&d.logs?d.logs:[]}return getLogs()},
+  async clearLogs(){if(isProxyMode()){const d=await proxyPost("/api/clear-logs");return !!d.ok}return clearLogs()},
+  async saveConfig(c){if(isProxyMode()){const d=await proxyPost("/api/save-config",c);return !!d.ok}return saveCfg(c)},
+  async saveAccounts(list){if(isProxyMode()){const d=await proxyPost("/api/save-accounts",{accounts:list});return !!d.ok}return saveAccounts(list)},
+  async getUserid(token){if(isProxyMode()){const d=await proxyPost("/api/get-userid",{token:token});return{ok:!!d.ok,userId:d.userId||"",userName:d.userName||"",error:d.error||""}}return getUseridByToken(token,getCfg())},
+  async getConfig(){if(isProxyMode()){const d=await proxyFetch("/api/config");if(d&&d.config)return{ok:true,config:d.config};return{ok:false,error:(d&&d.error)||"获取配置失败"}}return{ok:true,config:getCfg()}},
+  async getAccountsFull(){if(isProxyMode()){const d=await proxyFetch("/api/accounts");return Array.isArray(d&&d.accounts)?d.accounts:[]}return getAccounts()},
+  async backup(){
+    if(isProxyMode()){const d=await proxyFetch("/api/backup");return d&&d.ok?d:null}
+    return{ok:true,app:"极核ZEEHO",type:"zeeho_backup",version:APP_VERSION,time:fmtTime(new Date().toISOString()),accounts:getAccounts(),config:getCfg()}
+  },
+  async restoreBackup(json){
+    if(isProxyMode()){const d=await proxyPost("/api/import",{json:json});return d||{ok:false,error:"后端无响应"}}
+    try{
+      const b=typeof json==="string"?JSON.parse(json):json;
+      if(!b||(b.type!=="zeeho_backup"&&!Array.isArray(b.accounts)))return{ok:false,error:"备份格式不正确"};
+      const list=(b.accounts||[]).map(a=>({userName:a.userName||"",userId:a.userId||"",token:cleanToken(a.token),barkKey:cleanBarkKey(a.barkKey||""),userAgent:a.userAgent||""}));
+      saveAccounts(list);
+      if(b.config&&typeof b.config==="object"){
+        const cur=getCfg();
+        saveCfg({
+          app:{appId:b.config.app?.appId||cur.app.appId,appSecret:b.config.app?.appSecret||cur.app.appSecret},
+          h5:{appId:b.config.h5?.appId||cur.h5.appId,appSecret:b.config.h5?.appSecret||cur.h5.appSecret},
+          community:{enablePost:b.config.community?.enablePost!==false,enableLike:b.config.community?.enableLike!==false,enableComment:b.config.community?.enableComment!==false,enableShare:b.config.community?.enableShare!==false,enableDelete:b.config.community?.enableDelete!==false},
+          vehicleAesKey:String(b.config.vehicleAesKey||"").trim(),
+          autoRefreshSec:normalizeRefreshSec(b.config.autoRefreshSec),
+          serverBase:cur.serverBase
+        });
+      }
+      return{ok:true,count:list.length};
+    }catch(e){return{ok:false,error:String(e)}}
+  },
+  /* ---- v2.14.9 新增后端能力（仅代理模式） ---- */
+  async integral(userId,page){
+    if(isDemo())return DEMO_INTEGRAL;
+    if(isProxyMode()){return await proxyFetch("/api/integral?userId="+encodeURIComponent(userId||"")+"&page="+(page||1))}
+    return{ok:false,error:"积分功能仅支持代理模式（iOS App / 桌面版 / Loon）"}
+  },
+  async supplement(action,userId,params){
+    if(isDemo())return action==="month"?{ok:true,data:{nowSignDetailVos:demoCal()}}:(DEMO_SUPPLEMENT[action]||{ok:true,data:1});
+    if(isProxyMode()){
+      let q="/api/supplement?action="+encodeURIComponent(action)+"&userId="+encodeURIComponent(userId||"");
+      params=params||{};Object.keys(params).forEach(k=>{q+="&"+encodeURIComponent(k)+"="+encodeURIComponent(params[k])});
+      return await proxyFetch(q)
+    }
+    return{ok:false,error:"补签功能仅支持代理模式（iOS App / 桌面版 / Loon）"}
+  },
+  async vehicleMonitor(userId,vin){
+    if(isDemo())return DEMO_MONITOR;
+    if(isProxyMode()){let q="/api/vehicle-monitor?userId="+encodeURIComponent(userId||"");if(vin)q+="&vin="+encodeURIComponent(vin);return await proxyFetch(q)}
+    return{ok:false,error:"车辆监控仅支持代理模式"}
+  },
+  async vehicleControlExt(body){
+    if(isDemo())return (body&&body.action==="options")?DEMO_CTRL_OPTS:{ok:true,message:"演示模式：指令未真实下发"};
+    if(isProxyMode()){return await proxyPost("/api/vehicle-control-ext",body)}
+    return{ok:false,message:"车控扩展仅支持代理模式"}
+  },
+  async infoCenter(userId,vin){
+    if(isDemo())return DEMO_INFO;
+    if(isProxyMode()){let q="/api/info-center?userId="+encodeURIComponent(userId||"");if(vin)q+="&vin="+encodeURIComponent(vin);return await proxyFetch(q)}
+    return{ok:false,error:"信息中心仅支持代理模式"}
+  }
+};
+/* ================= 面板数据同步（面板模式：设置页从脚本后端读账号与配置） ================= */
+function applyRemoteCfg(c){
+  if(!c||typeof c!=="object")return;
+  const local=getCfg();
+  saveCfg({
+    app:{appId:c.app?.appId||local.app.appId,appSecret:c.app?.appSecret||local.app.appSecret},
+    h5:{appId:c.h5?.appId||local.h5.appId,appSecret:c.h5?.appSecret||local.h5.appSecret},
+    community:{enablePost:c.community?.enablePost!==false,enableLike:c.community?.enableLike!==false,enableComment:c.community?.enableComment!==false,enableShare:c.community?.enableShare!==false,enableDelete:c.community?.enableDelete!==false},
+    vehicleAesKey:String(c.vehicleAesKey||"").trim(),
+    autoRefreshSec:normalizeRefreshSec(c.autoRefreshSec),
+    serverBase:local.serverBase,
+    autoSignin:c.autoSignin===true,
+    autoSigninTime:(typeof c.autoSigninTime==="string"&&/^\d{1,2}:\d{2}$/.test(c.autoSigninTime)?c.autoSigninTime:"07:00"),
+    vehicleMonitor:c.vehicleMonitor===true
+  });
+}
+let panelSyncing=false;
+async function ensurePanelData(force){
+  if(!isProxyMode()||true)return;
+  if(panelSyncing)return;
+  if(!force&&STATE.panelLoaded)return;
+  panelSyncing=true;
+  try{
+    const [c,a]=await Promise.all([Backend.getConfig(),Backend.getAccountsFull()]);
+    if(a&&a.length){STATE.panelAccounts=a}
+    if(c&&c.ok&&c.config)applyRemoteCfg(c.config);
+    STATE.panelLoaded=true;
+  }catch(e){}
+  panelSyncing=false;
+}
+/* ================= 图标 ================= */
+const I={
+check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+zap:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>',
+lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="3"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+unlock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="3"/><path d="M8 11V7a4 4 0 0 1 7.5-1.7"/></svg>',
+bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
+vol:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
+seat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v7a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V4z"/><path d="M9 15v5h6v-5"/></svg>',
+pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+tire:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5M12 15.5V21M3 12h5.5M15.5 12H21"/></svg>',
+bolt:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>',
+thermo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V5a2 2 0 1 0-4 0v9.76a4 4 0 1 0 4 0z"/></svg>',
+cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+car:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13 6.5 7.5A2 2 0 0 1 8.4 6h7.2a2 2 0 0 1 1.9 1.5L19 13"/><path d="M4 13h16a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1a2 2 0 1 1-4 0H9a2 2 0 1 1-4 0H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z"/></svg>',
+scooter:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="18" r="2.4"/><circle cx="19" cy="17" r="2.4"/><path d="M5 18h10l4-1-2.5-4H9M7 9h4M12 13V7m0 0 2 2"/></svg>',
+plug:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M7 8h10v4a5 5 0 0 1-10 0V8zM12 17v5"/></svg>',
+clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>',
+wifi:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg>',
+alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
+warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>',
+kv:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 9h3M14 15h3M10 9h.01M17 15h.01"/></svg>',
+key:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4.5"/><path d="M11.2 11.8 20 3M16 7l3 3M13 10l2 2"/></svg>',
+users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4.6a4 4 0 0 1 0 6.8M19 21a6.5 6.5 0 0 0-3-5.5"/></svg>',
+map:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 3.5 5v16L9 19l6 2 5.5-2V3L15 5 9 3z"/><path d="M9 3v16M15 5v16"/></svg>'
+};
+
+/* ================= 基础 UI ================= */
+let toastTimer=null;
+function toast(msg,type){const el=document.getElementById("toast");el.className=type||"info";el.innerHTML=(type==="err"?I.x:type==="ok"?I.check:I.wifi)+'<span>'+esc(msg)+'</span>';requestAnimationFrame(()=>el.classList.add("show"));clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove("show"),2600)}
+/* v2.14.10 修复：旧版把回调函数源码直接拼进 onclick 属性，async 回调内的双引号会截断 HTML 属性，
+   导致补签/兑换补签卡/防盗布控等「确定」按钮点击无反应。改为暂存回调、按钮调用全局 confirmYes() */
+let __confirmAct=null;
+function confirmDialog(title,desc,onYes,yesTxt){__confirmAct=onYes;const layer=document.getElementById("confirmLayer");layer.innerHTML='<div class="confirm"><div class="ct">'+esc(title)+'</div><div class="cd">'+desc+'</div><div class="cb"><button class="no" onclick="closeConfirm()">取消</button><button class="yes" onclick="confirmYes()">'+esc(yesTxt||"确定")+'</button></div></div>';layer.classList.remove("hidden")}
+function confirmYes(){closeConfirm();const a=__confirmAct;__confirmAct=null;if(a==null)return;try{if(typeof a==="function"){a()}else if(typeof a==="string"){const r=new Function("return ("+a+")")();if(typeof r==="function")r()}}catch(e){}}
+function closeConfirm(){document.getElementById("confirmLayer").classList.add("hidden")}
+function openSheet(title,icon,html){document.getElementById("sheetTitle").innerHTML=icon+'<span>'+esc(title)+'</span>';document.getElementById("sheetBody").innerHTML=html;document.getElementById("sheetBackdrop").classList.add("show");document.getElementById("sheet").classList.add("show");document.body.style.overflow="hidden"}
+function closeSheet(){document.getElementById("sheetBackdrop").classList.remove("show");document.getElementById("sheet").classList.remove("show");document.body.style.overflow=""}
+function fmtTime(iso){try{const d=new Date(iso);const p=n=>String(n).padStart(2,"0");return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes())+":"+p(d.getSeconds())}catch(e){return""}}
+
+/* ================= 页面切换 ================= */
+function switchTab(tab){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.tab===tab));
+  const pages={home:"pageHome",points:"pagePoints",vehicle:"pageVehicle",logs:"pageLogs",cfg:"pageCfg"};
+  Object.keys(pages).forEach(k=>{const el=document.getElementById(pages[k]);if(el)el.classList.toggle("hidden",k!==tab)});
+  // 立即签到悬浮按钮仅首页显示
+  const fab=document.getElementById("signinFab");if(fab)fab.style.display=(tab==="home"?"flex":"none");
+  if(tab==="points")renderPoints();
+  if(tab==="vehicle")renderVehiclePage();
+  if(tab==="logs")renderLogs();
+  if(tab==="cfg")renderCfg();
+}
+
+/* ================= 自动刷新 ================= */
+let refreshTimer=null,refreshLeft=60;
+function startAutoRefresh(sec){stopAutoRefresh();refreshLeft=sec||getCfg().autoRefreshSec;updateCountChip();refreshTimer=setInterval(()=>{refreshLeft--;if(refreshLeft<=0){refreshLeft=0;updateCountChip();refreshAll(true)}else updateCountChip()},1000)}
+function stopAutoRefresh(){if(refreshTimer){clearInterval(refreshTimer);refreshTimer=null}}
+function updateCountChip(){const chip=document.getElementById("countChip");const txt=document.getElementById("countTxt");const arc=document.getElementById("countArc");const sec=getCfg().autoRefreshSec||60;if(!chip)return;if(refreshTimer){chip.classList.add("on");txt.textContent=refreshLeft+"s";const C=2*Math.PI*5.6;arc.setAttribute("stroke-dashoffset",String(C*(1-refreshLeft/sec)))}else{chip.classList.remove("on");txt.textContent="手动"}}
+function toggleAutoRefresh(){if(refreshTimer)stopAutoRefresh();else startAutoRefresh();updateCountChip()}
+
+/* ================= 下拉刷新 ================= */
+(function(){const wrap=document.getElementById("ptrWrap"),ind=document.getElementById("ptrInd"),txt=document.getElementById("ptrTxt"),spin=document.getElementById("ptrSpin");let startY=0,pulling=false,distance=0;const TH=64;
+wrap.addEventListener("touchstart",e=>{if(window.scrollY<=0&&document.getElementById("pageHome")&&!document.getElementById("pageHome").classList.contains("hidden")){startY=e.touches[0].clientY;pulling=true;distance=0}},{passive:true});
+wrap.addEventListener("touchmove",e=>{if(!pulling)return;const dy=e.touches[0].clientY-startY;if(dy>0&&window.scrollY<=0){distance=Math.min(dy*0.5,90);ind.style.height=distance+"px";ind.classList.add("pulling");spin.style.transform="rotate("+(distance*3.6)+"deg)";txt.textContent=distance>=TH?"松开刷新":"下拉刷新";if(distance>=TH&&!e.cancelable)return;if(distance>=TH&&e.cancelable)e.preventDefault()}},{passive:false});
+wrap.addEventListener("touchend",()=>{if(!pulling)return;pulling=false;if(distance>=TH){txt.textContent="刷新中…";ind.style.height="46px";spin.classList.add("spinner");refreshAll(true).finally(()=>{ind.style.height="0";ind.classList.remove("pulling")})}else{ind.style.height="0"}distance=0},{passive:true});
+})();
+
+/* ================= 首页渲染 ================= */
+let STATE={data:[],timestamp:"",tsText:"",refreshSec:60,proxy:false,panelAccounts:null,panelLoaded:false};
+// 首页卡片入场动画只在第一次渲染时播放，之后静默刷新直接替换内容，避免屏闪
+let HOME_ANIM=true;
+function skeletonHome(){return '<div class="hero" style="height:132px"></div>'+
+'<div class="sk-card"><div class="sk-line w40"></div><div class="sk-row">'+Array(4).fill('<div class="sk-cell"></div>').join("")+'</div><div class="sk-bar w80"></div></div>'+
+'<div class="sk-card"><div class="sk-line w60"></div><div class="sk-row">'+Array(4).fill('<div class="sk-cell"></div>').join("")+'</div><div class="sk-bar w80"></div></div>'}
+function scooterFallback(){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="18" r="2.4"/><circle cx="19" cy="17" r="2.4"/><path d="M5 18h10l4-1-2.5-4H9M7 9h4M12 13V7m0 0 2 2"/></svg>'}
+
+function renderHome(){
+  const el=document.getElementById("pageHome");const data=STATE.data;
+  // 不再在每次渲染前插入骨架屏：静默自动刷新时会先清空再填充，造成整页闪烁
+  if(data.length===0){
+    el.innerHTML='<div class="empty"><div class="e-icon">'+I.car+'</div><h3>还没有极核账号</h3><p>去「设置」页添加账号：粘贴抓包得到的 Authorization Token（Bearer 前缀会自动去掉），再点「获取ID」即可自动填充用户ID。</p><button class="btn primary" onclick="switchTab(\'cfg\')">去添加账号</button></div>';
+    return;
+  }
+  const cards=data.map((a,idx)=>renderAccountCard(a,idx)).join("");
+  el.innerHTML=cards
+  +'<div class="foot">极核 ZEEHO 面板 '+APP_VERSION+' · 数据更新 '+esc(STATE.tsText||"-")+'<br><a class="link" href="https://github.com/cluck798/ZEEHO" target="_blank" rel="noopener">作者 lucky · GitHub</a> · <a class="link" href="https://afdian.com/a/lucky798" target="_blank" rel="noopener">爱发电</a> · 仅供学习研究</div>';
+  HOME_ANIM=false;
+}
+
+function powerText(p,l){p=String(p||"").toLowerCase().trim();l=String(l||"").toLowerCase().trim();const onVals=["1","on","true","开机","open","激活","acc_on","acc on","power_on","power on","已开机","已上电"];const offVals=["0","off","false","关机","closed","待机","acc_off","acc off","power_off","power off","已关机","已下电"];if(p){if(onVals.includes(p))return{text:"已开机",cls:"on"};if(offVals.includes(p))return{text:"已关机",cls:"off"}}if(l){if(["0","未锁","开锁","unlocked","false","open","已开锁","未锁车"].includes(l))return{text:"已开机",cls:"on"};if(["1","已锁","锁车","locked","true","closed","已锁车"].includes(l))return{text:"已关机",cls:"off"}}return{text:"状态未知",cls:"off"}}
+function onlineText(o){const s=String(o||"").toLowerCase().trim();if(!s)return"";if(["1","on","online","true","在线","已在线","connected","normal"].includes(s))return"在线";if(["0","off","offline","false","离线","未在线","已离线","disconnect","disconnected","sleep","休眠"].includes(s))return"离线";return s}
+function renderAccountCard(a,idx){
+  const v=a.vehicle||{};
+  const onl=onlineText(v.online||v.rideState);
+  const isCharging=!!(v.chargeState&&v.chargeState!=="未充电");
+  const soc=v.batteryPercent||0;
+  const socCol=soc<=20?"#F9706A":soc<=50?"#F7B955":"#3DDC97";
+  const range=v.residualRangeKm||0;
+  const volt=v.voltage?Math.round(v.voltage)+"V":"";
+  const fb=scooterFallback();
+  // onerror 里不能再嵌套引号（旧写法会把 SVG 引号截断，页面残留 '"> 乱码符号）
+  const img=v.vehicleImageUrl?'<img src="'+esc(v.vehicleImageUrl)+'" alt="" onerror="this.remove()">'+fb:fb;
+  const vehSw=v.hasVehicle?renderVehicleSwitch(v,idx):"";
+  const bound=x=>!!x&&x!=="未绑定"&&x!=="-";
+  const rows=[];
+  rows.push('里程：'+(v.lastRideMileage?v.lastRideMileage.toFixed(1):"0")+'km');
+  rows.push('上次：'+(v.lastRideMileage?v.lastRideMileage.toFixed(1)+"km":"--")+(fmtMin(v.lastRideDuration)?" "+fmtMin(v.lastRideDuration):""));
+  rows.push('当日：'+(v.todayDistance?v.todayDistance.toFixed(1):"0")+'km'+(fmtMin(v.todayDuration)?" "+fmtMin(v.todayDuration):"")+(v.todayMaxSpeed?" "+v.todayMaxSpeed+"km/h":""));
+  if(bound(v.frontPressure)||bound(v.rearPressure))rows.push('胎压：'+(bound(v.frontPressure)?"前 "+esc(v.frontPressure):"")+((bound(v.frontPressure)&&bound(v.rearPressure))?" / ":"")+(bound(v.rearPressure)?"后 "+esc(v.rearPressure):""));
+  if(bound(v.frontTemp)||bound(v.rearTemp))rows.push('胎温：'+(bound(v.frontTemp)?"前 "+esc(v.frontTemp):"")+((bound(v.frontTemp)&&bound(v.rearTemp))?" / ":"")+(bound(v.rearTemp)?"后 "+esc(v.rearTemp):""));
+  if(isCharging&&v.current)rows.push('电流：'+Number(v.current).toFixed(1)+'A');
+  return '<div class="acc-card home-card'+(isCharging?' charging':'')+(HOME_ANIM?' anim-in':'')+'" style="animation-delay:'+(idx*60)+'ms">'+
+    '<div class="hc-upd">更新：'+esc(STATE.tsText||"-")+'</div>'+
+    '<div class="hc-top"><div class="hc-name">'+esc(v.hasVehicle?(v.vehicleName||a.userName):a.userName)+'</div>'+
+    (v.hasVehicle?(onl==="在线"?'<span class="hc-badge on">在线</span>':(onl?'<span class="hc-badge">'+esc(onl)+'</span>':"")):"")+
+    (a.tokenValid===false?'<span class="hc-badge err">Token失效</span>':"")+
+    (isCharging?'<span class="hc-badge chg">充电中</span>':"")+'</div>'+
+    (v.hasVehicle&&v.vehicleModel?'<div class="hc-model">车型：'+esc(v.vehicleModel)+'</div>':"")+
+    (v.hasVehicle?'<div class="hc-mid"><div class="hc-left"><div class="hc-big num">'+Math.round(soc)+'%<span class="hc-km num">'+(range||0)+'km</span>'+(volt?'<span class="hc-v num">'+volt+'</span>':"")+'</div>'+
+    '<div class="hc-bar"><div class="hc-fill" style="width:'+Math.max(0,Math.min(100,soc))+'%;background:'+socCol+'"></div></div>'+
+    '<div class="hc-rows">'+rows.map(r=>'<div class="hc-row">'+r+'</div>').join("")+'</div></div>'+
+    '<div class="hc-img">'+img+'</div></div>':
+    '<div class="no-vehicle" style="margin:12px 0">'+I.car+' 该账号未绑定车辆</div>')+
+    '<div class="hc-bottom"><div class="hc-score"><span>总积分 <b class="num">'+Number(a.score||0).toLocaleString()+'</b></span><span class="plus num">今+'+Number(a.todayScore||0)+'</span><span class="streak num">连签'+Number(a.continueDays||0)+'天</span>'+(a.signedToday?'<span class="signed num">✓ 已签到</span>':"")+'</div></div>'+
+    vehSw+'</div>';
+}
+function fmtMin(min){min=Number(min)||0;if(min<=0)return"";const h=Math.floor(min/60),m=Math.round(min%60);return h>0?h+"h"+(m?m+"min":""):m+"min"}
+
+/* ============ 多车切换 ============ */
+function renderVehicleSwitch(v,idx){
+  if(!v.vehicles||v.vehicles.length<2)return "";
+  const cur=v.currentVin||"";
+  const items=v.vehicles.map(x=>'<button class="veh-chip'+(x.vinNo===cur?" on":"")+'" onclick="switchVehicle('+idx+',\''+esc(x.vinNo)+'\')">'+esc(x.name)+'</button>').join("");
+  return '<div class="veh-switch"><span class="veh-sw-label">车辆</span>'+items+'</div>';
+}
+async function switchVehicle(idx,vin){
+  const src=STATE.data[idx];if(!src||!vin)return;
+  try{
+    let d;
+    if(isProxyMode()){
+      const r=await proxyFetch("/api/vehicle?userId="+encodeURIComponent(src.userId||"")+"&vin="+encodeURIComponent(vin));
+      d=(r&&r.ok)?r.result:null;
+    }else{
+      const cfg=getCfg();const acc=getAccounts()[idx];
+      if(!acc)return;
+      d=await fetchAccountData(acc,cfg,vin);
+    }
+    if(d&&d.vehicle&&d.vehicle.hasVehicle){
+      STATE.data[idx]=Object.assign({},STATE.data[idx],d);
+      renderHome();
+    }
+  }catch(e){}
+}
+
+/* ============ 主题（v2.14.14 起仅保留深色单主题） ============ */
+function applyTheme(){
+  document.documentElement.setAttribute("data-theme","dark");
+}
+
+/* ================= 立即签到悬浮按钮 ================= */
+function mountSigninFab(){
+  if(document.getElementById("signinFab"))return;
+  const b=document.createElement("button");
+  b.id="signinFab";b.className="signin-fab";b.innerHTML=(I.check||"")+"<span>立即签到</span>";
+  b.onclick=runSigninNow;
+  const cur=document.querySelector(".tab.on");
+  b.style.display=(!cur||cur.dataset.tab==="home")?"flex":"none";
+  document.body.appendChild(b);
+}
+async function runSigninNow(){
+  if(isDemo()){demoSignin();return}
+  const btn=document.getElementById("signinFab");
+  if(!btn||btn.classList.contains("busy"))return;
+  btn.classList.add("busy");btn.querySelector("span").textContent="签到中…";
+  toast("正在为全部账号执行签到…","info");
+  const d=await Backend.runSignin(null,true);
+  btn.classList.remove("busy");btn.querySelector("span").textContent="立即签到";
+  if(d&&d.ok&&d.results){
+    const okN=d.results.filter(r=>r.success).length;
+    toast("签到完成："+okN+"/"+d.results.length+" 成功",okN===d.results.length?"ok":"err");
+    openSheet("签到结果",I.check,signinResultHtml(d.results));
+    refreshAll(true);
+  }else{
+    toast((d&&d.error)||"签到执行失败","err");
+  }
+}
+function signinResultHtml(results){
+  return (results||[]).map(r=>'<div class="sig-card '+(r.success?"ok":"fail")+'"><div class="h"><span>'+esc(r.userName||"未知")+'</span><span class="r">'+(r.success?("+"+(r.totalGain||0)+" 分"):"失败")+'</span></div><div class="steps">'+(r.steps||[]).map(s=>'<div><i>·</i>'+esc(s)+'</div>').join("")+(r.error?'<div class="err">'+esc(r.error)+'</div>':"")+'</div></div>').join("");
+}
+/* 演示模式：模拟一次签到并弹出结果，避免演示时结果为空 */
+function demoSignin(){
+  const btn=document.getElementById("signinFab");
+  if(btn){btn.classList.add("busy");btn.querySelector("span").textContent="签到中…"}
+  toast("演示模式：模拟执行签到…","info");
+  setTimeout(()=>{
+    if(btn){btn.classList.remove("busy");btn.querySelector("span").textContent="立即签到"}
+    const res=[
+      {userName:"阿泽",success:true,totalGain:9,steps:["签到成功 +6","盲盒获得 +3 (积分)","发帖成功 +1","点赞成功 +1","分享成功 +1","评论完成"]},
+      {userName:"小满",success:false,error:"Token已过期，请重新登录",steps:["签到失败: 请先登录"]}
+    ];
+    toast("签到完成：1/2 成功（演示数据）","ok");
+    openSheet("签到结果",I.check,signinResultHtml(res));
+  },700);
+}
+
+
+
+/* ================= 车辆详情 & 地图 ================= */
+function openMap(idx){const v=STATE.data[idx]&&STATE.data[idx].vehicle;if(!v)return;if(!hasValidCoord(v.latitude,v.longitude)){toast("暂无有效 GPS 坐标","err");return}const url="https://maps.apple.com/?q="+Number(v.latitude)+","+Number(v.longitude)+"&z=17";window.open(url,"_blank")}
+function showVehicleDetail(idx){
+  const a=STATE.data[idx];if(!a)return;const v=a.vehicle||{};
+  const pw=powerText(v.powerStatus,v.lockState);
+  const rows=[];
+  if(v.vinNo)rows.push(['车架号','<span class="v mono" id="vinDtl">'+esc(maskVin(v.vinNo))+'</span> <button class="vin-show" onclick="toggleDtlVin()">显示</button>']);
+  rows.push(['充电状态',esc(v.chargeState||"未充电")]);
+  rows.push(['电源状态','<span style="color:'+(pw.cls==="on"?"var(--ok)":"var(--txt2)")+'">'+pw.text+'</span>']);
+  if(v.rideState||v.online)rows.push(['车辆状态',esc(v.rideState||v.online)]);
+  rows.push(['电量 SOC','<b style="color:'+(v.batteryPercent<=20?"var(--err)":v.batteryPercent<=50?"var(--warn)":"var(--brand)")+'">'+(v.batteryPercent||0)+'%</b>']);
+  if(v.voltage)rows.push(['电压',v.voltage.toFixed(1)+"V"]);
+  if(v.current)rows.push(['电流',v.current.toFixed(1)+"A"]);
+  if(v.batteryTemp)rows.push(['电池温度',v.batteryTemp.toFixed(0)+"°C"]);
+  rows.push(['剩余续航',(v.residualRangeKm||0)+" km"+(v.rangeEstimated?"（估算）":"")]);
+  rows.push(['今日骑行',(v.todayDistance?v.todayDistance.toFixed(1):0)+" km / "+(v.todayDuration||0)+" min"]);
+  if((v.frontPressure&&v.frontPressure!=="未绑定")||(v.rearPressure&&v.rearPressure!=="未绑定"))rows.push(['胎压','前 '+esc(v.frontPressure||"-")+' / 后 '+esc(v.rearPressure||"-")]);
+  if(v.address)rows.push(['车辆位置','<span style="font-size:12px;font-weight:600">'+esc(v.address)+'</span>']);
+  const dOk=hasValidCoord(v.latitude,v.longitude);
+  if(dOk)rows.push(['GPS 坐标','<span class="v mono">'+Number(v.latitude).toFixed(6)+", "+Number(v.longitude).toFixed(6)+'</span>']);
+  if(v.locationTime)rows.push(['最后定位','<span style="color:var(--txt3);font-weight:600">'+esc(v.locationTime)+'</span>']);
+  if(v.serviceEndDate)rows.push(['服务到期',esc(v.serviceEndDate)]);
+  STATE.vinDtlRaw=v.vinNo||"";
+  const html=rows.map(r=>'<div class="sr-item"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>').join("")+
+  '<div class="btn-row" style="margin-top:16px"><button class="btn '+(dOk?"primary":"")+'" '+(dOk?'onclick="closeSheet();openMap('+idx+')"':'disabled title="暂无有效GPS坐标"')+'>'+I.map+' 地图查看</button></div>';
+  openSheet("车辆详情 · "+esc(v.vehicleName||"极核车辆"),I.car,html);
+}
+function toggleDtlVin(){const el=document.getElementById("vinDtl");if(!el)return;if(el.textContent.indexOf("*")>=0){el.textContent=STATE.vinDtlRaw;document.querySelector('#sheetBody .vin-show').textContent="隐藏"}else{document.querySelector('#sheetBody .vin-show').textContent="显示";el.textContent=maskVin(el.textContent)}}
+/* ================= 签到执行（面板已移除手动签到入口，定时签到由脚本 cron 负责） ================= */
+
+/* ================= 车辆控制 ================= */
+function ctrlAct(idx,action,btn){if(true){toast("演示模式：仅预览界面","info");return}const a=ptAccounts()[idx];if(!a||!a.userId){toast("该账号缺少用户ID","err");return}const names={find:"短按寻车（车辆闪灯）",loudFind:"鸣笛闪灯（高声寻车）",cushion:"打开坐垫（坐垫会弹起）",unlock:"云端开锁",lock:"云端关锁"};const name=names[action]||action;confirmDialog("确认执行 "+name,"该指令会通过 4G 网络真实控制你的车辆："+esc(a.userName)+"。",'doCtrl('+idx+",'"+action+"')")}
+async function doCtrl(idx,action){const a=ptAccounts()[idx];if(!a)return;const btn=document.querySelector('.ctrl-btn[data-act="'+action+'"]');const old=btn?btn.innerHTML:"";if(btn){btn.disabled=true;btn.classList.add("busy");btn.innerHTML=I.clock}toast("指令下发中…","info");const d=await Backend.vehicleCtrl(a.userId,action);if(btn){btn.disabled=false;btn.classList.remove("busy");btn.innerHTML=old}if(d&&d.ok){toast(d.message||"指令已下发","ok")}else{toast((d&&d.message)||"指令失败","err")}}
+
+/* ================= 日志页 ================= */
+let logFilter="all";
+async function renderLogs(){
+  const el=document.getElementById("pageLogs");
+  el.innerHTML='<div class="section-title">'+I.kv+'运行日志</div>'+
+  '<div class="log-panel"><div class="log-head"><h3>'+I.kv+'<span>最近 50 条</span></h3><div class="log-filters">'+
+  ['<button class="chip '+(logFilter==="all"?"on":"")+'" onclick="setLogFilter(\'all\')">全部</button>','<button class="chip '+(logFilter==="signin"?"on":"")+'" onclick="setLogFilter(\'signin\')">签到</button>','<button class="chip '+(logFilter==="vehicle"?"on":"")+'" onclick="setLogFilter(\'vehicle\')">控车</button>'].join("")+
+  '</div></div><div class="log-list" id="logList"><div style="padding:40px;text-align:center;color:var(--txt3)">加载中…</div></div></div>'+
+  '<div class="btn-row" style="margin-top:14px"><button class="btn danger" style="flex:1" onclick="clearLogsUI()">清空日志</button></div>';
+  const logs=true?DEMO_LOGS:await Backend.getLogs();renderLogList(logs);
+}
+function setLogFilter(f){logFilter=f;renderLogs()}
+function renderLogList(logs){const el=document.getElementById("logList");if(!el)return;const list=(logs||[]).filter(l=>{const t=l.type||"signin";if(logFilter==="all")return true;return t===logFilter});if(!list.length){el.innerHTML='<div class="log-empty">'+I.warn+'<br>该分类下暂无日志</div>';return}el.innerHTML=list.map((log,i)=>{const t=log.type||"signin";const tag=t==="vehicle"?'<span class="pill amber">控车</span>':'<span class="pill cyan">签到</span>';let res;if(t==="vehicle"){res='<span class="log-res '+(log.success?"":"err")+'">'+(log.actionText||"车辆控制")+' '+(log.success?"成功":"失败："+esc(log.message||log.error||"未知"))+'</span>'}else{res='<span class="log-res '+(log.success?"":"err")+'">'+(log.success?"成功 +"+log.totalGain:"失败: "+(log.error||"未知"))+'</span>'}const steps=log.steps?(log.steps.map(s=>'<div><i>·</i>'+esc(s)+'</div>').join("")):"";return '<div class="log-item" style="animation-delay:'+(i*25)+'ms"><div class="log-time">'+esc(log.time||"")+'</div><div class="log-main">'+tag+'<span class="log-user">'+esc(log.userName||"")+'</span>'+res+'</div>'+(steps?'<div class="log-steps">'+steps+'</div>':"")+'</div>'}).join("")}
+async function clearLogsUI(){confirmDialog("清空日志","将删除全部运行日志，此操作不可恢复。","clearLogsNow")}
+async function clearLogsNow(){const ok=await Backend.clearLogs();if(ok){toast("日志已清空","ok");renderLogs()}else toast("清空失败","err")}
+
+/* ================= 设置页 ================= */
+let cfgAccounts=[];
+function renderCfg(){
+  if(isProxyMode()&&false&&!STATE.panelLoaded){
+    const el0=document.getElementById("pageCfg");
+    if(el0)el0.innerHTML='<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar green"></span>账号管理</h3></div><div class="cfg-body" style="text-align:center;padding:26px;color:var(--txt3);font-size:13px">正在从脚本后端同步账号与配置…</div></div>';
+    ensurePanelData().then(()=>renderCfg());
+    return;
+  }
+  const cfg=getCfg();cfgAccounts=(isProxyMode()&&STATE.panelAccounts?STATE.panelAccounts:getAccounts()).map(a=>({userName:a.userName||"",userId:a.userId||"",token:a.token||"",barkKey:a.barkKey||""}));
+  const el=document.getElementById("pageCfg");
+  const accRows=cfgAccounts.map((a,idx)=>'<div class="acc-edit" data-i="'+idx+'"><div class="acc-edit-head"><span class="acc-edit-title"><span class="n">'+String(idx+1)+'</span>账号 '+String(idx+1)+'</span><span class="acts"><button class="btn sm" id="uidBtn_'+idx+'" onclick="fetchUserIdUI('+idx+')">获取ID</button><button class="btn sm danger" onclick="deleteAccountUI('+idx+')">删除</button></span></div>'+
+  '<div class="form-grid"><div class="f-item"><label>昵称</label><input type="text" id="acc_name_'+idx+'" value="'+esc(a.userName)+'" placeholder="如 lucky798"></div><div class="f-item"><label>用户ID</label><input type="text" id="acc_uid_'+idx+'" value="'+esc(a.userId)+'" placeholder="留空可点「获取ID」" style="font-family:ui-monospace,Menlo,monospace;font-size:13px"></div></div>'+
+  '<div class="f-item" style="margin-top:10px"><label>Authorization Token（粘贴即可，自动去掉 Bearer 前缀）</label><input type="text" id="acc_token_'+idx+'" value="'+esc(a.token)+'" placeholder="a74779c7-…" style="font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>'+
+  '<div class="f-item" style="margin-top:10px"><label>Bark 通知 Key（选填，签到成功推送）</label><input type="text" id="acc_bark_'+idx+'" value="'+esc(a.barkKey)+'" placeholder="Bark Key 或自建 https://域名/Key"></div></div>').join("");
+  const comm=cfg.community;
+  const sw=(id,label,sub,checked)=>'<label class="switch"><input type="checkbox" id="'+id+'" '+(checked?"checked":"")+'><span class="sw"></span><span class="lbl">'+label+'</span><span class="sc">'+sub+'</span></label>';
+  el.innerHTML=
+  '<div class="section-title">'+I.key+'设置</div>'+
+  '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar vio"></span>手机号登录</h3></div><div class="cfg-body">'+
+'<div class="form-grid">'+
+'<div class="f-item"><label>手机号（极核 App 绑定号码）</label><input type="tel" id="pl_phone" placeholder="11 位手机号" style="font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>'+
+'<div class="f-item"><label>短信验证码</label><input type="text" id="pl_code" placeholder="6 位验证码" style="font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>'+
+'</div>'+
+'<div class="btn-row"><button class="btn sm" onclick="sendSmsCode()" id="pl_send_btn">获取验证码</button><button class="btn primary" onclick="phoneLoginUI()" id="pl_login_btn">登录并添加账号</button></div>'+
+'<div class="hint" style="margin-top:10px">用手机号 + 短信验证码登录，自动获取 Token 与用户ID并加入账号列表，登录成功后自动保存并刷新页面。<br>· 小号登录：可多次登录不同手机号，按小号逐个添加与管理。<br>· 服务到期 / 绑定续费：车辆智能服务到期、或需要绑定续费时，重新用手机号登录即可刷新授权，全程无需抓包。</div>'+
+'</div></div>'+
+  '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar green"></span>定时签到</h3></div><div class="cfg-body">'+
+  sw("auto_signin","定时签到","到点自动为全部账号签到",cfg.autoSignin===true)+
+  sw("vehicle_monitor","车辆状态监控","充满/离线时本地通知提醒（打开面板时检查）",cfg.vehicleMonitor===true)+
+  '<div class="f-item" style="margin-top:10px"><label>签到时间（每天，HH:MM）</label><input type="time" id="cfg_signin_time" value="'+esc(cfg.autoSigninTime||"07:00")+'" style="font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>'+
+  '<div class="hint" style="margin-top:10px">代理脚本无常驻后台，采用「打开补签」机制：开启后，每天首次打开面板且已过设定时间时，自动为全部账号执行一次签到（写日志、推 Bark，与手动签到一致），同一天只执行一次。首页「立即签到」悬浮按钮可随时手动执行。</div>'+
+  '</div></div>'+
+  '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar amber"></span>社区任务开关</h3></div><div class="cfg-body"><div class="form-grid" style="gap:8px">'+
+  sw("comm_post","发布动态","+1 分",comm.enablePost!==false)+sw("comm_like","点赞动态","+1 分",comm.enableLike!==false)+sw("comm_comment","评论动态","不加分",comm.enableComment!==false)+sw("comm_share","分享动态","+1 分",comm.enableShare!==false)+sw("comm_delete","执行后删除动态","清理痕迹",comm.enableDelete!==false)+
+  '</div><div class="hint" style="margin-top:10px">关闭对应开关后，签到脚本将跳过该任务。修改后点击页面底部「保存配置」生效。</div></div></div>'+
+  '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar green"></span>账号管理（'+cfgAccounts.length+' 个）</h3><button class="btn sm primary" onclick="addAccountUI()">+ 添加账号</button></div><div class="cfg-body" id="accList">'+(accRows||'<div style="text-align:center;padding:22px;color:var(--txt3);font-size:13px">暂无账号，点击「添加账号」</div>')+'</div>'+
+  '<div class="cfg-body" style="padding-top:0"><div class="btn-row"><button class="btn primary" onclick="saveAccountsUI()">保存极核账号</button></div>'+
+  '<div class="cfg-note"><b>使用说明</b><br>· Token：粘贴抓包得到的 Authorization 值即可，自动去掉 <code>Bearer </code> 前缀。<br>· 获取ID：填入 Token 后点「获取ID」，自动从 H5 baseInfo / App setting / 车辆列表接口解析用户ID与昵称。<br>· Bark Key：该账号签到成功后推送通知，留空不推。<br>· 控车指令（寻车/鸣笛/坐垫/开关锁）会真实操作车辆，需二次确认。</div></div></div>'+
+  '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar amber"></span>备份账号配置</h3></div><div class="cfg-body">'+
+  '<div class="btn-row"><button class="btn primary" onclick="exportBackupUI()">一键导出备份</button><button class="btn" onclick="copyBackupUI()">复制备份</button></div>'+
+  '<div class="f-item" style="margin-top:12px"><label>备份内容（包含全部账号与面板配置，可复制保存）</label><textarea id="backupArea" rows="4" readonly placeholder="点击「一键导出备份」生成…" style="width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--txt);font-family:ui-monospace,Menlo,monospace;font-size:11px;box-sizing:border-box"></textarea></div>'+
+  '<div class="f-item" style="margin-top:12px"><label>恢复备份（粘贴备份 JSON 后点恢复，将覆盖现有账号与配置）</label><textarea id="importArea" rows="4" placeholder="粘贴备份 JSON…" style="width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--txt);font-family:ui-monospace,Menlo,monospace;font-size:11px;box-sizing:border-box"></textarea></div>'+
+  '<div class="btn-row"><button class="btn danger" onclick="importBackupUI()">恢复备份</button></div>'+
+  '<div class="hint" style="margin-top:10px">备份包含全部账号（昵称/用户ID/Token/BarkKey）与面板配置（签名密钥/社区任务开关/自动刷新等）。换机或重装后粘贴即可一键还原，无需重新抓包填写。</div>'+
+  '</div></div>'+
+  '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar"></span>签名密钥配置</h3></div><div class="cfg-body">'+
+  '<div class="form-grid">'+
+  '<div class="f-item"><label>App 端 appId</label><input type="text" id="cfg_app_id" value="'+esc(cfg.app.appId)+'" style="font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>'+
+  '<div class="f-item"><label>App 端 appSecret</label><input type="text" id="cfg_app_secret" value="'+esc(cfg.app.appSecret)+'" style="font-family:ui-monospace,Menlo,monospace;font-size:12px"></div>'+
+  '<div class="f-item"><label>H5 端 appId</label><input type="text" id="cfg_h5_id" value="'+esc(cfg.h5.appId)+'" style="font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>'+
+  '<div class="f-item"><label>H5 端 appSecret</label><input type="text" id="cfg_h5_secret" value="'+esc(cfg.h5.appSecret)+'" style="font-family:ui-monospace,Menlo,monospace;font-size:12px"></div>'+
+  '</div>'+
+  '<div class="f-item" style="margin-top:12px"><label>云端控车 AES 密钥（32 位十六进制，开/关锁必填）</label><input type="password" id="cfg_vehicle_key" value="'+esc(cfg.vehicleAesKey)+'" placeholder="填写并保存后才能使用云端开锁/关锁" autocomplete="off" style="font-family:ui-monospace,Menlo,monospace;font-size:12px"><div class="hint">用于开/关锁报文 AES-256-ECB 加密，出于安全默认不内置。</div></div>'+
+  '<div class="btn-row"><button class="btn primary" onclick="saveCfgUI()">保存配置</button><button class="btn" onclick="resetCfgUI()">恢复默认</button></div>'+
+  '</div></div>'+
+  '<div class="foot">极核 ZEEHO 面板 '+APP_VERSION+' · '+(isProxyMode()?'账号与密钥存储于脚本后端（本机持久化）':'数据存储于本机浏览器 localStorage')+'<br><a class="link" href="https://afdian.com/a/lucky798" target="_blank" rel="noopener">爱发电 · afdian.com/a/lucky798</a></div>';
+}
+/* ================= 手机号登录（免抓包） ================= */
+async function sendSmsCode(){
+  const phone=(el("pl_phone")?.value||"").trim();
+  if(!/^1\d{10}$/.test(phone)){toast("请输入正确的11位手机号","err");return;}
+  const btn=el("pl_send_btn");btn.disabled=true;btn.textContent="发送中…";
+  const d=await Backend.sendCode(phone);
+  if(d&&d.ok){toast(d.message||"验证码已发送","ok");let t=60;btn.textContent="重新获取("+t+"s)";
+    const iv=setInterval(()=>{t--;if(t<=0){clearInterval(iv);btn.textContent="获取验证码";btn.disabled=false;}else btn.textContent="重新获取("+t+"s)";},1000);
+  }else{toast((d&&d.message)||"发送失败，请检查网络","err");btn.disabled=false;btn.textContent="获取验证码";}
+}
+async function phoneLoginUI(){
+  const phone=(el("pl_phone")?.value||"").trim();
+  const code=(el("pl_code")?.value||"").trim();
+  if(!/^1\d{10}$/.test(phone)){toast("请输入正确的11位手机号","err");return;}
+  if(!code){toast("请输入短信验证码","err");return;}
+  const btn=el("pl_login_btn");btn.disabled=true;btn.textContent="登录中…";
+  const d=await Backend.phoneLogin(phone,code,"");
+  if(d&&d.ok){toast(d.message||"登录成功","ok");setTimeout(()=>location.reload(),1200);}
+  else{toast((d&&d.message)||"登录失败","err");}
+  btn.disabled=false;btn.textContent="登录并添加账号";
+}
+function collectCfgUI(){return{app:{appId:val("cfg_app_id"),appSecret:val("cfg_app_secret")},h5:{appId:val("cfg_h5_id"),appSecret:val("cfg_h5_secret")},vehicleAesKey:val("cfg_vehicle_key").trim(),autoRefreshSec:normalizeRefreshSec(getCfg().autoRefreshSec||60),serverBase:getCfg().serverBase||"",autoSignin:el("auto_signin")?el("auto_signin").checked:false,autoSigninTime:(val("cfg_signin_time")||"07:00"),vehicleMonitor:el("vehicle_monitor")?el("vehicle_monitor").checked:false,community:{enablePost:el("comm_post").checked,enableLike:el("comm_like").checked,enableComment:el("comm_comment").checked,enableShare:el("comm_share").checked,enableDelete:el("comm_delete").checked}}}
+function val(id){const e=document.getElementById(id);return e?e.value:""}
+function el(id){return document.getElementById(id)}
+async function saveCfgUI(){const c=collectCfgUI();const ok=await Backend.saveConfig(c);if(ok){if(isProxyMode()){applyRemoteCfg(c);STATE.panelLoaded=false}toast("配置已保存","ok");startAutoRefresh(c.autoRefreshSec);refreshAll(true)}else toast("保存失败","err")}
+function resetCfgUI(){el("cfg_app_id").value=DEFAULT_CFG.app.appId;el("cfg_app_secret").value=DEFAULT_CFG.app.appSecret;el("cfg_h5_id").value=DEFAULT_CFG.h5.appId;el("cfg_h5_secret").value=DEFAULT_CFG.h5.appSecret;el("cfg_vehicle_key").value="";if(el("auto_signin"))el("auto_signin").checked=false;el("cfg_signin_time").value="07:00";el("comm_post").checked=true;el("comm_like").checked=true;el("comm_comment").checked=true;el("comm_share").checked=true;el("comm_delete").checked=true;toast("已恢复默认（需点击保存）","info")}
+function addAccountUI(){cfgAccounts.push({userName:"",userId:"",token:"",barkKey:""});const list=el("accList");const idx=cfgAccounts.length-1;const html='<div class="acc-edit" data-i="'+idx+'"><div class="acc-edit-head"><span class="acc-edit-title"><span class="n">'+String(idx+1)+'</span>账号 '+String(idx+1)+'（新）</span><span class="acts"><button class="btn sm" id="uidBtn_'+idx+'" onclick="fetchUserIdUI('+idx+')">获取ID</button><button class="btn sm danger" onclick="deleteAccountUI('+idx+')">删除</button></span></div><div class="form-grid"><div class="f-item"><label>昵称</label><input type="text" id="acc_name_'+idx+'" placeholder="如 lucky798"></div><div class="f-item"><label>用户ID</label><input type="text" id="acc_uid_'+idx+'" placeholder="留空可点「获取ID」"></div></div><div class="f-item" style="margin-top:10px"><label>Authorization Token</label><input type="text" id="acc_token_'+idx+'" placeholder="a74779c7-…"></div><div class="f-item" style="margin-top:10px"><label>Bark 通知 Key（选填）</label><input type="text" id="acc_bark_'+idx+'" placeholder="Bark Key 或自建 https://域名/Key"></div></div>';if(list.querySelector(".acc-edit")||list.querySelector("[style*='text-align']")){list.insertAdjacentHTML("beforeend",html)}else{list.innerHTML=html}}
+function deleteAccountUI(idx){const row=document.querySelector('.acc-edit[data-i="'+idx+'"]');if(row){row.remove();cfgAccounts.splice(idx,1);toast("已删除（需点击保存）","info")}}
+function collectAccountsUI(){const rows=document.querySelectorAll("#accList .acc-edit");const list=[];rows.forEach(row=>{const i=row.getAttribute("data-i");const token=el("acc_token_"+i)?.value||"";if(token.trim()){list.push({userName:el("acc_name_"+i)?.value||"",userId:el("acc_uid_"+i)?.value||"",token:cleanToken(token),barkKey:cleanBarkKey(el("acc_bark_"+i)?.value||"")})}});return list}
+async function saveAccountsUI(){const list=collectAccountsUI().map(a=>({userName:(a.userName||"").trim(),userId:(a.userId||"").trim(),token:cleanToken(a.token),barkKey:cleanBarkKey(a.barkKey)}));const ok=await Backend.saveAccounts(list);if(ok){if(isProxyMode())STATE.panelAccounts=list;toast("极核账号已保存","ok");refreshAll(true)}else toast("保存失败","err")}
+async function fetchUserIdUI(idx){const token=cleanToken(el("acc_token_"+idx)?.value||"");const btn=el("uidBtn_"+idx);if(!token){toast("请先填写 Token","err");return}btn.textContent="获取中…";btn.disabled=true;const d=await Backend.getUserid(token);if(d&&d.ok&&d.userId){if(el("acc_uid_"+idx))el("acc_uid_"+idx).value=d.userId;if(d.userName&&el("acc_name_"+idx)&&!el("acc_name_"+idx).value)el("acc_name_"+idx).value=d.userName;toast("获取成功："+(d.userName||d.userId),"ok")}else{toast("获取失败："+((d&&d.error)||"未知错误"),"err")}btn.textContent="获取ID";btn.disabled=false}
+
+/* ================= 备份 / 恢复 ================= */
+function exportBackupUI(){const el=document.getElementById("backupArea");if(!el){toast("界面未就绪","err");return}el.value="生成中…";Backend.backup().then(d=>{if(d&&d.ok){el.value=JSON.stringify(d,null,2);toast("备份已生成，可复制保存","ok")}else{el.value="";toast("导出失败："+((d&&d.error)||"无法连接脚本后端"),"err")}})}
+function copyBackupUI(){const el=document.getElementById("backupArea");if(!el||!el.value){toast("请先点击「一键导出备份」","err");return}if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(el.value).then(()=>toast("已复制到剪贴板","ok"),()=>{el.select();document.execCommand("copy");toast("已复制到剪贴板","ok")})}else{el.select();document.execCommand("copy");toast("已复制到剪贴板","ok")}}
+function importBackupUI(){const el=document.getElementById("importArea");if(!el||!el.value.trim()){toast("请先粘贴备份内容","err");return}confirmDialog("恢复备份","将覆盖当前全部账号与面板配置，此操作不可撤销。","importBackupNow")}
+async function importBackupNow(){const el=document.getElementById("importArea");const v=el?el.value.trim():"";if(!v){toast("备份内容为空","err");return}const d=await Backend.restoreBackup(v);if(d&&d.ok){toast("恢复成功："+(d.count||0)+" 个账号","ok");if(isProxyMode()){STATE.panelAccounts=[];STATE.panelLoaded=false}STATE.data=[];renderCfg();refreshAll(true)}else toast("恢复失败："+((d&&d.error)||"备份内容格式错误"),"err")}
+
+/* ================= 演示数据（?demo 预览用，不联网） ================= */
+function isDemo(){return true}
+function demoCal(){
+  const now=new Date(),y=now.getFullYear(),m=now.getMonth()+1,dim=new Date(y,m,0).getDate(),p=n=>String(n).padStart(2,"0"),out=[];
+  for(let d=1;d<=dim;d++){
+    const ds=y+"-"+p(m)+"-"+p(d);
+    if(ds>y+"-"+p(m)+"-"+p(now.getDate()))break;
+    if(d===3||d===11)continue;          // 演示：两天漏签
+    out.push({createDate:ds,signStatue:5});
+  }
+  return out;
+}
+const DEMO_INTEGRAL={ok:true,total:{integralTotal:"12,880"},expire:[{integralScore:320,expiryDateStr:"2026-12-31"}],detail:[
+  {name:"每日签到",integralScore:6,myDateStr:"2026-09-29 07:00"},
+  {name:"社区发帖",integralScore:1,myDateStr:"2026-09-29 07:00"},
+  {name:"社区点赞",integralScore:1,myDateStr:"2026-09-29 07:00"},
+  {name:"社区分享",integralScore:1,myDateStr:"2026-09-29 07:00"},
+  {name:"盲盒奖励",integralScore:6,myDateStr:"2026-09-28 07:00"},
+  {name:"补签消耗",integralScore:-1,myDateStr:"2026-09-27 21:10"}
+]};
+const DEMO_SUPPLEMENT={count:{ok:true,data:{count:2,cardNum:2}},month:{ok:true,data:{nowSignDetailVos:[]}}};
+const DEMO_MONITOR={ok:true,snapshot:{vin:"LB7JM1C10NA000001",soc:76,range:63,voltage:84.5,current:0,chargeState:"未充电",headLock:"1",offline:false,refreshTime:"2026-09-29 03:10",frontPressure:"2.35bar",rearPressure:"2.40bar",frontTemp:"31°C",rearTemp:"32°C",batteryTemp:26,todayDistance:12.6,todayDuration:34,todayMaxSpeed:56,address:"福建省宁德市蕉城区东侨开发区",serviceEndDate:"2027-03-18"},
+  vehicles:[{vehicleName:"ZEEHO AE4",vinNo:"LB7JM1C10NA000001"},{vehicleName:"极核 AE6",vinNo:"LB7JM1C10NA000002"}]};
+const DEMO_CTRL_OPTS={ok:true,chargePower:[{key:"400"},{key:"800"},{key:"1000"}],gears:["25","45","60"]};
+const DEMO_INFO={ok:true,unread:{total:3},prizeRecords:{records:[{prizesName:"积分 +6",createTime:"2026-09-28 07:00",integral:6},{prizesName:"补签卡 ×1",createTime:"2026-09-21 07:00"}]},coupons:{records:[{},{},{}]},ota:[]};
+const DEMO_DATA=[
+{userName:"阿泽",userId:"2025100912345678",score:12880,signedToday:true,continueDays:42,todayScore:12,signCount:36,tokenValid:true,last7:[{date:"09-04",signed:true,isToday:false},{date:"09-05",signed:true,isToday:false},{date:"09-06",signed:true,isToday:false},{date:"09-07",signed:true,isToday:false},{date:"09-08",signed:true,isToday:false},{date:"09-09",signed:true,isToday:false},{date:"09-10",signed:true,isToday:true}],vehicle:{hasVehicle:true,vehicleName:"ZEEHO AE4",vinNo:"LB7JM1C10NA000001",batteryPercent:76,residualRangeKm:63,rangeEstimated:false,chargeState:"未充电",voltage:84.5,current:0,batteryTemp:26,frontPressure:"2.35bar",rearPressure:"2.40bar",frontTemp:"31°C",rearTemp:"32°C",todayDistance:12.6,todayDuration:34,todayMaxSpeed:56,lastRideMileage:8.2,online:"1",powerStatus:"0",lockState:"1",cushionState:"0",address:"福建省宁德市蕉城区东侨开发区",locationTime:"08:12",longitude:119.5509,latitude:26.6654,serviceEndDate:"2027-03-18"}},
+{userName:"小满",userId:"2026010111223344",score:520,signedToday:false,continueDays:3,todayScore:0,signCount:9,tokenValid:false,last7:[{date:"09-04",signed:true,isToday:false},{date:"09-05",signed:false,isToday:false},{date:"09-06",signed:false,isToday:false},{date:"09-07",signed:true,isToday:false},{date:"09-08",signed:true,isToday:false},{date:"09-09",signed:true,isToday:false},{date:"09-10",signed:false,isToday:true}],vehicle:{hasVehicle:true,vehicleName:"极核 AE6",vinNo:"LB7JM1C10NA000002",batteryPercent:23,residualRangeKm:20,rangeEstimated:true,chargeState:"充电中",voltage:86.2,current:5.4,batteryTemp:31,currentVin:"LB7JM1C10NA000002",vehicles:[{name:"极核 AE6",vinNo:"LB7JM1C10NA000002"},{name:"AE5iProMax",vinNo:"LB7JM1C10NA000003"}],frontPressure:"2.10bar",rearPressure:"",frontTemp:"",rearTemp:"",todayDistance:0,todayDuration:0,todayMaxSpeed:0,lastRideMileage:0,online:"0",powerStatus:"1",lockState:"0",cushionState:"1",address:"",locationTime:"",longitude:"",latitude:"",serviceEndDate:""}}
+];
+const DEMO_LOGS=[
+{time:"2026-09-10 07:00:12",type:"signin",userName:"阿泽",success:true,totalGain:12,signinScore:6,blindBoxScore:6,interactScore:0,continueDays:42,steps:["签到成功 +6","盲盒获得 +6 (积分)","盲盒未解锁(36/30)"]},
+{time:"2026-09-10 07:00:15",type:"signin",userName:"小满",success:false,error:"Token已过期",steps:["签到失败: 请先登录"]},
+{time:"2026-09-09 22:31:05",type:"vehicle",userName:"阿泽",success:true,actionText:"云端开锁",message:"云端开锁指令已下发",steps:[]}
+];
+
+/* ================= 刷新 & 初始化 ================= */
+let loading=false;
+// 入场闪屏：首次数据就绪（无论成功/失败）后淡出移除
+function hideSplash(){const s=document.getElementById("splash");if(!s)return;s.classList.add("out");setTimeout(()=>{if(s.parentNode)s.parentNode.removeChild(s)},450)}
+async function refreshAll(silent){
+  if(loading)return;loading=true;
+  if(!silent){const el=document.getElementById("pageHome");if(!STATE.data.length)el.innerHTML=skeletonHome()}
+  const d=await Backend.getDashboard();
+  loading=false;hideSplash();
+  if(d&&d.ok){STATE.data=d.accounts||[];STATE.tsText=fmtTime(d.timestamp||new Date().toISOString());STATE.proxy=isProxyMode();renderHome()}
+  else{const hint=d&&d.raw&&d.raw.error?networkHint(d.raw):"";const el=document.getElementById("pageHome");el.innerHTML='<div class="empty"><h3>数据加载失败</h3><p>'+(hint||esc((d&&d.error)||"网络异常，请检查网络连接"))+'</p><div class="btn-row" style="justify-content:center"><button class="btn primary" onclick="refreshAll()">重试</button><button class="btn" onclick="switchTab(\'cfg\')">检查设置</button></div></div>'}
+}
+/* ================= v2.14.9 积分页 ================= */
+let PT={accIdx:0,month:""};
+function ptAccounts(){return STATE.data&&STATE.data.length?STATE.data:(STATE.panelAccounts||[]).map(a=>({userName:a.userName||"账号",userId:a.userId||""}))}
+function accChipsHtml(prefix){
+  const list=ptAccounts();
+  if(!list.length)return"";
+  return '<div class="acc-chips">'+list.map((a,i)=>'<button class="acc-chip '+(i===(prefix==="pt"?PT.accIdx:VH.accIdx)?'on':'')+'" onclick="pickAcc(\''+prefix+'\','+i+')">'+esc(a.userName||("账号"+(i+1)))+'</button>').join("")+'</div>';
+}
+function pickAcc(prefix,i){if(prefix==="pt"){PT.accIdx=i;renderPoints()}else{VH.accIdx=i;VH.vin="";renderVehiclePage()}}
+async function renderPoints(){
+  const el=document.getElementById("pagePoints");if(!el)return;
+  const list=ptAccounts();
+  if(!list.length){el.innerHTML='<div class="empty"><h3>暂无账号</h3><p>请先在首页加载数据或在设置页添加账号</p></div>';return}
+  if(PT.accIdx>=list.length)PT.accIdx=0;
+  const acc=list[PT.accIdx];
+  if(!acc.userId){el.innerHTML=accChipsHtml("pt")+'<div class="empty"><h3>该账号缺少用户ID</h3><p>请到设置页补全用户ID</p></div>';return}
+  el.innerHTML=accChipsHtml("pt")+'<div class="empty" style="padding:40px 20px"><p style="color:var(--txt3)">加载积分数据中…</p></div>';
+  const month=PT.month||new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0");
+  const [it,cal,cnt] = await Promise.all([
+    Backend.integral(acc.userId,1),
+    Backend.supplement("month",acc.userId,{month:month}),
+    Backend.supplement("count",acc.userId,{})
+  ]);
+  let html=accChipsHtml("pt");
+  // 总览
+  const total=it&&it.total?deepPick(it.total,["integralTotal","totalIntegral","score","integral","total"],4):"";
+  const cardNum=cnt&&cnt.data!=null?deepPick(cnt.data,["count","cardNum","cardCount","number","num"],4):"";
+  let expTxt="";
+  if(it&&Array.isArray(it.expire)&&it.expire.length){
+    const e0=it.expire.find(x=>Number(x.integralScore)>0)||it.expire[0];
+    if(e0)expTxt=String(e0.expiryDateStr||"")+(Number(e0.integralScore)>0?" 到期 "+e0.integralScore+" 分":"");
+  }
+  html+='<div class="pt-grid">'
+    +'<div class="pt-cell"><div class="lb">当前总积分</div><div class="vl num" style="color:var(--brand)">'+esc(total||"--")+'</div>'+(expTxt?'<div class="sub">'+esc(expTxt)+'</div>':'')+'</div>'
+    +'<div class="pt-cell"><div class="lb">补签卡</div><div class="vl num">'+esc(cardNum||"--")+'</div><div class="sub"><button class="btn sm" style="margin-top:4px" onclick="supGain()">积分兑换补签卡</button></div></div>'
+    +'</div>';
+  // 盲盒进度（v2.14.14 起由首页迁移至此）
+  const cont=Number(acc.continueDays||0);
+  const bDay=cont===0?0:((cont-1)%30)+1;const bRound=cont===0?0:Math.ceil(cont/30);const bPct=Math.round((bDay/30)*100);
+  html+='<div class="blind" style="margin:0 0 12px"><div class="blind-top"><span>盲盒进度（第'+bRound+'轮）</span><span class="r num">'+bDay+' / 30 · '+bPct+'% · 连签 '+cont+' 天</span></div><div class="blind-bar"><div class="blind-fill" style="width:'+bPct+'%"></div></div></div>';
+  // 签到日历
+  html+='<div class="panel-card"><div class="pc-head"><h4>'+I.check+'签到日历 · '+esc(month)+'</h4><button class="btn sm" onclick="ptMonthShift(-1)">上月</button></div>';
+  const days=(cal&&cal.data&&cal.data.nowSignDetailVos)||[];
+  if(days.length){
+    html+=calHtml(days,month,acc.userId);
+  }else{
+    html+='<div style="color:var(--txt3);font-size:12px;padding:8px 0">'+(cal&&cal.message?esc(cal.message):"日历加载失败（可能限流，稍后再试）")+'</div>';
+  }
+  html+='</div>';
+  // 积分流水
+  html+='<div class="panel-card"><div class="pc-head"><h4>'+I.zap+'积分流水</h4><button class="btn sm" onclick="ptMoreFlow()">加载更多</button></div><div id="ptFlow">';
+  html+=flowHtml((it&&it.detail)||[]);
+  html+='</div></div>';
+  html+='<div class="foot">积分数据来自极核实时 API · 补签限 30 天内漏签，每次消耗 1 张补签卡</div>';
+  el.innerHTML=html;
+  PT.flowPage=1;
+}
+function calHtml(days,month,userId){
+  const ym=month.split("-");const y=Number(ym[0]),m=Number(ym[1]);
+  const first=new Date(y,m-1,1).getDay();
+  const dim=new Date(y,m,0).getDate();
+  const today=new Date();const tStr=today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
+  let h='<div class="cal-grid">';
+  ["日","一","二","三","四","五","六"].forEach(w=>{h+='<div class="cal-wd">'+w+'</div>'});
+  for(let i=0;i<first;i++)h+='<div class="cal-d blank"></div>';
+  for(let d=1;d<=dim;d++){
+    const ds=month+"-"+String(d).padStart(2,"0");
+    const entry=days.find(x=>x.createDate===ds);
+    const signed=entry&&(entry.signStatue==3||entry.signStatue==5||entry.signStatue==0);
+    const isToday=ds===tStr;
+    const future=ds>tStr;
+    let cls="cal-d"+(signed?" signed":(future?" future":(entry?" miss":"")));
+    if(isToday)cls+=" today";
+    const clickable=!signed&&!future&&entry;
+    h+='<div class="'+cls+'" '+(clickable?'style="cursor:pointer" onclick="supConsume(\''+ds+'\',\''+esc(userId)+'\')"':'')+'>'
+      +'<span>'+d+'</span>'
+      +'<span class="dot">'+(signed?"✓":(future?"":(entry?"漏":"")))+'</span>'
+      +'</div>';
+  }
+  h+='</div>';
+  h+='<div class="hint" style="margin-top:10px">点击「漏」日期使用补签卡补签（需先有补签卡）</div>';
+  return h;
+}
+function flowHtml(list){
+  if(!list.length)return '<div style="color:var(--txt3);font-size:12px;padding:8px 0">暂无流水记录</div>';
+  return list.map(x=>{
+    const sc=Number(x.integralScore)||0;
+    return '<div class="flow-item"><div><div class="nm">'+esc(x.name||"积分变动")+'</div><div class="tm">'+esc(x.myDateStr||x.createDateStr||"")+'</div></div><div class="sc num '+(sc>=0?"plus":"minus")+'">'+(sc>=0?"+":"")+sc+'</div></div>';
+  }).join("");
+}
+async function ptMoreFlow(){
+  const list=ptAccounts();const acc=list[PT.accIdx];if(!acc||!acc.userId)return;
+  PT.flowPage=(PT.flowPage||1)+1;
+  const it=await Backend.integral(acc.userId,PT.flowPage);
+  const el=document.getElementById("ptFlow");
+  if(el&&it&&Array.isArray(it.detail)&&it.detail.length)el.innerHTML+=flowHtml(it.detail);
+  else toast("没有更多了","info");
+}
+function ptMonthShift(dir){
+  const cur=PT.month||new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0");
+  const ym=cur.split("-");let y=Number(ym[0]),m=Number(ym[1])+dir;
+  if(m<1){m=12;y--}if(m>12){m=1;y++}
+  PT.month=y+"-"+String(m).padStart(2,"0");
+  renderPoints();
+}
+async function supConsume(date,userId){
+  confirmDialog("积分补签","使用 1 张补签卡补签 "+date+" ？",async function(){
+    toast("补签中…","info");
+    const d=await Backend.supplement("consume",userId,{dateTime:date});
+    if(d&&d.ok){toast("补签成功","ok");renderPoints()}
+    else toast("补签失败："+((d&&(d.message||d.error))||"未知"),"err");
+  },"确认补签");
+}
+async function supGain(){
+  const list=ptAccounts();const acc=list[PT.accIdx];if(!acc||!acc.userId)return;
+  confirmDialog("兑换补签卡","使用积分兑换 1 张补签卡？",async function(){
+    toast("兑换中…","info");
+    const d=await Backend.supplement("gain",acc.userId,{});
+    if(d&&d.ok){toast("兑换成功","ok");renderPoints()}
+    else toast("兑换失败："+((d&&(d.message||d.error))||"未知"),"err");
+  },"确认兑换");
+}
+
+/* ================= v2.14.9 车辆页（监控 + 车控扩展 + 信息中心） ================= */
+let VH={accIdx:0,vin:"",cp:"",gear:"",lockType:"1"};
+async function renderVehiclePage(){
+  const el=document.getElementById("pageVehicle");if(!el)return;
+  const list=ptAccounts();
+  if(!list.length){el.innerHTML='<div class="empty"><h3>暂无账号</h3><p>请先在首页加载数据或在设置页添加账号</p></div>';return}
+  if(VH.accIdx>=list.length)VH.accIdx=0;
+  const acc=list[VH.accIdx];
+  if(!acc.userId){el.innerHTML=accChipsHtml("vh")+'<div class="empty"><h3>该账号缺少用户ID</h3></div>';return}
+  el.innerHTML=accChipsHtml("vh")+'<div class="empty" style="padding:40px 20px"><p style="color:var(--txt3)">加载车辆数据中…</p></div>';
+  let mon=await Backend.vehicleMonitor(acc.userId,"");
+  const vehList=(mon&&Array.isArray(mon.vehicles))?mon.vehicles:[];
+  if(VH.vin&&mon&&mon.ok&&mon.snapshot&&mon.snapshot.vin!==VH.vin){
+    const mon2=await Backend.vehicleMonitor(acc.userId,VH.vin);
+    if(mon2&&mon2.ok){mon2.vehicles=vehList;mon=mon2}
+  }
+  const [opts,info]=await Promise.all([
+    Backend.vehicleControlExt({action:"options",userId:acc.userId,vin:VH.vin||""}),
+    Backend.infoCenter(acc.userId,VH.vin||"")
+  ]);
+  let html=accChipsHtml("vh");
+  // 车辆选择（多车）
+  if(vehList.length>1){
+    const curVin=VH.vin||(mon&&mon.snapshot?mon.snapshot.vin:vehList[0].vinNo);
+    html+='<div class="opt-row">'+vehList.map(v=>'<button class="opt-chip '+(curVin===v.vinNo?'on':'')+'" onclick="VH.vin=\''+esc(v.vinNo)+'\';renderVehiclePage()">'+esc(v.vehicleName||v.vinNo)+'</button>').join("")+'</div>';
+  }
+  // 状态监控卡
+  html+='<div class="panel-card"><div class="pc-head"><h4>'+I.car+'车辆状态</h4><span style="display:flex;gap:6px"><button class="btn sm" onclick="showVehicleDetail('+VH.accIdx+')">详情</button><button class="btn sm" onclick="renderVehiclePage()">刷新</button></span></div>';
+  if(mon&&mon.ok&&mon.snapshot){
+    const sn=mon.snapshot;
+    const socCol=sn.soc<=20?"var(--err)":sn.soc<=50?"var(--warn)":"var(--ok)";
+    html+='<div class="mon-row"><span class="k">剩余电量</span><span class="v num" style="color:'+socCol+'">'+(sn.soc!=null?sn.soc+"%":"--")+'</span></div>';
+    html+='<div class="mon-row"><span class="k">剩余续航</span><span class="v num">'+(sn.range!=null?sn.range+" km":"--")+'</span></div>';
+    html+='<div class="mon-row"><span class="k">龙头锁</span><span class="v">'+(sn.headLock==="1"?"已锁":"未锁")+'</span></div>';
+    html+='<div class="mon-row"><span class="k">在线状态</span><span class="v" style="color:'+(sn.offline?"var(--err)":"var(--ok)")+'">'+(sn.offline?"离线（>30分钟未上报）":"在线")+'</span></div>';
+    html+='<div class="mon-row"><span class="k">最后上报</span><span class="v" style="font-size:12px;color:var(--txt2)">'+esc(sn.refreshTime||"--")+'</span></div>';
+  }else{
+    html+='<div style="color:var(--txt3);font-size:12px">'+esc((mon&&(mon.error||mon.message))||"快照获取失败")+'</div>';
+  }
+  html+='</div>';
+  // 车辆控制卡（从首页迁移过来）
+  html+='<div class="panel-card"><div class="pc-head"><h4>'+I.zap+'车辆控制</h4></div>'
+    +'<div class="ctrl-grid">'
+    +'<button class="ctrl-btn" data-act="find" onclick="ctrlAct('+VH.accIdx+',\'find\',this)">'+I.bell+'寻车</button>'
+    +'<button class="ctrl-btn" data-act="loudFind" onclick="ctrlAct('+VH.accIdx+',\'loudFind\',this)">'+I.vol+'鸣笛</button>'
+    +'<button class="ctrl-btn" data-act="cushion" onclick="ctrlAct('+VH.accIdx+',\'cushion\',this)">'+I.seat+'坐垫</button>'
+    +'<button class="ctrl-btn unlock" data-act="unlock" onclick="ctrlAct('+VH.accIdx+',\'unlock\',this)">'+I.unlock+'开锁</button>'
+    +'<button class="ctrl-btn lock" data-act="lock" onclick="ctrlAct('+VH.accIdx+',\'lock\',this)">'+I.lock+'关锁</button>'
+    +'</div></div>';
+  // 车控扩展卡
+  html+='<div class="panel-card"><div class="pc-head"><h4>'+I.zap+'车控扩展</h4></div>';
+  const cps=(opts&&Array.isArray(opts.chargePower))?opts.chargePower:[];
+  const gears=(opts&&Array.isArray(opts.gears))?opts.gears:[];
+  if(cps.length){
+    html+='<div style="font-size:12px;font-weight:700;color:var(--txt2);margin-bottom:4px">充电功率（W）</div><div class="opt-row">'
+      +cps.map(o=>'<button class="opt-chip '+(VH.cp===o.key?'on':'')+'" onclick="VH.cp=\''+esc(o.key)+'\';renderVehiclePage()">'+esc(o.key)+'</button>').join("")
+      +'<button class="btn sm primary" onclick="extSet(\'chargePower\')">设置</button></div>';
+  }
+  if(gears.length){
+    html+='<div style="font-size:12px;font-weight:700;color:var(--txt2);margin-bottom:4px">限速档位（km/h）</div><div class="opt-row">'
+      +gears.map(g=>'<button class="opt-chip '+(VH.gear===g?'on':'')+'" onclick="VH.gear=\''+esc(g)+'\';renderVehiclePage()">'+esc(g)+'</button>').join("")
+      +'<button class="btn sm primary" onclick="extSet(\'maxSpeed\')">设置</button></div>';
+  }
+  html+='</div>';
+  // 信息中心卡
+  html+='<div class="panel-card"><div class="pc-head"><h4>'+I.bell+'信息中心</h4></div>';
+  if(info&&info.ok){
+    const un=info.unread!=null?deepPick(info.unread,["total","count","unReadCount","num"],3):"";
+    if(un!=="")html+='<div class="mon-row"><span class="k">未读消息</span><span class="v num" style="color:var(--brand)">'+esc(un)+'</span></div>';
+    const prizes=(info.prizeRecords&&(info.prizeRecords.records||info.prizeRecords.list||info.prizeRecords))||[];
+    if(Array.isArray(prizes)&&prizes.length){
+      html+='<div style="font-size:12px;font-weight:700;color:var(--txt2);margin:8px 0 4px">盲盒/中奖记录</div>';
+      html+=prizes.slice(0,5).map(p=>'<div class="flow-item"><div><div class="nm">'+esc(p.prizesName||p.name||"奖品")+'</div><div class="tm">'+esc(p.createTime||p.createDate||"")+'</div></div><div class="sc plus" style="font-size:12px">'+esc(p.integral?("+"+p.integral):"")+'</div></div>').join("");
+    }
+    const coupons=(info.coupons&&(info.coupons.records||info.coupons.list||info.coupons))||[];
+    if(Array.isArray(coupons)&&coupons.length)html+='<div class="mon-row"><span class="k">优惠券</span><span class="v num">'+coupons.length+' 张</span></div>';
+    if(info.ota!=null)html+='<div class="mon-row"><span class="k">OTA 升级</span><span class="v" style="font-size:12px">'+(Array.isArray(info.ota)&&info.ota.length?"有新版本":"已是最新")+'</span></div>';
+  }else{
+    html+='<div style="color:var(--txt3);font-size:12px">'+esc((info&&(info.error||info.message))||"信息中心加载失败")+'</div>';
+  }
+  html+='</div>';
+  html+='<div class="foot">车控扩展指令经云端下发，响应可能较慢</div>';
+  el.innerHTML=html;
+}
+async function extSet(action){
+  const list=ptAccounts();const acc=list[VH.accIdx];if(!acc||!acc.userId)return;
+  const body={action:action,userId:acc.userId,vin:VH.vin||""};
+  if(action==="chargePower"){if(!VH.cp){toast("请先选择充电功率","err");return}body.value=VH.cp}
+  if(action==="maxSpeed"){if(!VH.gear){toast("请先选择限速档位","err");return}body.value=VH.gear}
+  toast("指令下发中…","info");
+  const d=await Backend.vehicleControlExt(body);
+  toast((d&&d.message)||((d&&d.ok)?"指令已下发":"指令失败"),(d&&d.ok)?"ok":"err");
+}
+
+function init(){
+  applyTheme();mountSigninFab();
+  renderCfg();
+  if(true){
+    STATE.data=DEMO_DATA;STATE.tsText=fmtTime(new Date().toISOString());STATE.proxy=false;
+    renderHome();hideSplash();return;
+  }
+  startAutoRefresh();refreshAll(false);
+  // 兜底：极端情况下请求长时间无响应，闪屏也不能一直挡住界面
+  setTimeout(hideSplash,12000);
+}
+init();
+
+/* 演示页：支持 ?tab=home|points|vehicle|logs|cfg 直达对应标签页 */
+setTimeout(function(){
+  try{
+    var m=location.search.match(/[?&]tab=([a-z]+)/);
+    if(m&&["home","points","vehicle","logs","cfg"].indexOf(m[1])>=0)switchTab(m[1]);
+  }catch(e){}
+},700);
+</script>
+<!--__JS5__-->

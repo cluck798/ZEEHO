@@ -39,6 +39,25 @@
 - 后台常驻充电监控（静音保活 + 周期轮询）
 - 下载：[ios-latest Release](https://github.com/cluck798/ZEEHO/releases/tag/ios-latest)，TrollStore 中点击 + 选择 IPA 安装，永久签名不掉签
 
+## 🖼️ 在线演示 & 界面预览
+
+> **在线演示（免安装、示例数据、不联网）**：https://cluck798.github.io/ZEEHO/
+>
+> 也可下载仓库内的 [`demo/index.html`](demo/index.html) 直接双击打开（单文件、无依赖），支持 `?tab=home|points|vehicle|logs|cfg` 直达标签页，例如 `demo/index.html?tab=vehicle`。
+
+| 首页 | 积分 |
+| :--: | :--: |
+| <img src="screenshots/demo_home.png" width="240" alt="首页" /> | <img src="screenshots/demo_points.png" width="240" alt="积分" /> |
+
+| 车辆 | 设置 |
+| :--: | :--: |
+| <img src="screenshots/demo_vehicle.png" width="240" alt="车辆" /> | <img src="screenshots/demo_cfg.png" width="240" alt="设置" /> |
+
+演示页特性：
+- 内置示例账号/车辆/积分/日历/日志数据，**任何标签页都不会空白**；点「立即签到」会模拟一次签到并弹出结果
+- 纯静态单文件，无后端、无网络请求、无 Token，可安全公开分享
+- 顶部副标题标注「演示模式 · 示例数据（不联网）」，避免与真实面板混淆
+
 ## ⚠️ 注意事项
 - `boxjs_store.json` 含 Token，已被 `.gitignore` 忽略，禁止提交
 - 云端开/关锁 AES 密钥默认不内置，需手动填写，防滥用

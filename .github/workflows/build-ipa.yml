@@ -59,7 +59,7 @@ jobs:
           name: 极核签到面板 iOS IPA（巨魔/TrollStore）
           body: |
             TrollStore（巨魔）专用未签名 IPA。
-            - 内核：构建时自动同步 repo/zeeho_box_enhanced.js（当前 v2.14.14）
+            - 内核：构建时自动同步 repo/zeeho_box_enhanced.js（当前 v2.14.15）
             - 安装：TrollStore 中点击 + 选择本 IPA 即可，永久签名不掉签
             - 构建提交：${{ github.sha }}
           files: ZeehoSignPanel.ipa
