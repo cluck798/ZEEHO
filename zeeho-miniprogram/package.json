@@ -67,6 +67,8 @@
     "@types/webpack-env": "^1.13.6",
     "@types/react": "^18.0.0",
     "webpack": "^5.91.0",
+    "ajv": "^8.12.0",
+    "ajv-keywords": "^5.1.0",
     "@tarojs/taro-loader": "4.1.9",
     "@tarojs/webpack5-runner": "4.1.9",
     "babel-preset-taro": "4.1.9",
@@ -85,9 +87,5 @@
     "postcss": "^8.4.18",
     "ts-node": "^10.9.1",
     "@types/node": "^18.15.11"
-  },
-  "overrides": {
-    "ajv": "^6.12.6",
-    "ajv-keywords": "^3.5.2"
   }
 }
