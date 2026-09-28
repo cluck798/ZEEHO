@@ -1,0 +1,47 @@
+@use '@/styles/variables.scss' as *;
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: $radius-xs;
+  font-weight: $font-weight-medium;
+  white-space: nowrap;
+}
+
+.sm {
+  font-size: $font-size-xs;
+  padding: 4rpx 12rpx;
+  height: 32rpx;
+}
+
+.md {
+  font-size: $font-size-sm;
+  padding: 6rpx 16rpx;
+  height: 40rpx;
+}
+
+.primary {
+  background: $color-tag-bg;
+  color: $color-tag-text;
+}
+
+.success {
+  background: rgba($color-success, 0.1);
+  color: $color-success;
+}
+
+.warning {
+  background: rgba($color-warning, 0.1);
+  color: $color-warning;
+}
+
+.error {
+  background: rgba($color-error, 0.1);
+  color: $color-error;
+}
+
+.info {
+  background: rgba($color-info, 0.1);
+  color: $color-info;
+}

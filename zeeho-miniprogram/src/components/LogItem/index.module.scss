@@ -1,0 +1,67 @@
+@use '@/styles/variables.scss' as *;
+
+.logItem {
+  display: flex;
+  padding: $spacing-md 0;
+  border-bottom: 1px solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.statusDot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: $radius-round;
+  margin-top: 8rpx;
+  margin-right: $spacing-md;
+  flex-shrink: 0;
+}
+
+.statusSuccess {
+  background: $color-success;
+}
+
+.statusFailed {
+  background: $color-error;
+}
+
+.statusRunning {
+  background: $color-warning;
+}
+
+.logContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.logHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logAccount {
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+}
+
+.logTime {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.logAction {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-top: 4rpx;
+}
+
+.logDetail {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-top: 4rpx;
+}

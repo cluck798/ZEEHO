@@ -1,0 +1,184 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding-bottom: 48rpx;
+}
+
+.body {
+  padding: $spacing-lg $page-padding 0;
+}
+
+// ============ 统计卡 ============
+.statCard {
+  display: flex;
+  align-items: center;
+  padding: $spacing-lg;
+}
+
+.statItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.statValue {
+  font-size: 48rpx;
+  font-weight: $font-weight-bold;
+  background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  line-height: $line-height-tight;
+}
+
+.statLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: 8rpx;
+}
+
+.statDivider {
+  width: 1px;
+  height: 56rpx;
+  background: $color-divider;
+}
+
+// ============ 一键签到 ============
+.signBtn {
+  margin-top: $spacing-lg;
+  height: 96rpx;
+  background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+  border-radius: $radius-button;
+  @include flex-center;
+  box-shadow: $shadow-card, $glow-primary;
+  animation: breathe 3s ease-in-out infinite;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}
+
+.signBtnText {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-white;
+  text-shadow: 0 0 12rpx rgba(255, 255, 255, 0.5);
+}
+
+// ============ 补签卡 ============
+.suppCard {
+  margin-top: $spacing-lg;
+  padding: $spacing-lg;
+  border-radius: $radius-lg;
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.1) 0%, $color-bg-card 46%);
+  border: 1rpx solid rgba(56, 189, 248, 0.28);
+  box-shadow: $shadow-card, $glow-primary;
+}
+
+.suppHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.suppInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.suppTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-gradient-start;
+  text-shadow: 0 0 12rpx rgba(34, 211, 238, 0.5);
+}
+
+.suppDesc {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-top: 4rpx;
+}
+
+.suppBtn {
+  height: 64rpx;
+  padding: 0 28rpx;
+  border-radius: $radius-button;
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.2) 0%, rgba(37, 99, 235, 0.3) 100%);
+  border: 1rpx solid rgba(56, 189, 248, 0.4);
+  @include flex-center;
+  box-shadow: 0 0 16rpx rgba(56, 189, 248, 0.25);
+
+  &:active {
+    opacity: 0.85;
+    transform: scale(0.98);
+  }
+}
+
+.suppBtnText {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: #7DD3FC;
+}
+
+.suppResult {
+  margin-top: $spacing-md;
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+}
+
+// ============ 区块标题 ============
+.sectionTitle {
+  display: block;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin: $spacing-xl 0 $spacing-md;
+}
+
+.listCard {
+  padding: $spacing-xs $spacing-lg;
+}
+
+// ============ 执行结果 ============
+.resultRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-md 0;
+  border-bottom: 1px solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.resultName {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.resultOk {
+  font-size: $font-size-sm;
+  color: $color-success;
+}
+
+.resultFail {
+  font-size: $font-size-sm;
+  color: $color-error;
+}
+
+// ============ 呼吸光晕动画 ============
+@keyframes breathe {
+  0%,
+  100% {
+    box-shadow: $shadow-card, 0 0 14rpx rgba(56, 189, 248, 0.25);
+  }
+  50% {
+    box-shadow: $shadow-card, 0 0 36rpx rgba(56, 189, 248, 0.55);
+  }
+}

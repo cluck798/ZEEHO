@@ -1,0 +1,90 @@
+@use '@/styles/variables.scss' as *;
+
+.taskCard {
+  display: flex;
+  align-items: center;
+  padding: $spacing-md 0;
+  border-bottom: 1px solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.taskIcon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: $radius-md;
+  background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+  @include flex-center;
+  margin-right: $spacing-md;
+  box-shadow: 0 0 16rpx rgba(56, 189, 248, 0.35);
+}
+
+.taskIconDone {
+  background: $color-bg-hover;
+}
+
+.taskIconText {
+  font-size: 36rpx;
+  color: $color-text-white;
+  font-weight: $font-weight-bold;
+}
+
+.taskIconDone .taskIconText {
+  color: $color-text-tertiary;
+}
+
+.taskInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.taskName {
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+}
+
+.taskDesc {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-top: 4rpx;
+}
+
+.taskRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.taskPoints {
+  font-size: $font-size-sm;
+  color: $color-warning;
+  font-weight: $font-weight-semibold;
+}
+
+.taskBtn {
+  margin-top: 8rpx;
+  height: 48rpx;
+  padding: 0 20rpx;
+  border-radius: $radius-button;
+  background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+  @include flex-center;
+  min-width: 96rpx;
+}
+
+.taskBtnDone {
+  background: $color-bg-hover;
+}
+
+.taskBtnText {
+  font-size: $font-size-xs;
+  color: $color-text-white;
+  white-space: nowrap;
+}
+
+.taskBtnDone .taskBtnText {
+  color: $color-text-tertiary;
+}

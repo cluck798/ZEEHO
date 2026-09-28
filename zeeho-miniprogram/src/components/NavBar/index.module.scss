@@ -1,0 +1,66 @@
+@use '@/styles/variables.scss' as *;
+
+.navBar {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+  padding: 88rpx $page-padding 48rpx;
+  border-radius: 0 0 32rpx 32rpx;
+
+  // 右上角科技光斑
+  &::before {
+    content: '';
+    position: absolute;
+    top: -90rpx;
+    right: -70rpx;
+    width: 340rpx;
+    height: 340rpx;
+    border-radius: $radius-round;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.28) 0%, rgba(34, 211, 238, 0.18) 40%, transparent 72%);
+  }
+
+  // 底部渐变发光描边
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2rpx;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.8) 50%, transparent 100%);
+  }
+}
+
+.navContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  z-index: 1;
+}
+
+.navLeft {
+  display: flex;
+  flex-direction: column;
+}
+
+.navTitle {
+  font-size: 40rpx;
+  font-weight: $font-weight-bold;
+  color: $color-text-white;
+  line-height: $line-height-tight;
+  text-shadow: 0 0 16rpx rgba(255, 255, 255, 0.55);
+}
+
+.navSubtitle {
+  font-size: $font-size-sm;
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 8rpx;
+}
+
+.navRight {
+  display: flex;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}

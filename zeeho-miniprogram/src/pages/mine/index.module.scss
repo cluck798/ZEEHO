@@ -1,0 +1,49 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding-bottom: 48rpx;
+}
+
+.body {
+  padding: $spacing-lg $page-padding 0;
+}
+
+.sectionTitle {
+  display: block;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-secondary;
+  margin: $spacing-lg 0 $spacing-md;
+}
+
+.listCard {
+  padding: $spacing-xs $spacing-lg;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-md 0;
+}
+
+.rowLabel {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.rowValue {
+  font-size: $font-size-md;
+  color: $color-primary;
+  font-weight: $font-weight-medium;
+}
+
+.version {
+  display: block;
+  text-align: center;
+  font-size: $font-size-xs;
+  color: $color-text-disabled;
+  margin-top: $spacing-xl;
+}

@@ -1,0 +1,15 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding-bottom: 48rpx;
+}
+
+.body {
+  padding: $spacing-lg $page-padding 0;
+}
+
+.listCard {
+  padding: $spacing-xs $spacing-lg;
+}

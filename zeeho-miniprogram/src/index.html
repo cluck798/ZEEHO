@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+    <meta name="viewport" content="width=375,user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-touch-fullscreen" content="yes" />
+    <meta name="format-detection" content="telephone=no,address=no" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <title>ZEEHO 助手</title>
+    <script>
+      // 固定 html fontSize，防止 flexible 脚本动态修改
+      (function() {
+        var html = document.documentElement;
+        html.style.fontSize = '18px';
+        Object.defineProperty(html.style, 'fontSize', {
+          get: function() { return '18px'; },
+          set: function() { /* 忽略所有修改 */ }
+        });
+      })();
+      <%= htmlWebpackPlugin.options.script %>
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

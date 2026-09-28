@@ -1,0 +1,26 @@
+@use '@/styles/variables.scss' as *;
+
+.card {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  border: 1rpx solid $color-border;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}
+
+.paddingSM {
+  padding: $spacing-sm;
+}
+
+.paddingMD {
+  padding: $spacing-lg;
+}
+
+.paddingLG {
+  padding: $spacing-xl;
+}

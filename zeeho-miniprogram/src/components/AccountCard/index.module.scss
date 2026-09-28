@@ -1,0 +1,119 @@
+@use '@/styles/variables.scss' as *;
+
+.accountCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  border: 1rpx solid $color-border;
+  box-shadow: $shadow-card;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+}
+
+.accountHeader {
+  display: flex;
+  align-items: center;
+}
+
+.accountAvatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: $radius-round;
+  flex-shrink: 0;
+  border: 2rpx solid rgba(56, 189, 248, 0.5);
+  box-shadow: 0 0 16rpx rgba(56, 189, 248, 0.35);
+}
+
+.accountMeta {
+  flex: 1;
+  margin-left: $spacing-md;
+  display: flex;
+  flex-direction: column;
+}
+
+.accountNameRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.accountName {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.accountToken {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-top: 4rpx;
+}
+
+.accountStats {
+  display: flex;
+  margin-top: $spacing-lg;
+  padding-top: $spacing-md;
+  border-top: 1px solid $color-divider;
+}
+
+.statItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.statValue {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+}
+
+.statLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: 4rpx;
+}
+
+.accountActions {
+  display: flex;
+  gap: $spacing-sm;
+  margin-top: $spacing-lg;
+}
+
+.actionBtn {
+  height: 64rpx;
+  border-radius: $radius-button;
+  @include flex-center;
+  white-space: nowrap;
+}
+
+.actionPrimary {
+  flex: 1;
+  background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+}
+
+.actionPrimaryText {
+  font-size: $font-size-sm;
+  color: $color-text-white;
+  font-weight: $font-weight-medium;
+}
+
+.actionSecondary {
+  width: 120rpx;
+  background: $color-bg-hover;
+}
+
+.actionSecondaryText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.actionDanger {
+  width: 120rpx;
+  background: rgba($color-error, 0.08);
+}
+
+.actionDangerText {
+  font-size: $font-size-sm;
+  color: $color-error;
+}

@@ -1,0 +1,23 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding-bottom: 48rpx;
+}
+
+.body {
+  padding: $spacing-lg $page-padding 0;
+}
+
+.addBtn {
+  padding: 12rpx 28rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: $radius-button;
+}
+
+.addBtnText {
+  font-size: $font-size-sm;
+  color: $color-text-white;
+  font-weight: $font-weight-medium;
+}

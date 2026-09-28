@@ -1,0 +1,59 @@
+name: deploy-weapp
+
+# 微信小程序体验版一键部署：构建 + miniprogram-ci 上传体验版
+# 依赖 Secret：WECHAT_PRIVATE_KEY（微信小程序代码上传私钥，PEM 全文）
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '体验版版本号（留空则用 package.json 版本）'
+        required: false
+        default: ''
+  push:
+    branches: [ main ]
+    paths:
+      - 'zeeho-miniprogram/**'
+      - '.github/workflows/deploy-weapp.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-weapp
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        working-directory: zeeho-miniprogram
+        run: npm install
+
+      - name: Write private key
+        env:
+          WECHAT_PRIVATE_KEY: ${{ secrets.WECHAT_PRIVATE_KEY }}
+        run: |
+          mkdir -p zeeho-miniprogram/.auth
+          echo "$WECHAT_PRIVATE_KEY" > zeeho-miniprogram/.auth/private.wx760d5359ef02d5ff.key
+
+      - name: Build weapp
+        working-directory: zeeho-miniprogram
+        run: npm run build:weapp
+
+      - name: Upload preview
+        working-directory: zeeho-miniprogram
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+        run: |
+          if [ -n "$VERSION" ]; then
+            node scripts/upload.js "$VERSION"
+          else
+            node scripts/upload.js
+          fi

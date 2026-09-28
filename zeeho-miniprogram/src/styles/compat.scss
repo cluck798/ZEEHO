@@ -1,0 +1,20 @@
+// ============================================
+// 多端兼容性样式 (Compatibility)
+// ============================================
+
+// 1. 全局盒模型：统一为 border-box，避免多端 padding 计算差异
+page,
+view,
+scroll-view,
+swiper,
+swiper-item,
+text,
+image,
+button,
+input,
+textarea,
+form,
+label,
+navigator {
+  box-sizing: border-box;
+}

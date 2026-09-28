@@ -1,0 +1,109 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding-bottom: 48rpx;
+}
+
+.body {
+  padding: $spacing-lg $page-padding 0;
+}
+
+.tip {
+  display: block;
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-bottom: $spacing-md;
+}
+
+// 登录方式二选一
+.modeSwitch {
+  display: flex;
+  padding: 6rpx;
+  background: $color-bg-card;
+  border: 1rpx solid $color-border;
+  border-radius: $radius-button;
+  margin-bottom: $spacing-lg;
+}
+
+.modeBtn {
+  flex: 1;
+  height: 72rpx;
+  @include flex-center;
+  border-radius: $radius-button;
+  transition: all $transition-base;
+}
+
+.modeBtnActive {
+  background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+  box-shadow: $glow-primary;
+}
+
+.modeBtnText {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+}
+
+.modeBtnTextActive {
+  color: $color-text-white;
+}
+
+.formCard {
+  padding: 0 $spacing-lg;
+}
+
+.field {
+  padding: $spacing-md 0;
+  border-bottom: 1px solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.label {
+  display: block;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-sm;
+}
+
+.input {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  height: 64rpx;
+}
+
+.placeholder {
+  color: $color-text-disabled;
+}
+
+.saveBtn {
+  margin-top: $spacing-xl;
+  height: 96rpx;
+  background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+  border-radius: $radius-button;
+  @include flex-center;
+  box-shadow: $shadow-card, $glow-primary;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}
+
+.saveBtnText {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-white;
+}
+
+.notice {
+  display: block;
+  text-align: center;
+  font-size: $font-size-xs;
+  color: $color-text-disabled;
+  margin-top: $spacing-lg;
+}
