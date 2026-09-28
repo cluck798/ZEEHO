@@ -49,6 +49,19 @@ jobs:
           rm -rf Payload
           mkdir Payload
           cp -R build/Build/Products/Release-iphoneos/ZeehoPanel.app Payload/
+          # 注入 BackRun dylib（后台常驻增强）：复制到 Frameworks 并给主二进制追加 LC_LOAD_DYLIB
+          mkdir -p Payload/ZeehoPanel.app/Frameworks
+          cp ../ios/BackRun.dylib Payload/ZeehoPanel.app/Frameworks/BackRun.dylib
+          if ! curl -fsSL https://github.com/tyilo/insert_dylib/releases/download/1.2/insert_dylib -o insert_dylib; then
+            brew tap blacktop/tap >/dev/null 2>&1 || true
+            brew install blacktop/tap/optool >/dev/null 2>&1
+            optool install -c load -p @rpath/BackRun.dylib -t Payload/ZeehoPanel.app/ZeehoPanel
+          else
+            chmod +x insert_dylib
+            ./insert_dylib --strip --inplace --all-yes --overwrite @rpath/BackRun.dylib Payload/ZeehoPanel.app/ZeehoPanel
+          fi
+          codesign --force --sign - Payload/ZeehoPanel.app/Frameworks/BackRun.dylib 2>/dev/null || true
+          ls -la Payload/ZeehoPanel.app/Frameworks/
           zip -qry ../ZeehoSignPanel.ipa Payload
           ls -la ../ZeehoSignPanel.ipa
 
