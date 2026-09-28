@@ -34,7 +34,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: zeeho-miniprogram
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Write private key
         env:
