@@ -264,6 +264,68 @@ static const NSTimeInterval kDispatchGuardTimeout = 180.0;
         }];
     };
 
+    // ---- 安装信息（读取 embedded.mobileprovision，判断当前安装包的签名方式） ----
+    ctx[@"__installInfo"] = ^NSDictionary *{
+        NSMutableDictionary *info = [NSMutableDictionary dictionary];
+        NSString *provPath = [[NSBundle mainBundle] pathForResource:@"embedded" ofType:@"mobileprovision"];
+        if (!provPath.length) {
+            // 无描述文件：TrollStore / 免签
+            info[@"signMethod"] = @"trollstore";
+            info[@"hasProvision"] = @NO;
+            return info;
+        }
+        NSString *raw = [NSString stringWithContentsOfFile:provPath encoding:NSUTF8StringEncoding error:NULL];
+        NSRange start = [raw rangeOfString:@"<?xml"];
+        NSRange end = [raw rangeOfString:@"</plist>"];
+        if (!raw.length || start.location == NSNotFound || end.location == NSNotFound) {
+            info[@"signMethod"] = @"unknown";
+            info[@"hasProvision"] = @YES;
+            return info;
+        }
+        NSRange plistRange = NSMakeRange(start.location, end.location + end.length - start.location);
+        NSString *plistStr = [raw substringWithRange:plistRange];
+        NSData *plistData = [plistStr dataUsingEncoding:NSUTF8StringEncoding];
+        NSDictionary *plist = [NSPropertyListSerialization propertyListWithData:plistData options:NSPropertyListImmutable format:NULL error:NULL];
+        if (![plist isKindOfClass:[NSDictionary class]]) {
+            info[@"signMethod"] = @"unknown";
+            info[@"hasProvision"] = @YES;
+            return info;
+        }
+        info[@"hasProvision"] = @YES;
+        // 团队标识（TeamIdentifier 为数组）
+        NSArray *teamArr = plist[@"TeamIdentifier"];
+        if ([teamArr isKindOfClass:[NSArray class]] && teamArr.count && [teamArr[0] isKindOfClass:[NSString class]]) {
+            info[@"teamId"] = teamArr[0];
+        }
+        if ([plist[@"TeamName"] isKindOfClass:[NSString class]]) info[@"teamName"] = plist[@"TeamName"];
+        // 过期时间（ISO，UTC）
+        NSDate *exp = plist[@"ExpirationDate"];
+        if ([exp isKindOfClass:[NSDate class]]) {
+            NSDateFormatter *df = [[NSDateFormatter alloc] init];
+            df.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
+            df.timeZone = [NSTimeZone timeZoneWithName:@"UTC"];
+            df.dateFormat = @"yyyy-MM-dd'T'HH:mm:ss'Z'";
+            info[@"expiration"] = [df stringFromDate:exp];
+            info[@"expirationUnix"] = @((long long)[exp timeIntervalSince1970]);
+            info[@"daysRemain"] = @((NSInteger)([exp timeIntervalSinceNow] / 86400.0));
+        }
+        // 是否企业分发（ProvisionsAllDevices=true）
+        id allDev = plist[@"ProvisionsAllDevices"];
+        BOOL provAll = [allDev isKindOfClass:[NSNumber class]] && [allDev boolValue];
+        info[@"provisionsAllDevices"] = @(provAll);
+        // 设备数（ProvisionedDevices）
+        NSArray *devs = plist[@"ProvisionedDevices"];
+        if ([devs isKindOfClass:[NSArray class]]) info[@"deviceCount"] = @(devs.count);
+        // 判定签名方式
+        if (provAll) {
+            info[@"signMethod"] = @"enterprise";
+        } else {
+            NSTimeInterval remain = [exp isKindOfClass:[NSDate class]] ? [exp timeIntervalSinceNow] : 0;
+            info[@"signMethod"] = (remain <= 86400.0 * 15) ? @"sideload" : @"developer";
+        }
+        return info;
+    };
+
     // ---- 注入 $request，运行 shim + 核心脚本 ----
     NSMutableDictionary *request = [NSMutableDictionary dictionary];
     request[@"url"] = url ?: @"";

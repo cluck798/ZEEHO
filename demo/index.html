@@ -556,7 +556,7 @@ nav.tabbar{
 <script>
 "use strict";
 /* ================= 常量 ================= */
-const APP_VERSION = "v2.14.18";
+const APP_VERSION = "v2.14.19";
 const KEYS = { cfg:"zeeho_cfg", accounts:"zeeho_accounts", logs:"zeeho_logs" };
 
 /* ================= 工具函数 ================= */
@@ -779,6 +779,10 @@ const Backend={
     if(isDemo())return DEMO_INFO;
     if(isProxyMode()){let q="/api/info-center?userId="+encodeURIComponent(userId||"");if(vin)q+="&vin="+encodeURIComponent(vin);return await proxyFetch(q)}
     return{ok:false,error:"信息中心仅支持代理模式"}
+  },
+  async installInfo(){
+    if(isProxyMode()){const d=await proxyFetch("/api/app-install-info");return d||null}
+    return null
   }
 };
 /* ================= 面板数据同步（面板模式：设置页从脚本后端读账号与配置） ================= */
@@ -1138,12 +1142,8 @@ function renderCfg(){
   '<div class="f-item" style="margin-top:12px"><label>云端控车 AES 密钥（32 位十六进制，开/关锁必填）</label><input type="password" id="cfg_vehicle_key" value="'+esc(cfg.vehicleAesKey)+'" placeholder="填写并保存后才能使用云端开锁/关锁" autocomplete="off" style="font-family:ui-monospace,Menlo,monospace;font-size:12px"><div class="hint">用于开/关锁报文 AES-256-ECB 加密，出于安全默认不内置。</div></div>'+
   '<div class="btn-row"><button class="btn primary" onclick="saveCfgUI()">保存配置</button><button class="btn" onclick="resetCfgUI()">恢复默认</button></div>'+
   '</div></div>'+
-  '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar amber"></span>安装说明 · IPA 怎么装</h3></div><div class="cfg-body" style="font-size:12px;line-height:1.9;color:var(--txt2)">'+
-  '<div class="ins-item"><b style="color:var(--txt)">① 巨魔 TrollStore（推荐）</b><br>下载 GitHub <code>ios-latest</code> Release 的 ZeehoSignPanel.ipa，在 TrollStore 中点击 <b>+</b> 选择该 IPA 即可安装。永久签名、不掉签，无需电脑。</div>'+
-  '<div class="ins-item" style="margin-top:10px"><b style="color:var(--txt)">② 自签（AltStore / Sideloadly）</b><br>用 Apple ID 通过 AltStore 或 Sideloadly 签名后安装到 iPhone，<b>7 天有效期</b>，到期需连接电脑重新签名。</div>'+
-  '<div class="ins-item" style="margin-top:10px"><b style="color:var(--txt)">③ 企业签名（分发）</b><br>由企业证书签名商分发安装，无 7 天限制；首次打开需在 <b>设置 → 通用 → VPN与设备管理</b> 信任对应企业证书。</div>'+
-  '<div class="ins-item" style="margin-top:10px"><b style="color:var(--txt)">④ 描述文件/测试版</b><br>TestFlight 或开发者描述文件安装的版本由分发者管理有效期，到期需重新获取。</div>'+
-  '<div class="hint" style="margin-top:10px">本面板同时支持代理脚本（Loon / Quantumult X / Surge / Shadowrocket）与桌面版（Windows）运行，安装方式见 README。</div>'+
+  '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar amber"></span>当前安装信息</h3></div><div class="cfg-body" style="font-size:12px;line-height:1.9;color:var(--txt2)" id="installInfo">'+
+  '<div style="color:var(--txt3)">正在检测安装方式…</div>'+
   '</div></div>'+
   '<div class="foot">极核 ZEEHO 面板 '+APP_VERSION+' · '+(isProxyMode()?'账号与密钥存储于脚本后端（本机持久化）':'数据存储于本机浏览器 localStorage')+'<br><a class="link" href="https://afdian.com/a/lucky798" target="_blank" rel="noopener">爱发电 · afdian.com/a/lucky798</a></div>';
   // 小组件车辆下拉初始化（回填已保存的选择）
@@ -1158,6 +1158,41 @@ function renderCfg(){
   // 背景预览回填
   const bp=document.getElementById("bgPreview");
   if(bp){const bg=getCfg().customBg;if(bg){bp.style.backgroundImage="url("+bg+")";bp.textContent="";}}
+  renderInstallInfo();
+}
+/* ================= 当前安装信息 ================= */
+function installEnvName(){
+  if(isDemo())return "演示模式（示例数据）";
+  const p=(typeof location!=="undefined"&&location.protocol)||"";
+  if(p==="zeeho:")return "iOS App（极核签到面板）";
+  if(typeof navigator!=="undefined"&&/Electron/i.test(navigator.userAgent||""))return "桌面版（Windows）";
+  if(isProxyMode())return "代理脚本";
+  return "浏览器";
+}
+async function renderInstallInfo(){
+  const box=document.getElementById("installInfo");
+  let html='<div style="margin-bottom:8px"><b style="color:var(--txt)">运行环境：</b>'+installEnvName()+'</div>';
+  let info=null;
+  try{info=await Backend.installInfo();}catch(e){info=null}
+  if(!info||!info.ios){
+    html+='<div style="color:var(--txt3)">签名方式仅支持 iOS App 内查看（读取当前安装包的签名描述文件）。</div>';
+  } else {
+    const m=info.signMethod||"unknown";
+    const label={trollstore:"巨魔 TrollStore（永久签名）",enterprise:"企业签名（分发）",sideload:"个人自签（7 天有效期）",developer:"开发者 / TestFlight（长期）",unknown:"无法确定"}[m]||"无法确定";
+    html+='<div style="margin-bottom:6px"><b style="color:var(--txt)">安装方式：</b>'+label+'</div>';
+    if(info.expiration){
+      let extra="";
+      if(typeof info.daysRemain==="number"&&isFinite(info.daysRemain)&&info.daysRemain>=0)extra='（剩余约 '+info.daysRemain+' 天）';
+      html+='<div style="margin-bottom:6px"><b style="color:var(--txt)">签名有效期至：</b>'+esc(String(info.expiration).replace("T"," ").replace("Z",""))+' '+extra+'</div>';
+    }
+    if(info.teamName||info.teamId){
+      html+='<div style="margin-bottom:6px"><b style="color:var(--txt)">签名团队：</b>'+esc(info.teamName||info.teamId)+'</div>';
+    }
+    if(m==="sideload"){html+='<div class="hint" style="margin-top:6px">个人自签 7 天到期后，需连接电脑用 AltStore / Sideloadly 重新签名；建议改用巨魔 TrollStore 永久签名。</div>';}
+    else if(m==="enterprise"){html+='<div class="hint" style="margin-top:6px">如遇「未受信任的开发者」，请在 设置 → 通用 → VPN与设备管理 信任对应企业证书。</div>';}
+    else if(m==="trollstore"){html+='<div class="hint" style="margin-top:6px">已通过 TrollStore 安装，永久有效、不怕掉签，无需电脑续签。</div>';}
+  }
+  if(box)box.innerHTML=html;
 }
 /* ================= 小组件车辆选择 ================= */
 function widgetAccOptions(){

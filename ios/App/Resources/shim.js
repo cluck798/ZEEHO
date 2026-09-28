@@ -108,3 +108,9 @@ var $notification = {
     try { __notify(String(title || ""), String(subtitle || ""), String(body || "")); } catch (e) {}
   }
 };
+
+// ---- 安装信息（原生 __installInfo 桥接，仅 iOS App 注入，返回当前安装包的签名方式） ----
+var $appInstallInfo = function () {
+  if (typeof __installInfo !== "function") return null;
+  try { return __installInfo(); } catch (e) { return null; }
+};
