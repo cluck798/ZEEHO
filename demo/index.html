@@ -556,7 +556,7 @@ nav.tabbar{
 <script>
 "use strict";
 /* ================= 常量 ================= */
-const APP_VERSION = "v2.14.17";
+const APP_VERSION = "v2.14.18";
 const KEYS = { cfg:"zeeho_cfg", accounts:"zeeho_accounts", logs:"zeeho_logs" };
 
 /* ================= 工具函数 ================= */
@@ -590,8 +590,8 @@ function aes256EcbEncryptBase64(plaintext,keyStr){const key=aesUtf8Bytes(keyStr)
 /* ================= 存储 ================= */
 function loadJSON(k,fallback){try{const raw=localStorage.getItem(k);if(!raw)return fallback;const v=JSON.parse(raw);return v===undefined||v===null?fallback:v}catch(e){return fallback}}
 function saveJSON(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
-const DEFAULT_CFG={app:{appId:"S7qPWPU1",appSecret:"c5e0da7f4da28df805694ec3dd1fc6792e9df99d"},h5:{appId:"Sw5F9uJi",appSecret:"46870a8f678a09109468f5b0168818b91c292845"},community:{enablePost:true,enableLike:true,enableComment:true,enableShare:true,enableDelete:true},vehicleAesKey:"",autoRefreshSec:60,serverBase:"",autoSignin:false,autoSigninTime:"07:00",vehicleMonitor:false};
-function getCfg(){const c=loadJSON(KEYS.cfg,null);if(!c)return JSON.parse(JSON.stringify(DEFAULT_CFG));return{app:{appId:c.app?.appId||DEFAULT_CFG.app.appId,appSecret:c.app?.appSecret||DEFAULT_CFG.app.appSecret},h5:{appId:c.h5?.appId||DEFAULT_CFG.h5.appId,appSecret:c.h5?.appSecret||DEFAULT_CFG.h5.appSecret},community:{enablePost:c.community?.enablePost!==false,enableLike:c.community?.enableLike!==false,enableComment:c.community?.enableComment!==false,enableShare:c.community?.enableShare!==false,enableDelete:c.community?.enableDelete!==false},vehicleAesKey:(typeof c.vehicleAesKey==="string"?c.vehicleAesKey:"").trim(),autoRefreshSec:normalizeRefreshSec(c.autoRefreshSec),serverBase:String(c.serverBase||"").trim(),autoSignin:c.autoSignin===true,autoSigninTime:(typeof c.autoSigninTime==="string"&&/^\d{1,2}:\d{2}$/.test(c.autoSigninTime)?c.autoSigninTime:"07:00"),vehicleMonitor:c.vehicleMonitor===true}}
+const DEFAULT_CFG={app:{appId:"S7qPWPU1",appSecret:"c5e0da7f4da28df805694ec3dd1fc6792e9df99d"},h5:{appId:"Sw5F9uJi",appSecret:"46870a8f678a09109468f5b0168818b91c292845"},community:{enablePost:true,enableLike:true,enableComment:true,enableShare:true,enableDelete:true},vehicleAesKey:"",autoRefreshSec:60,serverBase:"",autoSignin:false,autoSigninTime:"07:00",vehicleMonitor:false,widgetVehicle:"",customBg:""};
+function getCfg(){const c=loadJSON(KEYS.cfg,null);if(!c)return JSON.parse(JSON.stringify(DEFAULT_CFG));return{app:{appId:c.app?.appId||DEFAULT_CFG.app.appId,appSecret:c.app?.appSecret||DEFAULT_CFG.app.appSecret},h5:{appId:c.h5?.appId||DEFAULT_CFG.h5.appId,appSecret:c.h5?.appSecret||DEFAULT_CFG.h5.appSecret},community:{enablePost:c.community?.enablePost!==false,enableLike:c.community?.enableLike!==false,enableComment:c.community?.enableComment!==false,enableShare:c.community?.enableShare!==false,enableDelete:c.community?.enableDelete!==false},vehicleAesKey:(typeof c.vehicleAesKey==="string"?c.vehicleAesKey:"").trim(),autoRefreshSec:normalizeRefreshSec(c.autoRefreshSec),serverBase:String(c.serverBase||"").trim(),autoSignin:c.autoSignin===true,autoSigninTime:(typeof c.autoSigninTime==="string"&&/^\d{1,2}:\d{2}$/.test(c.autoSigninTime)?c.autoSigninTime:"07:00"),vehicleMonitor:c.vehicleMonitor===true, widgetVehicle:String(c.widgetVehicle||""), customBg:String(c.customBg||"")}}
 function saveCfg(c){return saveJSON(KEYS.cfg,c)}
 function getAccounts(){const a=loadJSON(KEYS.accounts,[]);return Array.isArray(a)?a:[]}
 function saveAccounts(list){return saveJSON(KEYS.accounts,list)}
@@ -794,7 +794,9 @@ function applyRemoteCfg(c){
     serverBase:local.serverBase,
     autoSignin:c.autoSignin===true,
     autoSigninTime:(typeof c.autoSigninTime==="string"&&/^\d{1,2}:\d{2}$/.test(c.autoSigninTime)?c.autoSigninTime:"07:00"),
-    vehicleMonitor:c.vehicleMonitor===true
+    vehicleMonitor:c.vehicleMonitor===true,
+    widgetVehicle:String(c.widgetVehicle||""),
+    customBg:String(c.customBg||"")
   });
 }
 let panelSyncing=false;
@@ -1116,6 +1118,16 @@ function renderCfg(){
   '<div class="btn-row"><button class="btn danger" onclick="importBackupUI()">恢复备份</button></div>'+
   '<div class="hint" style="margin-top:10px">备份包含全部账号（昵称/用户ID/Token/BarkKey）与面板配置（签名密钥/社区任务开关/自动刷新等）。换机或重装后粘贴即可一键还原，无需重新抓包填写。</div>'+
   '</div></div>'+
+  '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar vio"></span>小组件显示车辆</h3></div><div class="cfg-body">'+
+  '<div class="f-item"><label>账号</label><select id="widget_acc" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card2);color:var(--txt);font-size:14px" onchange="widgetAccChanged()">'+widgetAccOptions()+ '</select></div>'+
+  '<div class="f-item" style="margin-top:10px"><label>车辆</label><select id="widget_veh" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card2);color:var(--txt);font-size:14px"></select></div>'+
+  '<div class="hint" style="margin-top:10px">选择后，iOS 桌面小组件将展示该车辆的实时状态（电量/续航/充电/签到）。<b>不选择时默认取第一个账号的第一辆车。</b>保存配置后生效。</div>'+
+  '</div></div>'+
+  '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar"></span>自定义背景</h3></div><div class="cfg-body">'+
+  '<div class="f-item"><label>上传背景照片（会铺在深色底色之上，建议深色/低亮度图片以保证文字可读）</label><input type="file" id="bg_file" accept="image/*" style="font-size:12px" onchange="bgFileChanged(this)"></div>'+
+  '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div id="bgPreview" style="width:120px;height:72px;border-radius:10px;border:1px solid var(--line);background:var(--card3);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;color:var(--txt3);font-size:10px;overflow:hidden">未选择</div><div style="display:flex;flex-direction:column;gap:8px"><button class="btn sm primary" onclick="applyBgUpload()" id="bg_apply_btn">应用背景</button><button class="btn sm" onclick="resetBg()">恢复默认</button></div></div>'+
+  '<div class="hint" style="margin-top:10px">图片以 base64 存入配置，随备份一并导出。切换背景实时生效，无需重启。</div>'+
+  '</div></div>'+
   '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar"></span>签名密钥配置</h3></div><div class="cfg-body">'+
   '<div class="form-grid">'+
   '<div class="f-item"><label>App 端 appId</label><input type="text" id="cfg_app_id" value="'+esc(cfg.app.appId)+'" style="font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>'+
@@ -1126,7 +1138,81 @@ function renderCfg(){
   '<div class="f-item" style="margin-top:12px"><label>云端控车 AES 密钥（32 位十六进制，开/关锁必填）</label><input type="password" id="cfg_vehicle_key" value="'+esc(cfg.vehicleAesKey)+'" placeholder="填写并保存后才能使用云端开锁/关锁" autocomplete="off" style="font-family:ui-monospace,Menlo,monospace;font-size:12px"><div class="hint">用于开/关锁报文 AES-256-ECB 加密，出于安全默认不内置。</div></div>'+
   '<div class="btn-row"><button class="btn primary" onclick="saveCfgUI()">保存配置</button><button class="btn" onclick="resetCfgUI()">恢复默认</button></div>'+
   '</div></div>'+
+  '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar amber"></span>安装说明 · IPA 怎么装</h3></div><div class="cfg-body" style="font-size:12px;line-height:1.9;color:var(--txt2)">'+
+  '<div class="ins-item"><b style="color:var(--txt)">① 巨魔 TrollStore（推荐）</b><br>下载 GitHub <code>ios-latest</code> Release 的 ZeehoSignPanel.ipa，在 TrollStore 中点击 <b>+</b> 选择该 IPA 即可安装。永久签名、不掉签，无需电脑。</div>'+
+  '<div class="ins-item" style="margin-top:10px"><b style="color:var(--txt)">② 自签（AltStore / Sideloadly）</b><br>用 Apple ID 通过 AltStore 或 Sideloadly 签名后安装到 iPhone，<b>7 天有效期</b>，到期需连接电脑重新签名。</div>'+
+  '<div class="ins-item" style="margin-top:10px"><b style="color:var(--txt)">③ 企业签名（分发）</b><br>由企业证书签名商分发安装，无 7 天限制；首次打开需在 <b>设置 → 通用 → VPN与设备管理</b> 信任对应企业证书。</div>'+
+  '<div class="ins-item" style="margin-top:10px"><b style="color:var(--txt)">④ 描述文件/测试版</b><br>TestFlight 或开发者描述文件安装的版本由分发者管理有效期，到期需重新获取。</div>'+
+  '<div class="hint" style="margin-top:10px">本面板同时支持代理脚本（Loon / Quantumult X / Surge / Shadowrocket）与桌面版（Windows）运行，安装方式见 README。</div>'+
+  '</div></div>'+
   '<div class="foot">极核 ZEEHO 面板 '+APP_VERSION+' · '+(isProxyMode()?'账号与密钥存储于脚本后端（本机持久化）':'数据存储于本机浏览器 localStorage')+'<br><a class="link" href="https://afdian.com/a/lucky798" target="_blank" rel="noopener">爱发电 · afdian.com/a/lucky798</a></div>';
+  // 小组件车辆下拉初始化（回填已保存的选择）
+  const wsel=document.getElementById("widget_acc");
+  if(wsel){
+    const cur=getCfg().widgetVehicle;let curUid="",curVin="";
+    if(cur){const p=cur.split("|");curUid=p[0]||"";curVin=p[1]||"";}
+    if(curUid)wsel.value=curUid;
+    document.getElementById("widget_veh").innerHTML=widgetVehOptions(wsel.value||"");
+    if(curVin){const vsel=document.getElementById("widget_veh");for(let i=0;i<vsel.options.length;i++){if(vsel.options[i].value===curVin){vsel.selectedIndex=i;break}}}
+  }
+  // 背景预览回填
+  const bp=document.getElementById("bgPreview");
+  if(bp){const bg=getCfg().customBg;if(bg){bp.style.backgroundImage="url("+bg+")";bp.textContent="";}}
+}
+/* ================= 小组件车辆选择 ================= */
+function widgetAccOptions(){
+  const list=STATE.data||[];
+  if(!list.length)return '<option value="">暂无账号数据（请先在首页刷新加载）</option>';
+  return list.map((a,i)=>{
+    const nm=esc((a.vehicle&&(a.vehicle.vehicleName||a.vehicle.vehicleType))||a.userName||("账号"+(i+1)));
+    return '<option value="'+esc(a.userId||"")+'" data-i="'+i+'">'+nm+'</option>';
+  }).join("");
+}
+function widgetVehOptions(uid){
+  const list=STATE.data||[];
+  const a=list.find(x=>String(x.userId||"")===String(uid));
+  if(!a||!a.vehicle||!a.vehicle.hasVehicle)return '<option value="">该账号暂无绑定车辆</option>';
+  const v=a.vehicle;
+  const arr=(Array.isArray(v.vehicles)&&v.vehicles.length)?v.vehicles.map(x=>({name:x.vehicleType||x.name||x.vinNo,vin:x.vinNo})):[{name:v.vehicleType||v.vehicleName||v.vinNo,vin:v.vinNo}];
+  return arr.map(x=>'<option value="'+esc(x.vin)+'">'+esc(x.name)+'</option>').join("");
+}
+function widgetAccChanged(){
+  const sel=el("widget_acc");if(!sel)return;
+  el("widget_veh").innerHTML=widgetVehOptions(sel.value||"");
+}
+function widgetSelectionText(){
+  const acc=el("widget_acc"),veh=el("widget_veh");
+  if(!acc||!veh||!acc.value||!veh.value)return "";
+  return acc.value+"|"+veh.value;
+}
+/* ================= 自定义背景 ================= */
+let __bgData="";
+function bgFileChanged(inp){
+  const f=inp&&inp.files&&inp.files[0];
+  if(!f)return;
+  if(f.size>6*1024*1024){toast("图片过大（限 6MB）","err");inp.value="";return;}
+  const r=new FileReader();
+  r.onload=function(){__bgData=r.result;const p=el("bgPreview");if(p){p.style.backgroundImage="url("+__bgData+")";p.textContent="";}toast("已选择图片，点「应用背景」生效","info");};
+  r.readAsDataURL(f);
+}
+function applyBgUpload(){
+  if(!__bgData){toast("请先选择图片","err");return;}
+  const c=getCfg();c.customBg=__bgData;saveCfg(c);
+  applyCustomBg();
+  const inp=el("bg_file");if(inp)inp.value="";
+  __bgData="";
+  toast("背景已应用","ok");
+}
+function resetBg(){
+  const c=getCfg();c.customBg="";saveCfg(c);
+  applyCustomBg();
+  const p=el("bgPreview");if(p){p.style.backgroundImage="";p.textContent="未选择";}
+  toast("已恢复默认背景","info");
+}
+function applyCustomBg(){
+  const bg=getCfg().customBg,b=document.body;
+  if(bg){b.style.backgroundImage="url("+bg+")";b.style.backgroundSize="cover";b.style.backgroundPosition="center";b.style.backgroundAttachment="fixed";}
+  else{b.style.backgroundImage="";b.style.backgroundSize="";b.style.backgroundPosition="";b.style.backgroundAttachment="";}
 }
 /* ================= 手机号登录（免抓包） ================= */
 async function sendSmsCode(){
@@ -1149,11 +1235,11 @@ async function phoneLoginUI(){
   else{toast((d&&d.message)||"登录失败","err");}
   btn.disabled=false;btn.textContent="登录并添加账号";
 }
-function collectCfgUI(){return{app:{appId:val("cfg_app_id"),appSecret:val("cfg_app_secret")},h5:{appId:val("cfg_h5_id"),appSecret:val("cfg_h5_secret")},vehicleAesKey:val("cfg_vehicle_key").trim(),autoRefreshSec:normalizeRefreshSec(getCfg().autoRefreshSec||60),serverBase:getCfg().serverBase||"",autoSignin:el("auto_signin")?el("auto_signin").checked:false,autoSigninTime:(val("cfg_signin_time")||"07:00"),vehicleMonitor:el("vehicle_monitor")?el("vehicle_monitor").checked:false,community:{enablePost:el("comm_post").checked,enableLike:el("comm_like").checked,enableComment:el("comm_comment").checked,enableShare:el("comm_share").checked,enableDelete:el("comm_delete").checked}}}
+function collectCfgUI(){return{app:{appId:val("cfg_app_id"),appSecret:val("cfg_app_secret")},h5:{appId:val("cfg_h5_id"),appSecret:val("cfg_h5_secret")},vehicleAesKey:val("cfg_vehicle_key").trim(),autoRefreshSec:normalizeRefreshSec(getCfg().autoRefreshSec||60),serverBase:getCfg().serverBase||"",autoSignin:el("auto_signin")?el("auto_signin").checked:false,autoSigninTime:(val("cfg_signin_time")||"07:00"),vehicleMonitor:el("vehicle_monitor")?el("vehicle_monitor").checked:false,widgetVehicle:widgetSelectionText()||getCfg().widgetVehicle,customBg:getCfg().customBg,community:{enablePost:el("comm_post").checked,enableLike:el("comm_like").checked,enableComment:el("comm_comment").checked,enableShare:el("comm_share").checked,enableDelete:el("comm_delete").checked}}}
 function val(id){const e=document.getElementById(id);return e?e.value:""}
 function el(id){return document.getElementById(id)}
 async function saveCfgUI(){const c=collectCfgUI();const ok=await Backend.saveConfig(c);if(ok){if(isProxyMode()){applyRemoteCfg(c);STATE.panelLoaded=false}toast("配置已保存","ok");startAutoRefresh(c.autoRefreshSec);refreshAll(true)}else toast("保存失败","err")}
-function resetCfgUI(){el("cfg_app_id").value=DEFAULT_CFG.app.appId;el("cfg_app_secret").value=DEFAULT_CFG.app.appSecret;el("cfg_h5_id").value=DEFAULT_CFG.h5.appId;el("cfg_h5_secret").value=DEFAULT_CFG.h5.appSecret;el("cfg_vehicle_key").value="";if(el("auto_signin"))el("auto_signin").checked=false;el("cfg_signin_time").value="07:00";el("comm_post").checked=true;el("comm_like").checked=true;el("comm_comment").checked=true;el("comm_share").checked=true;el("comm_delete").checked=true;toast("已恢复默认（需点击保存）","info")}
+function resetCfgUI(){el("cfg_app_id").value=DEFAULT_CFG.app.appId;el("cfg_app_secret").value=DEFAULT_CFG.app.appSecret;el("cfg_h5_id").value=DEFAULT_CFG.h5.appId;el("cfg_h5_secret").value=DEFAULT_CFG.h5.appSecret;el("cfg_vehicle_key").value="";if(el("auto_signin"))el("auto_signin").checked=false;el("cfg_signin_time").value="07:00";el("comm_post").checked=true;el("comm_like").checked=true;el("comm_comment").checked=true;el("comm_share").checked=true;el("comm_delete").checked=true;const c=getCfg();c.widgetVehicle="";c.customBg="";saveCfg(c);applyCustomBg();if(el("widget_acc")){el("widget_acc").value="";el("widget_veh").innerHTML="";}const bp=el("bgPreview");if(bp){bp.style.backgroundImage="";bp.textContent="未选择";}toast("已恢复默认（需点击保存）","info")}
 function addAccountUI(){cfgAccounts.push({userName:"",userId:"",token:"",barkKey:""});const list=el("accList");const idx=cfgAccounts.length-1;const html='<div class="acc-edit" data-i="'+idx+'"><div class="acc-edit-head"><span class="acc-edit-title"><span class="n">'+String(idx+1)+'</span>账号 '+String(idx+1)+'（新）</span><span class="acts"><button class="btn sm" id="uidBtn_'+idx+'" onclick="fetchUserIdUI('+idx+')">获取ID</button><button class="btn sm danger" onclick="deleteAccountUI('+idx+')">删除</button></span></div><div class="form-grid"><div class="f-item"><label>昵称</label><input type="text" id="acc_name_'+idx+'" placeholder="如 lucky798"></div><div class="f-item"><label>用户ID</label><input type="text" id="acc_uid_'+idx+'" placeholder="留空可点「获取ID」"></div></div><div class="f-item" style="margin-top:10px"><label>Authorization Token</label><input type="text" id="acc_token_'+idx+'" placeholder="a74779c7-…"></div><div class="f-item" style="margin-top:10px"><label>Bark 通知 Key（选填）</label><input type="text" id="acc_bark_'+idx+'" placeholder="Bark Key 或自建 https://域名/Key"></div></div>';if(list.querySelector(".acc-edit")||list.querySelector("[style*='text-align']")){list.insertAdjacentHTML("beforeend",html)}else{list.innerHTML=html}}
 function deleteAccountUI(idx){const row=document.querySelector('.acc-edit[data-i="'+idx+'"]');if(row){row.remove();cfgAccounts.splice(idx,1);toast("已删除（需点击保存）","info")}}
 function collectAccountsUI(){const rows=document.querySelectorAll("#accList .acc-edit");const list=[];rows.forEach(row=>{const i=row.getAttribute("data-i");const token=el("acc_token_"+i)?.value||"";if(token.trim()){list.push({userName:el("acc_name_"+i)?.value||"",userId:el("acc_uid_"+i)?.value||"",token:cleanToken(token),barkKey:cleanBarkKey(el("acc_bark_"+i)?.value||"")})}});return list}
@@ -1432,7 +1518,7 @@ async function extSet(action){
 }
 
 function init(){
-  applyTheme();mountSigninFab();
+  applyTheme();applyCustomBg();mountSigninFab();
   renderCfg();
   if(true){
     STATE.data=DEMO_DATA;STATE.tsText=fmtTime(new Date().toISOString());STATE.proxy=false;
