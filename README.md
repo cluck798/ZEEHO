@@ -39,6 +39,15 @@
 - 后台常驻充电监控（静音保活 + 周期轮询）
 - 下载：[ios-latest Release](https://github.com/cluck798/ZEEHO/releases/tag/ios-latest)，TrollStore 中点击 + 选择 IPA 安装，永久签名不掉签
 
+### 🔋 后台常驻增强（可选 · BackRun dylib 注入）
+App 已内置 `audio` 后台模式 + 静音循环保活 + 每 3 分钟充电/离线监控轮询，锁屏切后台后仍可较长时间存活。如需更持久的常驻后台，可注入第三方 **BackRun** 常驻插件：
+
+1. 下载 [`ios/BackRun.dylib`](ios/BackRun.dylib)（arm64）
+2. 在 **TrollStore** 中用该文件打开 → 选择「注入到 极核签到面板」
+3. 重启 App 后生效，后台不再被系统限时回收（配合静音保活可整夜常驻）
+
+> 该 dylib 拦截 `beginBackgroundTaskWithExpirationHandler` / `endBackgroundTask` 等后台任务 API，仅运行时注入，不改变 App 签名与 IPA。
+
 ## 🖼️ 在线演示 & 界面预览
 
 > **在线演示（免安装、示例数据、不联网）**：https://cluck798.github.io/ZEEHO/

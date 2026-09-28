@@ -377,6 +377,7 @@ nav.tabbar{
 .sheet-head h3{font-size:16px;font-weight:800;display:flex;align-items:center;gap:9px}
 .sheet-head h3 svg{width:18px;height:18px}
 .sheet-close{width:32px;height:32px;border-radius:10px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--txt2)}
+.sheet-close svg{width:16px;height:16px}
 .sheet-close:active{transform:scale(.9)}
 .sheet-body{padding:4px 20px 24px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .sr-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(146,170,205,.08);font-size:13px}
@@ -555,7 +556,7 @@ nav.tabbar{
 <script>
 "use strict";
 /* ================= 常量 ================= */
-const APP_VERSION = "v2.14.16";
+const APP_VERSION = "v2.14.17";
 const KEYS = { cfg:"zeeho_cfg", accounts:"zeeho_accounts", logs:"zeeho_logs" };
 
 /* ================= 工具函数 ================= */
@@ -944,7 +945,7 @@ function fmtMin(min){min=Number(min)||0;if(min<=0)return"";const h=Math.floor(mi
 function renderVehicleSwitch(v,idx){
   if(!v.vehicles||v.vehicles.length<2)return "";
   const cur=v.currentVin||"";
-  const items=v.vehicles.map(x=>'<button class="veh-chip'+(x.vinNo===cur?" on":"")+'" onclick="switchVehicle('+idx+',\''+esc(x.vinNo)+'\')">'+esc(x.name)+'</button>').join("");
+  const items=v.vehicles.map(x=>'<button class="veh-chip'+(x.vinNo===cur?" on":"")+'" onclick="switchVehicle('+idx+',\''+esc(x.vinNo)+'\')">'+esc(x.vehicleType||x.name)+'</button>').join("");
   return '<div class="veh-switch"><span class="veh-sw-label">车辆</span>'+items+'</div>';
 }
 async function switchVehicle(idx,vin){
@@ -1187,7 +1188,7 @@ const DEMO_INTEGRAL={ok:true,total:{integralTotal:"12,880"},expire:[{integralSco
 ]};
 const DEMO_SUPPLEMENT={count:{ok:true,data:{count:2,cardNum:2}},month:{ok:true,data:{nowSignDetailVos:[]}}};
 const DEMO_MONITOR={ok:true,snapshot:{vin:"LB7JM1C10NA000001",soc:76,range:63,voltage:84.5,current:0,chargeState:"未充电",headLock:"1",offline:false,refreshTime:"2026-09-29 03:10",frontPressure:"2.35bar",rearPressure:"2.40bar",frontTemp:"31°C",rearTemp:"32°C",batteryTemp:26,todayDistance:12.6,todayDuration:34,todayMaxSpeed:56,address:"福建省宁德市蕉城区东侨开发区",serviceEndDate:"2027-03-18"},
-  vehicles:[{vehicleName:"ZEEHO AE4",vinNo:"LB7JM1C10NA000001"},{vehicleName:"极核 AE6",vinNo:"LB7JM1C10NA000002"}]};
+  vehicles:[{vehicleName:"ZEEHO AE4",vinNo:"LB7JM1C10NA000001",vehicleType:"AE4 MAX2+"},{vehicleName:"极核 AE6",vinNo:"LB7JM1C10NA000002",vehicleType:"AE6"}]};
 const DEMO_CTRL_OPTS={ok:true,chargePower:[{key:"400"},{key:"800"},{key:"1000"}],gears:["25","45","60"]};
 const DEMO_INFO={ok:true,unread:{total:3},prizeRecords:{records:[{prizesName:"积分 +6",createTime:"2026-09-28 07:00",integral:6},{prizesName:"补签卡 ×1",createTime:"2026-09-21 07:00"}]},coupons:{records:[{},{},{}]},ota:[]};
 const DEMO_DATA=[
@@ -1360,7 +1361,7 @@ async function renderVehiclePage(){
   // 车辆选择（多车）
   if(vehList.length>1){
     const curVin=VH.vin||(mon&&mon.snapshot?mon.snapshot.vin:vehList[0].vinNo);
-    html+='<div class="opt-row">'+vehList.map(v=>'<button class="opt-chip '+(curVin===v.vinNo?'on':'')+'" onclick="VH.vin=\''+esc(v.vinNo)+'\';renderVehiclePage()">'+esc(v.vehicleName||v.vinNo)+'</button>').join("")+'</div>';
+    html+='<div class="opt-row">'+vehList.map(v=>'<button class="opt-chip '+(curVin===v.vinNo?'on':'')+'" onclick="VH.vin=\''+esc(v.vinNo)+'\';renderVehiclePage()">'+esc(v.vehicleType||v.vehicleName||v.vinNo)+'</button>').join("")+'</div>';
   }
   // 状态监控卡
   html+='<div class="panel-card"><div class="pc-head"><h4>'+I.car+'车辆状态</h4><span style="display:flex;gap:6px"><button class="btn sm" onclick="showVehicleDetail('+VH.accIdx+')">详情</button><button class="btn sm" onclick="renderVehiclePage()">刷新</button></span></div>';
