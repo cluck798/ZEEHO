@@ -49,13 +49,13 @@ jobs:
           rm -rf Payload
           mkdir Payload
           cp -R build/Build/Products/Release-iphoneos/ZeehoPanel.app Payload/
-        # v2.14.21 桌面小组件：ad-hoc 签名 Widget Extension（TrollStore 安装时会重签主 App）
-        if [ -d Payload/ZeehoPanel.app/PlugIns/ZeehoWidget.appex ]; then
-          codesign --force --sign - Payload/ZeehoPanel.app/PlugIns/ZeehoWidget.appex
-        fi
-        # 注入 BackRun dylib（后台常驻增强）：复制到 Frameworks 并给主二进制追加 LC_LOAD_DYLIB
-        mkdir -p Payload/ZeehoPanel.app/Frameworks
-        cp ../ios/BackRun.dylib Payload/ZeehoPanel.app/Frameworks/BackRun.dylib
+          # v2.14.21 桌面小组件：ad-hoc 签名 Widget Extension（TrollStore 安装时会重签主 App）
+          if [ -d Payload/ZeehoPanel.app/PlugIns/ZeehoWidget.appex ]; then
+            codesign --force --sign - Payload/ZeehoPanel.app/PlugIns/ZeehoWidget.appex
+          fi
+          # 注入 BackRun dylib（后台常驻增强）：复制到 Frameworks 并给主二进制追加 LC_LOAD_DYLIB
+          mkdir -p Payload/ZeehoPanel.app/Frameworks
+          cp ../ios/BackRun.dylib Payload/ZeehoPanel.app/Frameworks/BackRun.dylib
           # 从源码编译 insert_dylib（官方 release 二进制下载地址已失效 404，改用源码编译，无第三方依赖）
           curl -fsSL https://raw.githubusercontent.com/Tyilo/insert_dylib/eb7278162af8fcc372e7f2946a2dee6a386b17d8/insert_dylib/main.c -o insert_dylib.c
           clang -O2 -o insert_dylib insert_dylib.c

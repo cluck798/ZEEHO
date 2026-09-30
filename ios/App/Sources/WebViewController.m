@@ -6,7 +6,6 @@
 #import <WebKit/WebKit.h>
 #import <AVFoundation/AVFoundation.h>
 #import <UserNotifications/UserNotifications.h>
-#import <WidgetKit/WidgetKit.h>
 
 static NSString * const kPanelScheme = @"zeeho";
 // POST 请求体桥接头：WKWebView 对自定义 scheme 的 fetch/XHR POST 会剥离请求体
@@ -165,10 +164,8 @@ static UIColor *ZHPanelBackgroundColor(void) {
         if (!dir) return;
         NSURL *file = [dir URLByAppendingPathComponent:@"widget_snapshot.json"];
         [respBody writeToFile:file.path atomically:YES encoding:NSUTF8StringEncoding error:NULL];
-        // 通知 WidgetKit 刷新时间线
-        if (@available(iOS 14.0, *)) {
-            [[WidgetCenter shared] reloadTimelinesOfKind:@"ZeehoWidget"];
-        }
+        // WidgetCenter 为 Swift-only API，ObjC 无法直接调用；
+        // Widget 侧时间线每 15 分钟自刷新读取本共享文件，无需主动 reload。
     }];
 }
 
