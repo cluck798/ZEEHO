@@ -54,9 +54,7 @@ class MotoplayManager: NSObject {
     // MARK: - TCP 连接
     /// 建立 TCP 连接到车机
     func connect(completion: @escaping (Bool) -> Void) {
-        guard let host = NWEndpoint.Host(MotoplayManager.instrumentHost) else {
-            completion(false); return
-        }
+        let host = NWEndpoint.Host(MotoplayManager.instrumentHost)
         let conn = NWConnection(host: host, port: MotoplayManager.instrumentPort, using: .tcp)
         conn.stateUpdateHandler = { [weak self] state in
             switch state {
@@ -124,7 +122,7 @@ class MotoplayManager: NSObject {
 
         // 构造数据包：[命令类型长度(4B)][命令类型][数据]
         var packet = Data()
-        let cmdLen = UInt32(cmdData.count).bigEndian
+        var cmdLen = UInt32(cmdData.count).bigEndian
         packet.append(Data(bytes: &cmdLen, count: 4))
         packet.append(cmdData)
         packet.append(jsonData)
