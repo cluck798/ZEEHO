@@ -43,5 +43,5 @@ targets:
         INFOPLIST_FILE: Widget/Info.plist
         CODE_SIGN_ENTITLEMENTS: Widget/ZeehoWidget.entitlements
         ENABLE_BITCODE: "NO"
-        IPHONEOS_DEPLOYMENT_TARGET: "15.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "16.0"
         SKIP_INSTALL: "NO"
