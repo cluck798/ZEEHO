@@ -22,7 +22,26 @@ targets:
         PRODUCT_NAME: ZeehoPanel
         PRODUCT_BUNDLE_IDENTIFIER: com.zeeho.signpanel
         INFOPLIST_FILE: App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: App/ZeehoPanel.entitlements
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_BITCODE: "NO"
         IPHONEOS_DEPLOYMENT_TARGET: "14.0"
+    dependencies:
+      - target: ZeehoWidget
+  ZeehoWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widget/Sources
+      - path: Widget/Info.plist
+        buildPhase: none
+    settings:
+      base:
+        PRODUCT_NAME: ZeehoWidget
+        PRODUCT_BUNDLE_IDENTIFIER: com.zeeho.signpanel.widget
+        INFOPLIST_FILE: Widget/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Widget/ZeehoWidget.entitlements
+        ENABLE_BITCODE: "NO"
+        IPHONEOS_DEPLOYMENT_TARGET: "15.0"
+        SKIP_INSTALL: "NO"

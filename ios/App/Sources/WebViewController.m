@@ -6,6 +6,7 @@
 #import <WebKit/WebKit.h>
 #import <AVFoundation/AVFoundation.h>
 #import <UserNotifications/UserNotifications.h>
+#import <WidgetKit/WidgetKit.h>
 
 static NSString * const kPanelScheme = @"zeeho";
 // POST 请求体桥接头：WKWebView 对自定义 scheme 的 fetch/XHR POST 会剥离请求体
@@ -148,6 +149,27 @@ static UIColor *ZHPanelBackgroundColor(void) {
                          headers:@{}
                             body:nil
                       completion:^(NSInteger status, NSDictionary *respHeaders, NSString *respBody) {}];
+    // v2.14.21 桌面小组件：每次监控 tick 同步刷新 App Group 共享快照，Widget 每 15 分钟读取
+    [self refreshWidgetSnapshot];
+}
+
+// 拉取 /api/widget-snapshot 并写入 App Group 共享目录 widget_snapshot.json
+- (void)refreshWidgetSnapshot {
+    [self.dispatcher dispatchURL:@"http://zeeho.box/api/widget-snapshot"
+                          method:@"GET"
+                         headers:@{}
+                            body:nil
+                      completion:^(NSInteger status, NSDictionary *respHeaders, NSString *respBody) {
+        if (status != 200 || !respBody.length) return;
+        NSURL *dir = [[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:@"group.com.zeeho.signpanel"];
+        if (!dir) return;
+        NSURL *file = [dir URLByAppendingPathComponent:@"widget_snapshot.json"];
+        [respBody writeToFile:file.path atomically:YES encoding:NSUTF8StringEncoding error:NULL];
+        // 通知 WidgetKit 刷新时间线
+        if (@available(iOS 14.0, *)) {
+            [[WidgetCenter shared] reloadTimelinesOfKind:@"ZeehoWidget"];
+        }
+    }];
 }
 
 - (void)dealloc {

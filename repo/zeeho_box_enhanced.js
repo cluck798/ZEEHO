@@ -148,7 +148,8 @@ function getConfig() {
         basicAuth: (typeof c.basicAuth === "string" ? c.basicAuth : "").trim(),
         vehicleMonitor: c.vehicleMonitor === true,
         autoSignin: c.autoSignin === true,
-        autoSigninTime: (typeof c.autoSigninTime === "string" && /^\d{1,2}:\d{2}$/.test(c.autoSigninTime) ? c.autoSigninTime : "07:00")
+        autoSigninTime: (typeof c.autoSigninTime === "string" && /^\d{1,2}:\d{2}$/.test(c.autoSigninTime) ? c.autoSigninTime : "07:00"),
+        widgetVehicle: (typeof c.widgetVehicle === "string" ? c.widgetVehicle : "")
       };
     }
   } catch(e) {}
@@ -163,7 +164,8 @@ function getConfig() {
     basicAuth: "",
     vehicleMonitor: false,
     autoSignin: false,
-    autoSigninTime: "07:00"
+    autoSigninTime: "07:00",
+    widgetVehicle: ""
   };
 }
 function saveConfig(cfg) {
@@ -3276,6 +3278,36 @@ function accHeaders(acc, signH) {
   if (method === "GET" && path === "/api/vehicle-monitor-tick") {
     try { await checkVehicleMonitor(getConfig()); } catch(e) {}
     sendResp(200, { "Content-Type": "application/json" }, JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // ========== v2.14.21 API: 小组件快照（iOS WidgetKit 读取；主 App 周期调用并写入 App Group 共享目录） ==========
+  if (method === "GET" && path === "/api/widget-snapshot") {
+    try {
+      const cfg = getConfig();
+      const accounts = getAccounts();
+      if (!accounts.length) { sendResp(200, { "Content-Type": "application/json" }, JSON.stringify({ ok: false, error: "暂无账号" })); return; }
+      // 小组件显示车辆：cfg.widgetVehicle = "userId|vin"，未配置取第一个账号第一台车
+      let userId = "", vin = "";
+      const wv = String(cfg.widgetVehicle || "");
+      if (wv.indexOf("|") > 0) { const p = wv.split("|"); userId = p[0] || ""; vin = p[1] || ""; }
+      let acc = userId ? accounts.find(a => String(a.userId) === String(userId)) : null;
+      if (!acc) acc = accounts[0];
+      const data = await fetchAccountData(acc, cfg, vin || undefined);
+      const v = data.vehicle || {};
+      sendResp(200, { "Content-Type": "application/json" }, JSON.stringify({
+        ok: true, ts: new Date().toISOString(),
+        accountName: data.userName || "", userId: data.userId || "",
+        vehicleName: v.vehicleName || "", vehicleModel: v.vehicleModel || "",
+        hasVehicle: !!v.hasVehicle,
+        soc: v.batteryPercent || 0, range: v.residualRangeKm || 0, rangeEstimated: !!v.rangeEstimated,
+        voltage: v.voltage || 0, current: v.current || 0, chargeState: v.chargeState || "未充电",
+        online: v.online || "",
+        score: data.score || 0, continueDays: data.continueDays || 0, todayScore: data.todayScore || 0,
+        signedToday: !!data.signedToday,
+        todayDistance: v.todayDistance || 0, totalMileage: v.totalMileage || 0
+      }));
+    } catch(e) { sendResp(200, { "Content-Type": "application/json" }, JSON.stringify({ ok: false, error: String(e) })); }
     return;
   }
 
