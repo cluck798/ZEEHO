@@ -101,59 +101,104 @@ static UIColor *ZHPanelBackgroundColor(void) {
     UIView *loading = [[UIView alloc] initWithFrame:self.view.bounds];
     loading.backgroundColor = [UIColor colorWithRed:10/255.0 green:15/255.0 blue:30/255.0 alpha:1.0];
     loading.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    loading.translatesAutoresizingMaskIntoConstraints = NO;
 
-    // Logo（圆角方块 + ZEEHO 仪表 SVG）
-    UIView *logo = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 84, 84)];
-    logo.center = CGPointMake(loading.center.x, loading.center.y - 50);
+    // Logo：圆角方块 + ZEEHO SVG 仪表图标
+    UIView *logo = [[UIView alloc] init];
+    logo.translatesAutoresizingMaskIntoConstraints = NO;
     logo.layer.cornerRadius = 24;
     logo.layer.backgroundColor = [UIColor colorWithRed:14/255.0 green:143/255.0 blue:178/255.0 alpha:1.0].CGColor;
     logo.layer.shadowColor = [UIColor colorWithRed:14/255.0 green:143/255.0 blue:178/255.0 alpha:0.4].CGColor;
     logo.layer.shadowRadius = 20;
     logo.layer.shadowOpacity = 1;
     logo.layer.shadowOffset = CGSizeZero;
-    // SVG path 作为 Layer
+    // SVG 仪表路径（与 HTML 闪屏一致的 ZEEHO 标志）
+    CAShapeLayer *icon = [CAShapeLayer layer];
+    UIBezierPath *iconPath = [UIBezierPath bezierPath];
+    [iconPath moveToPoint:CGPointMake(4, 13.5)];
+    [iconPath addLineToPoint:CGPointMake(4, 9.08)];
+    [iconPath addCurveToPoint:CGPointMake(12, 5.5) controlPoint1:CGPointMake(7.58, 5.5) controlPoint2:CGPointMake(12, 5.5)];
+    [iconPath addCurveToPoint:CGPointMake(20, 13.5) controlPoint1:CGPointMake(12, 13.5) controlPoint2:CGPointMake(20, 9.08)];
+    [iconPath moveToPoint:CGPointMake(12, 13)];
+    [iconPath addLineToPoint:CGPointMake(19.5, 18.5)];
+    icon.path = iconPath.CGPath;
+    icon.strokeColor = [UIColor colorWithRed:4/255.0 green:18/255.0 blue:28/255.0 alpha:1.0].CGColor;
+    icon.lineWidth = 2.4;
+    icon.lineCap = kCALineCapRound;
+    icon.fillColor = nil;
+    // 两个圆点
+    CAShapeLayer *dot1 = [CAShapeLayer layer];
+    dot1.path = [UIBezierPath bezierPathWithOvalInRect:CGRectMake(5.3, 14.3, 4.4, 4.4)].CGPath;
+    dot1.fillColor = [UIColor colorWithRed:4/255.0 green:18/255.0 blue:28/255.0 alpha:1.0].CGColor;
+    CAShapeLayer *dot2 = [CAShapeLayer layer];
+    dot2.path = [UIBezierPath bezierPathWithOvalInRect:CGRectMake(14.8, 16.8, 4.4, 4.4)].CGPath;
+    dot2.fillColor = [UIColor colorWithRed:4/255.0 green:18/255.0 blue:28/255.0 alpha:1.0].CGColor;
+    [logo.layer addSublayer:icon];
+    [logo.layer addSublayer:dot1];
+    [logo.layer addSublayer:dot2];
+    icon.frame = CGRectMake(30, 19, 24, 24);
+    dot1.frame = CGRectMake(30, 19, 24, 24);
+    dot2.frame = CGRectMake(30, 19, 24, 24);
+
+    UILabel *title = [[UILabel alloc] init];
+    title.translatesAutoresizingMaskIntoConstraints = NO;
+    title.text = @"极核 ZEEHO";
+    title.textColor = [UIColor whiteColor];
+    title.font = [UIFont systemFontOfSize:21 weight:UIFontWeightBlack];
+
+    UILabel *sub = [[UILabel alloc] init];
+    sub.translatesAutoresizingMaskIntoConstraints = NO;
+    sub.text = @"签到 · 车辆 · 控车";
+    sub.textColor = [UIColor colorWithRed:147/255.0 green:160/255.0 blue:184/255.0 alpha:1.0];
+    sub.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
+
+    // Spinner + 文字横向排列
+    UIActivityIndicatorView *spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+    spinner.translatesAutoresizingMaskIntoConstraints = NO;
+    spinner.color = [UIColor colorWithRed:43/255.0 green:212/255.0 blue:242/255.0 alpha:1.0];
+
+    UILabel *loadText = [[UILabel alloc] init];
+    loadText.translatesAutoresizingMaskIntoConstraints = NO;
+    loadText.text = @"正在加载数据…";
+    loadText.textColor = [UIColor colorWithRed:147/255.0 green:160/255.0 blue:184/255.0 alpha:1.0];
+    loadText.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
+
+    UIStackView *loadRow = [[UIStackView alloc] initWithArrangedSubviews:@[spinner, loadText]];
+    loadRow.translatesAutoresizingMaskIntoConstraints = NO;
+    loadRow.axis = UILayoutConstraintAxisHorizontal;
+    loadRow.alignment = UIStackViewAlignmentCenter;
+    loadRow.spacing = 8;
+
+    [loading addSubview:logo];
+    [loading addSubview:title];
+    [loading addSubview:sub];
+    [loading addSubview:loadRow];
+    [self.view addSubview:loading];
+
+    // Auto Layout 约束
+    [NSLayoutConstraint activateConstraints:@[
+        [loading.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [loading.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+        [loading.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [loading.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [logo.widthAnchor constraintEqualToConstant:84],
+        [logo.heightAnchor constraintEqualToConstant:84],
+        [logo.centerXAnchor constraintEqualToAnchor:loading.centerXAnchor],
+        [logo.centerYAnchor constraintEqualToAnchor:loading.centerYAnchor constant:-50],
+        [title.topAnchor constraintEqualToAnchor:logo.bottomAnchor constant:20],
+        [title.centerXAnchor constraintEqualToAnchor:loading.centerXAnchor],
+        [sub.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:7],
+        [sub.centerXAnchor constraintEqualToAnchor:loading.centerXAnchor],
+        [loadRow.topAnchor constraintEqualToAnchor:sub.bottomAnchor constant:34],
+        [loadRow.centerXAnchor constraintEqualToAnchor:loading.centerXAnchor],
+    ]];
+    [spinner startAnimating];
+    // Logo 入场动画
     CAKeyframeAnimation *logoAnim = [CAKeyframeAnimation animationWithKeyPath:@"transform.scale"];
     logoAnim.values = @[@0.6, @1.0];
     logoAnim.duration = 0.6;
     logoAnim.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     [logo.layer addAnimation:logoAnim forKey:@"popIn"];
-
-    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 200, 28)];
-    title.center = CGPointMake(loading.center.x, loading.center.y + 10);
-    title.text = @"极核 ZEEHO";
-    title.textColor = [UIColor whiteColor];
-    title.font = [UIFont systemFontOfSize:21 weight:UIFontWeightBlack];
-    title.textAlignment = NSTextAlignmentCenter;
-    title.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin;
-
-    UILabel *sub = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 200, 20)];
-    sub.center = CGPointMake(loading.center.x, loading.center.y + 38);
-    sub.text = @"签到 · 车辆 · 控车";
-    sub.textColor = [UIColor colorWithRed:147/255.0 green:160/255.0 blue:184/255.0 alpha:1.0];
-    sub.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
-    sub.textAlignment = NSTextAlignmentCenter;
-    sub.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin;
-
-    // Spinner + 文字
-    UIActivityIndicatorView *spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
-    spinner.color = [UIColor colorWithRed:43/255.0 green:212/255.0 blue:242/255.0 alpha:1.0];
-    spinner.center = CGPointMake(loading.center.x - 35, loading.center.y + 72);
-    [spinner startAnimating];
-
-    UILabel *loadText = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 200, 20)];
-    loadText.center = CGPointMake(loading.center.x + 15, loading.center.y + 72);
-    loadText.text = @"正在加载数据…";
-    loadText.textColor = [UIColor colorWithRed:147/255.0 green:160/255.0 blue:184/255.0 alpha:1.0];
-    loadText.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
-    loadText.textAlignment = NSTextAlignmentLeft;
-    loadText.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin;
-
-    [loading addSubview:logo];
-    [loading addSubview:title];
-    [loading addSubview:sub];
-    [loading addSubview:spinner];
-    [loading addSubview:loadText];
-    [self.view addSubview:loading];
     self.loadingView = loading;
 
     [self requestNotificationAuth];
