@@ -407,6 +407,10 @@ static UIColor *ZHPanelBackgroundColor(void) {
     if ([scheme isEqualToString:@"http"] || [scheme isEqualToString:@"https"]) {
         [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
     }
+    // mailto: 交给系统邮件 App
+    if ([scheme isEqualToString:@"mailto"] || [scheme isEqualToString:@"tel"]) {
+        [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
+    }
     decisionHandler(WKNavigationActionPolicyCancel);
 }
 

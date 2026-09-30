@@ -1150,6 +1150,11 @@ function renderCfg(){
   '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar amber"></span>当前安装信息</h3></div><div class="cfg-body" style="font-size:12px;line-height:1.9;color:var(--txt2)" id="installInfo">'+
   '<div style="color:var(--txt3)">正在检测安装方式…</div>'+
   '</div></div>'+
+  '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar vio"></span>反馈与建议</h3></div><div class="cfg-body">'+
+  '<div class="f-item"><label>Bug 报告或功能建议</label><textarea id="feedback_text" rows="4" placeholder="请描述遇到的问题或想要的功能…" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card2);color:var(--txt);font-size:14px;font-family:inherit;resize:vertical"></textarea></div>'+
+  '<div class="btn-row" style="margin-top:10px"><button class="btn primary" onclick="submitFeedback()">提交反馈</button></div>'+
+  '<div class="hint" style="margin-top:10px">点击提交后将以邮件方式发送至 <b>mlink798@outlook.com</b>，请允许打开邮件 App。</div>'+
+  '</div></div>'+
   '<div class="btn-row" style="margin:14px 2px"><button class="btn primary" onclick="saveCfgUI()">保存配置</button><button class="btn" onclick="resetCfgUI()">恢复默认</button></div>'+
   '<div class="foot">极核 ZEEHO 面板 '+APP_VERSION+' · '+(isProxyMode()?'账号与密钥存储于脚本后端（本机持久化）':'数据存储于本机浏览器 localStorage')+'<br><a class="link" href="https://afdian.com/a/lucky798" target="_blank" rel="noopener">爱发电 · afdian.com/a/lucky798</a></div>';
   // 小组件车辆下拉初始化（回填已保存的选择）
@@ -1165,6 +1170,18 @@ function renderCfg(){
   const bp=document.getElementById("bgPreview");
   if(bp){const bg=getCfg().customBg;if(bg){bp.style.backgroundImage="url("+bg+")";bp.textContent="";}}
   renderInstallInfo();
+}
+/* ================= 反馈提交 ================= */
+function submitFeedback(){
+  const ta=document.getElementById("feedback_text");
+  if(!ta||!ta.value.trim()){toast("请填写反馈内容","err");return}
+  const subject="[极核面板 "+APP_VERSION+"] 反馈";
+  const body=ta.value.trim()+"\n\n---\n运行环境: "+installEnvName()+"\n版本: "+APP_VERSION+"\n时间: "+new Date().toLocaleString();
+  const url="mailto:mlink798@outlook.com?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
+  // 先尝试 window.open，iOS WKWebView 会走 decidePolicyForNavigationAction 拦截 mailto
+  const a=document.createElement("a");a.href=url;a.style.display="none";document.body.appendChild(a);a.click();
+  setTimeout(function(){document.body.removeChild(a)},100);
+  toast("正在打开邮件 App…","info");
 }
 /* ================= 当前安装信息 ================= */
 function installEnvName(){
