@@ -83,6 +83,8 @@ static UIColor *ZHPanelBackgroundColor(void) {
     [self requestNotificationAuth];
     [self startBackgroundKeepAlive];
     [self startMonitorTimer];
+    // 首次启动立即拉取小组件快照，不等 3 分钟定时器
+    [self refreshWidgetSnapshot];
 }
 
 #pragma mark - 常驻后台 & 充电监控
@@ -164,8 +166,19 @@ static UIColor *ZHPanelBackgroundColor(void) {
         if (!dir) return;
         NSURL *file = [dir URLByAppendingPathComponent:@"widget_snapshot.json"];
         [respBody writeToFile:file.path atomically:YES encoding:NSUTF8StringEncoding error:NULL];
-        // WidgetCenter 为 Swift-only API，ObjC 无法直接调用；
-        // Widget 侧时间线每 15 分钟自刷新读取本共享文件，无需主动 reload。
+        // 通过 ObjC runtime 动态调用 WidgetCenter.shared.reloadAllTimelines()
+        // （WidgetKit 是 Swift framework，ObjC 无法直接 import，用 NSClassFromString 桥接）
+        Class wcClass = NSClassFromString(@"WidgetCenter");
+        if (wcClass) {
+            SEL sharedSel = NSSelectorFromString(@"shared");
+            SEL reloadSel = NSSelectorFromString(@"reloadAllTimelines");
+            if ([wcClass respondsToSelector:sharedSel]) {
+                id shared = [wcClass performSelector:sharedSel];
+                if (shared && [shared respondsToSelector:reloadSel]) {
+                    [shared performSelector:reloadSel];
+                }
+            }
+        }
     }];
 }
 
