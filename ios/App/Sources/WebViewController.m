@@ -314,7 +314,7 @@ static UIColor *ZHPanelBackgroundColor(void) {
             NSArray *parts = [data componentsSeparatedByString:@"|"];
             if (parts.count >= 2) {
                 NSString *command = parts[0];
-                NSString *payload = [parts substringFromIndex:1].componentsJoinedByString:@"|"];
+                NSString *payload = [[parts subarrayWithRange:NSMakeRange(1, parts.count - 1)] componentsJoinedByString:@"|"];
                 SEL sel = NSSelectorFromString(@"mpSendNavData:data:callback:");
                 id (*castSel)(id, SEL, id, id, id) = (void *)[mpClass methodForSelector:sel];
                 castSel(mpClass, sel, command, payload, ^(BOOL ok) {
