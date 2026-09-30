@@ -481,6 +481,7 @@ nav.tabbar{
 @keyframes sp-in{from{opacity:0;transform:scale(.6) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
 @keyframes sp-up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 </style>
+<script src="https://webapi.amap.com/maps?v=2.0&key=5a9739e42d1d40ee9b88a2582ed93818&plugin=AMap.AutoComplete,AMap.Driving"></script>
 </head>
 <body>
 <div class="bg-glow"></div>
@@ -868,7 +869,7 @@ function switchTab(tab){
   // 立即签到悬浮按钮仅首页显示
   const fab=document.getElementById("signinFab");if(fab)fab.style.display=(tab==="home"?"flex":"none");
   if(tab==="points")renderPoints();
-  if(tab==="vehicle")renderVehiclePage();
+  if(tab==="vehicle"){renderVehiclePage();navInitOnTab()}
   if(tab==="logs")renderLogs();
   if(tab==="cfg")renderCfg();
 }
@@ -1517,6 +1518,17 @@ async function renderVehiclePage(){
       +'<button class="btn sm primary" onclick="extSet(\'chargePower\')">设置</button></div>';
   }
   // v2.14.21 删除限速档位设置
+  // v2.14.22 导航投屏面板（Motoplay）
+  html+='<div style="height:1px;background:var(--line);margin:12px 0"></div>';
+  html+='<div style="font-size:12px;font-weight:700;color:var(--txt2);margin-bottom:6px">导航投屏</div>';
+  html+='<div class="nav-panel">';
+  html+='<div id="navMap" style="width:100%;height:200px;border-radius:12px;background:var(--card3);border:1px solid var(--line);margin-bottom:8px;overflow:hidden"></div>';
+  html+='<div style="display:flex;gap:8px;margin-bottom:8px"><input type="text" id="navDestInput" placeholder="搜索目的地…" style="flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card2);color:var(--txt);font-size:14px" oninput="navSearch(this.value)"><button class="btn sm" id="navConnBtn" onclick="navToggleConn()">连接车机</button></div>';
+  html+='<div id="navResults" style="max-height:160px;overflow-y:auto;margin-bottom:8px"></div>';
+  html+='<div id="navRouteInfo" class="nav-route-info" style="display:none"></div>';
+  html+='<div class="btn-row"><button class="btn primary" id="navCastBtn" onclick="navStartCast()" disabled style="opacity:.5">开始投屏</button><button class="btn" id="navStopBtn" onclick="navStopCast()" disabled style="opacity:.5">结束</button></div>';
+  html+='<div class="hint" style="margin-top:8px">投屏需连接车机 WiFi（192.168.0.1），导航数据通过 WiFi 直连推送到车机 TFT 屏幕。</div>';
+  html+='</div>';
   html+='</div>';
   // 信息中心卡
   html+='<div class="panel-card"><div class="pc-head"><h4>'+I.bell+'信息中心</h4></div>';
@@ -1538,6 +1550,116 @@ async function renderVehiclePage(){
   html+='<div class="foot">车控扩展指令经云端下发，响应可能较慢</div>';
   el.innerHTML=html;
 }
+/* ================= v2.14.22 Motoplay 导航投屏 ================= */
+let NAV={map:null,driving:null,placeSearch:null,autoComplete:null,route:null,navSteps:[],curStep:0,casting:false,watchId:null,amapLoaded:false,amapKey:"5a9739e42d1d40ee9b88a2582ed93818"};
+function navInitAMap(){
+  if(NAV.amapLoaded||typeof AMap==="undefined")return;
+  NAV.amapLoaded=true;
+  NAV.map=new AMap.Map("navMap",{zoom:14,mapStyle:"amap://styles/dark"});
+  AMap.plugin(["AMap.AutoComplete","AMap.Driving"],function(){
+    NAV.autoComplete=new AMap.AutoComplete({city:"全国"});
+    NAV.driving=new AMap.Driving({policy:AMap.DrivingPolicy.LEAST_TIME,map:NAV.map,hideMarkers:false});
+  });
+}
+function navSearch(kw){
+  if(!kw||kw.length<2){document.getElementById("navResults").innerHTML="";return}
+  if(!NAV.autoComplete){setTimeout(function(){navSearch(kw)},500);return}
+  NAV.autoComplete.search(kw,function(status,result){
+    if(status!=="complete"||!result.tips)return;
+    document.getElementById("navResults").innerHTML=result.tips.slice(0,8).map(function(t){
+      return '<div class="nav-result-item" onclick="navPickDest('+t.location.getLng()+','+t.location.getLat()+',\''+esc(t.name).replace(/'/g,"\\'")+'\')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--line)"><div style="font-size:13px;font-weight:600;color:var(--txt)">'+esc(t.name)+'</div><div style="font-size:11px;color:var(--txt3)">'+esc(t.district||"")+'</div></div>';
+    }).join("");
+  });
+}
+function navPickDest(lng,lat,name){
+  document.getElementById("navDestInput").value=name;
+  document.getElementById("navResults").innerHTML="";
+  if(!NAV.map){navInitAMap();if(!NAV.map){setTimeout(function(){navPickDest(lng,lat,name)},500);return}}
+  NAV.map.setCenter([lng,lat]);
+  NAV.map.setZoom(15);
+  // 规划路线：起点=车辆位置，终点=选择地点
+  var veh=STATE.data&&STATE.data[VH.accIdx]&&STATE.data[VH.accIdx].vehicle;
+  var startLng=veh&&Number(veh.longitude);
+  var startLat=veh&&Number(veh.latitude);
+  if(!startLng||!startLat){toast("车辆暂无GPS坐标，无法规划路线","err");return}
+  if(!NAV.driving){toast("地图引擎加载中…","info");setTimeout(function(){navPickDest(lng,lat,name)},500);return}
+  NAV.driving.search([startLng,startLat],[lng,lat],function(status,result){
+    if(status!=="complete"||!result.routes||!result.routes.length){toast("路线规划失败","err");return}
+    NAV.route=result.routes[0];
+    NAV.navSteps=NAV.route.steps||[];
+    NAV.curStep=0;
+    var info=document.getElementById("navRouteInfo");
+    info.style.display="block";
+    info.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--card2);border-radius:10px"><div><div style="font-size:13px;font-weight:700;color:var(--txt)">'+(NAV.route.distance/1000).toFixed(1)+' km · '+Math.ceil(NAV.route.time/60)+' 分钟</div><div style="font-size:11px;color:var(--txt3)">'+NAV.navSteps.length+' 步 · '+esc(name)+'</div></div></div>';
+    var castBtn=document.getElementById("navCastBtn");castBtn.disabled=false;castBtn.style.opacity=1;
+  });
+}
+function navToggleConn(){
+  var btn=document.getElementById("navConnBtn");
+  if(typeof motoplayHandler!=="function"){toast("仅支持 iOS App 内使用","err");return}
+  btn.textContent="连接中…";btn.disabled=true;
+  motoplayHandler("isConnected","",function(ok){
+    if(ok){toast("车机已连接","ok");btn.textContent="已连接";btn.disabled=true;return}
+    motoplayHandler("connect","",function(succ){
+      if(succ){toast("车机连接成功","ok");btn.textContent="已连接";btn.disabled=false}
+      else{toast("连接失败，请确认已连接车机 WiFi（192.168.0.1）","err");btn.textContent="连接车机";btn.disabled=false}
+    });
+  });
+}
+function navStartCast(){
+  if(!NAV.route){toast("请先规划路线","err");return}
+  if(typeof motoplayHandler!=="function"){toast("仅支持 iOS App 内使用","err");return}
+  motoplayHandler("isConnected","",function(ok){
+    if(!ok){toast("请先连接车机","err");navToggleConn();return}
+    var routeData={distance:NAV.route.distance,time:NAV.route.time,steps:NAV.navSteps.map(function(s){return{instruction:s.instruction,road:s.road||"",distance:s.distance,action:s.action||"",polyline:s.polyline&&s.polyline.paths?undefined:s.polyline}})};
+    motoplayHandler("sendNavData","START_NAVIGATION|"+JSON.stringify(routeData),function(succ){
+      if(succ){
+        toast("投屏已启动","ok");NAV.casting=true;
+        document.getElementById("navCastBtn").style.opacity=.5;document.getElementById("navCastBtn").disabled=true;
+        document.getElementById("navStopBtn").style.opacity=1;document.getElementById("navStopBtn").disabled=false;
+        // 开始位置追踪，推送实时指令
+        if(navigator.geolocation){NAV.watchId=navigator.geolocation.watchPosition(navOnPosChange,navOnPosErr,{enableHighAccuracy:true,maximumAge:3000,timeout:10000})}
+      }else{toast("投屏失败","err")}
+    });
+  });
+}
+function navOnPosChange(pos){
+  if(!NAV.casting)return;
+  var lat=pos.coords.latitude,lng=pos.coords.longitude;
+  // 推送速度更新
+  var spd=pos.coords.speed!=null?pos.coords.speed:0;
+  motoplayHandler("sendNavData","SPEED|{\"speed\":"+spd.toFixed(1)+"}",function(){});
+  // 计算当前路段（简化版：按距离匹配）
+  var minDist=1e9,newStep=NAV.curStep;
+  for(var i=NAV.curStep;i<Math.min(NAV.curStep+3,NAV.navSteps.length);i++){
+    var s=NAV.navSteps[i];
+    if(!s.start_location)continue;
+    var d=Math.hypot(s.start_location.lat-lat,s.start_location.lng-lng);
+    if(d<minDist){minDist=d;newStep=i}
+  }
+  if(newStep!==NAV.curStep){
+    NAV.curStep=newStep;
+    var step=NAV.navSteps[NAV.curStep];
+    if(step){
+      var stepData={stepIndex:NAV.curStep,instruction:step.instruction||"",road:step.road||"",distance:step.distance||0,action:step.action||""};
+      motoplayHandler("sendNavData","MOVE_MAP|"+JSON.stringify({lat:lat,lng:lng,stepIndex:NAV.curStep,instruction:stepData.instruction}),function(){});
+    }
+  }
+}
+function navOnPosErr(e){if(NAV.casting)toast("GPS定位异常: "+(e.message||""),"err")}
+function navStopCast(){
+  if(typeof motoplayHandler==="function"){
+    motoplayHandler("sendNavData","STOP_NAVIGATION|{}",function(){});
+  }
+  if(NAV.watchId){navigator.geolocation.clearWatch(NAV.watchId);NAV.watchId=null}
+  NAV.casting=false;
+  toast("投屏已结束","info");
+  document.getElementById("navCastBtn").style.opacity=1;document.getElementById("navCastBtn").disabled=false;
+  document.getElementById("navStopBtn").style.opacity=.5;document.getElementById("navStopBtn").disabled=true;
+}
+// 车辆页加载时初始化高德地图
+function navInitOnTab(){setTimeout(function(){if(document.getElementById("navMap")&&!NAV.map){navInitAMap()}},300)}
+
 async function extSet(action){
   const list=ptAccounts();const acc=list[VH.accIdx];if(!acc||!acc.userId)return;
   const body={action:action,userId:acc.userId,vin:VH.vin||""};

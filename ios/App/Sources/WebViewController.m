@@ -58,9 +58,10 @@ static UIColor *ZHPanelBackgroundColor(void) {
     [config setURLSchemeHandler:self forURLScheme:kPanelScheme];
     config.allowsInlineMediaPlayback = YES;
 
-    // 注入 JS：hook hideSplash，数据就绪时通知原生隐藏加载提示
+    // 注入 JS：hook hideSplash + Motoplay 投屏桥接
     WKUserContentController *userCtrl = [[WKUserContentController alloc] init];
     [userCtrl addScriptMessageHandler:self name:@"hideLoading"];
+    [userCtrl addScriptMessageHandler:self name:@"motoplay"];
     static NSString * const kSplashHook =
     @"<script>(function(){"
     "var s=document.getElementById('splash');"
@@ -68,6 +69,12 @@ static UIColor *ZHPanelBackgroundColor(void) {
     "var o=window.hideSplash;"
     "if(typeof o==='function'){window.hideSplash=function(){o.apply(this,arguments);"
     "if(window.webkit&&window.webkit.messageHandlers.hideLoading)window.webkit.messageHandlers.hideLoading.postMessage(null)}}"
+    // Motoplay 桥接：前端通过 motoplayHandler(command,data) 调原生
+    "window.motoplayHandler=function(cmd,data,cb){"
+    "if(!window.webkit||!window.webkit.messageHandlers.motoplay)return cb(false);"
+    "var id='mp_'+Date.now();window.__mpCbs=window.__mpCbs||{};if(cb)window.__mpCbs[id]=cb;"
+    "window.webkit.messageHandlers.motoplay.postMessage({command:cmd,data:data||'',id:id})"
+    "};"
     "})();</script>";
     [userCtrl addUserScript:[[WKUserScript alloc] initWithSource:kSplashHook
                                                    injectionTime:WKUserScriptInjectionTimeAtDocumentEnd
@@ -280,6 +287,47 @@ static UIColor *ZHPanelBackgroundColor(void) {
             }];
         }
     }
+    // Motoplay 投屏桥接
+    if ([message.name isEqualToString:@"motoplay"]) {
+        NSDictionary *body = message.body;
+        NSString *cmd = body[@"command"];
+        NSString *data = body[@"data"];
+        NSString *cbId = body[@"id"];
+        // 通过 ObjC runtime 调用 MotoplayManager
+        Class mpClass = NSClassFromString(@"MotoplayManager");
+        if (!mpClass) {
+            [self evaluateJS:[NSString stringWithFormat:@"window.__mpCbs['%@'](false)", cbId]];
+            return;
+        }
+        if ([cmd isEqualToString:@"connect"]) {
+            [mpClass performSelector:NSSelectorFromString(@"mpConnect:") withObject:^(BOOL ok) {
+                [self evaluateJS:[NSString stringWithFormat:@"window.__mpCbs['%@'](%@)", cbId, ok ? @"true" : @"false"]];
+            }];
+        } else if ([cmd isEqualToString:@"disconnect"]) {
+            [mpClass performSelector:NSSelectorFromString(@"mpDisconnect")];
+            [self evaluateJS:[NSString stringWithFormat:@"window.__mpCbs['%@'](true)", cbId]];
+        } else if ([cmd isEqualToString:@"isConnected"]) {
+            BOOL ok = [mpClass performSelector:NSSelectorFromString(@"mpIsConnected")];
+            [self evaluateJS:[NSString stringWithFormat:@"window.__mpCbs['%@'](%@)", cbId, ok ? @"true" : @"false"]];
+        } else if ([cmd isEqualToString:@"sendNavData"]) {
+            // data = "COMMAND_TYPE|jsonPayload"
+            NSArray *parts = [data componentsSeparatedByString:@"|"];
+            if (parts.count >= 2) {
+                NSString *command = parts[0];
+                NSString *payload = [parts substringFromIndex:1].componentsJoinedByString:@"|"];
+                SEL sel = NSSelectorFromString(@"mpSendNavData:data:callback:");
+                id (*castSel)(id, SEL, id, id, id) = (void *)[mpClass methodForSelector:sel];
+                castSel(mpClass, sel, command, payload, ^(BOOL ok) {
+                    [self evaluateJS:[NSString stringWithFormat:@"window.__mpCbs['%@'](%@)", cbId, ok ? @"true" : @"false"]];
+                });
+            }
+        }
+    }
+}
+
+// JS 执行辅助
+- (void)evaluateJS:(NSString *)js {
+    [self.webView evaluateJavaScript:js completionHandler:nil];
 }
 
 #pragma mark - WKNavigationDelegate
