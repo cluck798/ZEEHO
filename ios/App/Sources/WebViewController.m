@@ -97,22 +97,62 @@ static UIColor *ZHPanelBackgroundColor(void) {
     NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"%@://panel/", kPanelScheme]];
     [webView loadRequest:[NSURLRequest requestWithURL:url]];
 
-    // 加载提示：JS 引擎初始化期间显示，页面渲染完后自动隐藏
+    // 品牌开屏：与 HTML 闪屏视觉一致，数据就绪后淡出
     UIView *loading = [[UIView alloc] initWithFrame:self.view.bounds];
-    loading.backgroundColor = ZHPanelBackgroundColor();
+    loading.backgroundColor = [UIColor colorWithRed:10/255.0 green:15/255.0 blue:30/255.0 alpha:1.0];
     loading.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    UIActivityIndicatorView *spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleLarge];
+
+    // Logo（圆角方块 + ZEEHO 仪表 SVG）
+    UIView *logo = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 84, 84)];
+    logo.center = CGPointMake(loading.center.x, loading.center.y - 50);
+    logo.layer.cornerRadius = 24;
+    logo.layer.backgroundColor = [UIColor colorWithRed:14/255.0 green:143/255.0 blue:178/255.0 alpha:1.0].CGColor;
+    logo.layer.shadowColor = [UIColor colorWithRed:14/255.0 green:143/255.0 blue:178/255.0 alpha:0.4].CGColor;
+    logo.layer.shadowRadius = 20;
+    logo.layer.shadowOpacity = 1;
+    logo.layer.shadowOffset = CGSizeZero;
+    // SVG path 作为 Layer
+    CAKeyframeAnimation *logoAnim = [CAKeyframeAnimation animationWithKeyPath:@"transform.scale"];
+    logoAnim.values = @[@0.6, @1.0];
+    logoAnim.duration = 0.6;
+    logoAnim.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [logo.layer addAnimation:logoAnim forKey:@"popIn"];
+
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 200, 28)];
+    title.center = CGPointMake(loading.center.x, loading.center.y + 10);
+    title.text = @"极核 ZEEHO";
+    title.textColor = [UIColor whiteColor];
+    title.font = [UIFont systemFontOfSize:21 weight:UIFontWeightBlack];
+    title.textAlignment = NSTextAlignmentCenter;
+    title.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin;
+
+    UILabel *sub = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 200, 20)];
+    sub.center = CGPointMake(loading.center.x, loading.center.y + 38);
+    sub.text = @"签到 · 车辆 · 控车";
+    sub.textColor = [UIColor colorWithRed:147/255.0 green:160/255.0 blue:184/255.0 alpha:1.0];
+    sub.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
+    sub.textAlignment = NSTextAlignmentCenter;
+    sub.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin;
+
+    // Spinner + 文字
+    UIActivityIndicatorView *spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
     spinner.color = [UIColor colorWithRed:43/255.0 green:212/255.0 blue:242/255.0 alpha:1.0];
-    spinner.center = CGPointMake(loading.center.x, loading.center.y - 20);
+    spinner.center = CGPointMake(loading.center.x - 35, loading.center.y + 72);
     [spinner startAnimating];
+
+    UILabel *loadText = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 200, 20)];
+    loadText.center = CGPointMake(loading.center.x + 15, loading.center.y + 72);
+    loadText.text = @"正在加载数据…";
+    loadText.textColor = [UIColor colorWithRed:147/255.0 green:160/255.0 blue:184/255.0 alpha:1.0];
+    loadText.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
+    loadText.textAlignment = NSTextAlignmentLeft;
+    loadText.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin;
+
+    [loading addSubview:logo];
+    [loading addSubview:title];
+    [loading addSubview:sub];
     [loading addSubview:spinner];
-    UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(0, loading.center.y + 20, loading.bounds.size.width, 24)];
-    label.text = @"加载中…";
-    label.textColor = [UIColor colorWithRed:147/255.0 green:160/255.0 blue:184/255.0 alpha:1.0];
-    label.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
-    label.textAlignment = NSTextAlignmentCenter;
-    label.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    [loading addSubview:label];
+    [loading addSubview:loadText];
     [self.view addSubview:loading];
     self.loadingView = loading;
 
