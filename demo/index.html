@@ -556,7 +556,7 @@ nav.tabbar{
 <script>
 "use strict";
 /* ================= 常量 ================= */
-const APP_VERSION = "v2.14.19";
+const APP_VERSION = "v2.14.20";
 const KEYS = { cfg:"zeeho_cfg", accounts:"zeeho_accounts", logs:"zeeho_logs" };
 
 /* ================= 工具函数 ================= */
@@ -590,8 +590,8 @@ function aes256EcbEncryptBase64(plaintext,keyStr){const key=aesUtf8Bytes(keyStr)
 /* ================= 存储 ================= */
 function loadJSON(k,fallback){try{const raw=localStorage.getItem(k);if(!raw)return fallback;const v=JSON.parse(raw);return v===undefined||v===null?fallback:v}catch(e){return fallback}}
 function saveJSON(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
-const DEFAULT_CFG={app:{appId:"S7qPWPU1",appSecret:"c5e0da7f4da28df805694ec3dd1fc6792e9df99d"},h5:{appId:"Sw5F9uJi",appSecret:"46870a8f678a09109468f5b0168818b91c292845"},community:{enablePost:true,enableLike:true,enableComment:true,enableShare:true,enableDelete:true},vehicleAesKey:"",autoRefreshSec:60,serverBase:"",autoSignin:false,autoSigninTime:"07:00",vehicleMonitor:false,widgetVehicle:"",customBg:""};
-function getCfg(){const c=loadJSON(KEYS.cfg,null);if(!c)return JSON.parse(JSON.stringify(DEFAULT_CFG));return{app:{appId:c.app?.appId||DEFAULT_CFG.app.appId,appSecret:c.app?.appSecret||DEFAULT_CFG.app.appSecret},h5:{appId:c.h5?.appId||DEFAULT_CFG.h5.appId,appSecret:c.h5?.appSecret||DEFAULT_CFG.h5.appSecret},community:{enablePost:c.community?.enablePost!==false,enableLike:c.community?.enableLike!==false,enableComment:c.community?.enableComment!==false,enableShare:c.community?.enableShare!==false,enableDelete:c.community?.enableDelete!==false},vehicleAesKey:(typeof c.vehicleAesKey==="string"?c.vehicleAesKey:"").trim(),autoRefreshSec:normalizeRefreshSec(c.autoRefreshSec),serverBase:String(c.serverBase||"").trim(),autoSignin:c.autoSignin===true,autoSigninTime:(typeof c.autoSigninTime==="string"&&/^\d{1,2}:\d{2}$/.test(c.autoSigninTime)?c.autoSigninTime:"07:00"),vehicleMonitor:c.vehicleMonitor===true, widgetVehicle:String(c.widgetVehicle||""), customBg:String(c.customBg||"")}}
+const DEFAULT_CFG={app:{appId:"S7qPWPU1",appSecret:"c5e0da7f4da28df805694ec3dd1fc6792e9df99d"},h5:{appId:"Sw5F9uJi",appSecret:"46870a8f678a09109468f5b0168818b91c292845"},community:{enablePost:true,enableLike:true,enableComment:true,enableShare:true,enableDelete:true},vehicleAesKey:"ce2cd7cb57124c1349dd8543bf6fd31d",vehicleControlRisk:"",autoRefreshSec:60,serverBase:"",autoSignin:false,autoSigninTime:"07:00",vehicleMonitor:false,widgetVehicle:"",customBg:""};
+function getCfg(){const c=loadJSON(KEYS.cfg,null);if(!c)return JSON.parse(JSON.stringify(DEFAULT_CFG));return{app:{appId:c.app?.appId||DEFAULT_CFG.app.appId,appSecret:c.app?.appSecret||DEFAULT_CFG.app.appSecret},h5:{appId:c.h5?.appId||DEFAULT_CFG.h5.appId,appSecret:c.h5?.appSecret||DEFAULT_CFG.h5.appSecret},community:{enablePost:c.community?.enablePost!==false,enableLike:c.community?.enableLike!==false,enableComment:c.community?.enableComment!==false,enableShare:c.community?.enableShare!==false,enableDelete:c.community?.enableDelete!==false},vehicleAesKey:((typeof c.vehicleAesKey==="string"?c.vehicleAesKey:"").trim()||DEFAULT_CFG.vehicleAesKey),vehicleControlRisk:(typeof c.vehicleControlRisk==="string"?c.vehicleControlRisk:"").trim(),autoRefreshSec:normalizeRefreshSec(c.autoRefreshSec),serverBase:String(c.serverBase||"").trim(),autoSignin:c.autoSignin===true,autoSigninTime:(typeof c.autoSigninTime==="string"&&/^\d{1,2}:\d{2}$/.test(c.autoSigninTime)?c.autoSigninTime:"07:00"),vehicleMonitor:c.vehicleMonitor===true, widgetVehicle:String(c.widgetVehicle||""), customBg:String(c.customBg||"")}}
 function saveCfg(c){return saveJSON(KEYS.cfg,c)}
 function getAccounts(){const a=loadJSON(KEYS.accounts,[]);return Array.isArray(a)?a:[]}
 function saveAccounts(list){return saveJSON(KEYS.accounts,list)}
@@ -742,7 +742,8 @@ const Backend={
           app:{appId:b.config.app?.appId||cur.app.appId,appSecret:b.config.app?.appSecret||cur.app.appSecret},
           h5:{appId:b.config.h5?.appId||cur.h5.appId,appSecret:b.config.h5?.appSecret||cur.h5.appSecret},
           community:{enablePost:b.config.community?.enablePost!==false,enableLike:b.config.community?.enableLike!==false,enableComment:b.config.community?.enableComment!==false,enableShare:b.config.community?.enableShare!==false,enableDelete:b.config.community?.enableDelete!==false},
-          vehicleAesKey:String(b.config.vehicleAesKey||"").trim(),
+          vehicleAesKey:String(b.config.vehicleAesKey||"").trim()||cur.vehicleAesKey,
+          vehicleControlRisk:String(b.config.vehicleControlRisk||"").trim(),
           autoRefreshSec:normalizeRefreshSec(b.config.autoRefreshSec),
           serverBase:cur.serverBase
         });
@@ -793,7 +794,8 @@ function applyRemoteCfg(c){
     app:{appId:c.app?.appId||local.app.appId,appSecret:c.app?.appSecret||local.app.appSecret},
     h5:{appId:c.h5?.appId||local.h5.appId,appSecret:c.h5?.appSecret||local.h5.appSecret},
     community:{enablePost:c.community?.enablePost!==false,enableLike:c.community?.enableLike!==false,enableComment:c.community?.enableComment!==false,enableShare:c.community?.enableShare!==false,enableDelete:c.community?.enableDelete!==false},
-    vehicleAesKey:String(c.vehicleAesKey||"").trim(),
+    vehicleAesKey:String(c.vehicleAesKey||"").trim()||local.vehicleAesKey,
+    vehicleControlRisk:String(c.vehicleControlRisk||"").trim(),
     autoRefreshSec:normalizeRefreshSec(c.autoRefreshSec),
     serverBase:local.serverBase,
     autoSignin:c.autoSignin===true,
@@ -1057,7 +1059,7 @@ function toggleDtlVin(){const el=document.getElementById("vinDtl");if(!el)return
 /* ================= 签到执行（面板已移除手动签到入口，定时签到由脚本 cron 负责） ================= */
 
 /* ================= 车辆控制 ================= */
-function ctrlAct(idx,action,btn){if(true){toast("演示模式：仅预览界面","info");return}const a=ptAccounts()[idx];if(!a||!a.userId){toast("该账号缺少用户ID","err");return}const names={find:"短按寻车（车辆闪灯）",loudFind:"鸣笛闪灯（高声寻车）",cushion:"打开坐垫（坐垫会弹起）",unlock:"云端开锁",lock:"云端关锁"};const name=names[action]||action;confirmDialog("确认执行 "+name,"该指令会通过 4G 网络真实控制你的车辆："+esc(a.userName)+"。",'doCtrl('+idx+",'"+action+"')")}
+function ctrlAct(idx,action,btn){if(true){toast("演示模式：仅预览界面","info");return}const a=ptAccounts()[idx];if(!a||!a.userId){toast("该账号缺少用户ID","err");return}const risk=(getCfg().vehicleControlRisk||"").trim();if(risk!=="我自愿承担相关风险"){toast("未完成车控风险确认：请到「设置 → 车控风险确认」输入「我自愿承担相关风险」并保存","err");return}const names={find:"短按寻车（车辆闪灯）",loudFind:"鸣笛闪灯（高声寻车）",cushion:"打开坐垫（坐垫会弹起）",unlock:"云端开锁",lock:"云端关锁"};const name=names[action]||action;confirmDialog("确认执行 "+name,"该指令会通过 4G 网络真实控制你的车辆："+esc(a.userName)+"。",'doCtrl('+idx+",'"+action+"')")}
 async function doCtrl(idx,action){const a=ptAccounts()[idx];if(!a)return;const btn=document.querySelector('.ctrl-btn[data-act="'+action+'"]');const old=btn?btn.innerHTML:"";if(btn){btn.disabled=true;btn.classList.add("busy");btn.innerHTML=I.clock}toast("指令下发中…","info");const d=await Backend.vehicleCtrl(a.userId,action);if(btn){btn.disabled=false;btn.classList.remove("busy");btn.innerHTML=old}if(d&&d.ok){toast(d.message||"指令已下发","ok")}else{toast((d&&d.message)||"指令失败","err")}}
 
 /* ================= 日志页 ================= */
@@ -1132,6 +1134,10 @@ function renderCfg(){
   '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div id="bgPreview" style="width:120px;height:72px;border-radius:10px;border:1px solid var(--line);background:var(--card3);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;color:var(--txt3);font-size:10px;overflow:hidden">未选择</div><div style="display:flex;flex-direction:column;gap:8px"><button class="btn sm primary" onclick="applyBgUpload()" id="bg_apply_btn">应用背景</button><button class="btn sm" onclick="resetBg()">恢复默认</button></div></div>'+
   '<div class="hint" style="margin-top:10px">图片以 base64 存入配置，随备份一并导出。切换背景实时生效，无需重启。</div>'+
   '</div></div>'+
+  '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar" style="background:#EF4444"></span>车控风险确认</h3></div><div class="cfg-body">'+
+  '<div class="f-item"><label>风险确认语（使用车控功能前必填）</label><input type="text" id="cfg_risk" value="'+esc(cfg.vehicleControlRisk||'')+'" placeholder="输入：我自愿承担相关风险" autocomplete="off" style="font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>'+
+  '<div class="hint" style="margin-top:10px">寻车 / 鸣笛 / 坐垫 / 开锁 / 关锁会<b>真实操作你的车辆</b>。请原样输入「我自愿承担相关风险」并保存后，控车功能才会启用；未确认前所有控车指令均被拦截。</div>'+
+  '</div></div>'+
   '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar"></span>签名密钥配置</h3></div><div class="cfg-body">'+
   '<div class="form-grid">'+
   '<div class="f-item"><label>App 端 appId</label><input type="text" id="cfg_app_id" value="'+esc(cfg.app.appId)+'" style="font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>'+
@@ -1139,7 +1145,7 @@ function renderCfg(){
   '<div class="f-item"><label>H5 端 appId</label><input type="text" id="cfg_h5_id" value="'+esc(cfg.h5.appId)+'" style="font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>'+
   '<div class="f-item"><label>H5 端 appSecret</label><input type="text" id="cfg_h5_secret" value="'+esc(cfg.h5.appSecret)+'" style="font-family:ui-monospace,Menlo,monospace;font-size:12px"></div>'+
   '</div>'+
-  '<div class="f-item" style="margin-top:12px"><label>云端控车 AES 密钥（32 位十六进制，开/关锁必填）</label><input type="password" id="cfg_vehicle_key" value="'+esc(cfg.vehicleAesKey)+'" placeholder="填写并保存后才能使用云端开锁/关锁" autocomplete="off" style="font-family:ui-monospace,Menlo,monospace;font-size:12px"><div class="hint">用于开/关锁报文 AES-256-ECB 加密，出于安全默认不内置。</div></div>'+
+  '<div class="f-item" style="margin-top:12px"><label>云端控车 AES 密钥（32 位十六进制，开/关锁加密，已内置默认密钥可修改）</label><input type="password" id="cfg_vehicle_key" value="'+esc(cfg.vehicleAesKey)+'" placeholder="留空则使用内置默认密钥" autocomplete="off" style="font-family:ui-monospace,Menlo,monospace;font-size:12px"><div class="hint">用于开/关锁报文 AES-256-ECB 加密。v2.14.20 起已内置默认密钥，一般无需填写。</div></div>'+
   '<div class="btn-row"><button class="btn primary" onclick="saveCfgUI()">保存配置</button><button class="btn" onclick="resetCfgUI()">恢复默认</button></div>'+
   '</div></div>'+
   '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar amber"></span>当前安装信息</h3></div><div class="cfg-body" style="font-size:12px;line-height:1.9;color:var(--txt2)" id="installInfo">'+
@@ -1270,11 +1276,11 @@ async function phoneLoginUI(){
   else{toast((d&&d.message)||"登录失败","err");}
   btn.disabled=false;btn.textContent="登录并添加账号";
 }
-function collectCfgUI(){return{app:{appId:val("cfg_app_id"),appSecret:val("cfg_app_secret")},h5:{appId:val("cfg_h5_id"),appSecret:val("cfg_h5_secret")},vehicleAesKey:val("cfg_vehicle_key").trim(),autoRefreshSec:normalizeRefreshSec(getCfg().autoRefreshSec||60),serverBase:getCfg().serverBase||"",autoSignin:el("auto_signin")?el("auto_signin").checked:false,autoSigninTime:(val("cfg_signin_time")||"07:00"),vehicleMonitor:el("vehicle_monitor")?el("vehicle_monitor").checked:false,widgetVehicle:widgetSelectionText()||getCfg().widgetVehicle,customBg:getCfg().customBg,community:{enablePost:el("comm_post").checked,enableLike:el("comm_like").checked,enableComment:el("comm_comment").checked,enableShare:el("comm_share").checked,enableDelete:el("comm_delete").checked}}}
+function collectCfgUI(){return{app:{appId:val("cfg_app_id"),appSecret:val("cfg_app_secret")},h5:{appId:val("cfg_h5_id"),appSecret:val("cfg_h5_secret")},vehicleAesKey:val("cfg_vehicle_key").trim()||DEFAULT_CFG.vehicleAesKey,vehicleControlRisk:val("cfg_risk").trim(),autoRefreshSec:normalizeRefreshSec(getCfg().autoRefreshSec||60),serverBase:getCfg().serverBase||"",autoSignin:el("auto_signin")?el("auto_signin").checked:false,autoSigninTime:(val("cfg_signin_time")||"07:00"),vehicleMonitor:el("vehicle_monitor")?el("vehicle_monitor").checked:false,widgetVehicle:widgetSelectionText()||getCfg().widgetVehicle,customBg:getCfg().customBg,community:{enablePost:el("comm_post").checked,enableLike:el("comm_like").checked,enableComment:el("comm_comment").checked,enableShare:el("comm_share").checked,enableDelete:el("comm_delete").checked}}}
 function val(id){const e=document.getElementById(id);return e?e.value:""}
 function el(id){return document.getElementById(id)}
 async function saveCfgUI(){const c=collectCfgUI();const ok=await Backend.saveConfig(c);if(ok){if(isProxyMode()){applyRemoteCfg(c);STATE.panelLoaded=false}toast("配置已保存","ok");startAutoRefresh(c.autoRefreshSec);refreshAll(true)}else toast("保存失败","err")}
-function resetCfgUI(){el("cfg_app_id").value=DEFAULT_CFG.app.appId;el("cfg_app_secret").value=DEFAULT_CFG.app.appSecret;el("cfg_h5_id").value=DEFAULT_CFG.h5.appId;el("cfg_h5_secret").value=DEFAULT_CFG.h5.appSecret;el("cfg_vehicle_key").value="";if(el("auto_signin"))el("auto_signin").checked=false;el("cfg_signin_time").value="07:00";el("comm_post").checked=true;el("comm_like").checked=true;el("comm_comment").checked=true;el("comm_share").checked=true;el("comm_delete").checked=true;const c=getCfg();c.widgetVehicle="";c.customBg="";saveCfg(c);applyCustomBg();if(el("widget_acc")){el("widget_acc").value="";el("widget_veh").innerHTML="";}const bp=el("bgPreview");if(bp){bp.style.backgroundImage="";bp.textContent="未选择";}toast("已恢复默认（需点击保存）","info")}
+function resetCfgUI(){el("cfg_app_id").value=DEFAULT_CFG.app.appId;el("cfg_app_secret").value=DEFAULT_CFG.app.appSecret;el("cfg_h5_id").value=DEFAULT_CFG.h5.appId;el("cfg_h5_secret").value=DEFAULT_CFG.h5.appSecret;el("cfg_vehicle_key").value=DEFAULT_CFG.vehicleAesKey;if(el("cfg_risk"))el("cfg_risk").value="";if(el("auto_signin"))el("auto_signin").checked=false;el("cfg_signin_time").value="07:00";el("comm_post").checked=true;el("comm_like").checked=true;el("comm_comment").checked=true;el("comm_share").checked=true;el("comm_delete").checked=true;const c=getCfg();c.widgetVehicle="";c.customBg="";saveCfg(c);applyCustomBg();if(el("widget_acc")){el("widget_acc").value="";el("widget_veh").innerHTML="";}const bp=el("bgPreview");if(bp){bp.style.backgroundImage="";bp.textContent="未选择";}toast("已恢复默认（需点击保存）","info")}
 function addAccountUI(){cfgAccounts.push({userName:"",userId:"",token:"",barkKey:""});const list=el("accList");const idx=cfgAccounts.length-1;const html='<div class="acc-edit" data-i="'+idx+'"><div class="acc-edit-head"><span class="acc-edit-title"><span class="n">'+String(idx+1)+'</span>账号 '+String(idx+1)+'（新）</span><span class="acts"><button class="btn sm" id="uidBtn_'+idx+'" onclick="fetchUserIdUI('+idx+')">获取ID</button><button class="btn sm danger" onclick="deleteAccountUI('+idx+')">删除</button></span></div><div class="form-grid"><div class="f-item"><label>昵称</label><input type="text" id="acc_name_'+idx+'" placeholder="如 lucky798"></div><div class="f-item"><label>用户ID</label><input type="text" id="acc_uid_'+idx+'" placeholder="留空可点「获取ID」"></div></div><div class="f-item" style="margin-top:10px"><label>Authorization Token</label><input type="text" id="acc_token_'+idx+'" placeholder="a74779c7-…"></div><div class="f-item" style="margin-top:10px"><label>Bark 通知 Key（选填）</label><input type="text" id="acc_bark_'+idx+'" placeholder="Bark Key 或自建 https://域名/Key"></div></div>';if(list.querySelector(".acc-edit")||list.querySelector("[style*='text-align']")){list.insertAdjacentHTML("beforeend",html)}else{list.innerHTML=html}}
 function deleteAccountUI(idx){const row=document.querySelector('.acc-edit[data-i="'+idx+'"]');if(row){row.remove();cfgAccounts.splice(idx,1);toast("已删除（需点击保存）","info")}}
 function collectAccountsUI(){const rows=document.querySelectorAll("#accList .acc-edit");const list=[];rows.forEach(row=>{const i=row.getAttribute("data-i");const token=el("acc_token_"+i)?.value||"";if(token.trim()){list.push({userName:el("acc_name_"+i)?.value||"",userId:el("acc_uid_"+i)?.value||"",token:cleanToken(token),barkKey:cleanBarkKey(el("acc_bark_"+i)?.value||"")})}});return list}
@@ -1336,7 +1342,7 @@ async function refreshAll(silent){
   else{const hint=d&&d.raw&&d.raw.error?networkHint(d.raw):"";const el=document.getElementById("pageHome");el.innerHTML='<div class="empty"><h3>数据加载失败</h3><p>'+(hint||esc((d&&d.error)||"网络异常，请检查网络连接"))+'</p><div class="btn-row" style="justify-content:center"><button class="btn primary" onclick="refreshAll()">重试</button><button class="btn" onclick="switchTab(\'cfg\')">检查设置</button></div></div>'}
 }
 /* ================= v2.14.9 积分页 ================= */
-let PT={accIdx:0,month:""};
+let PT={accIdx:0,month:"",monthSetDay:"",flowSeen:{},flowList:[],flowPage:1};
 function ptAccounts(){return STATE.data&&STATE.data.length?STATE.data:(STATE.panelAccounts||[]).map(a=>({userName:a.userName||"账号",userId:a.userId||""}))}
 function accChipsHtml(prefix){
   const list=ptAccounts();
@@ -1352,16 +1358,22 @@ async function renderPoints(){
   const acc=list[PT.accIdx];
   if(!acc.userId){el.innerHTML=accChipsHtml("pt")+'<div class="empty"><h3>该账号缺少用户ID</h3><p>请到设置页补全用户ID</p></div>';return}
   el.innerHTML=accChipsHtml("pt")+'<div class="empty" style="padding:40px 20px"><p style="color:var(--txt3)">加载积分数据中…</p></div>';
-  const month=PT.month||new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0");
+  // v2.14.20 日历跨月修正：面板常驻时 PT.month 可能滞留上月。跨到新月份（今天不是设置该月份那天）后自动回到当前月，
+  // 避免 10月1号 时日历仍停在 9月30号（上月）显示不准确。
+  const _now=new Date();
+  const _curM=_now.getFullYear()+"-"+String(_now.getMonth()+1).padStart(2,"0");
+  const _tdy=_now.getFullYear()+"-"+String(_now.getMonth()+1).padStart(2,"0")+"-"+String(_now.getDate()).padStart(2,"0");
+  if(PT.month&&PT.monthSetDay&&PT.monthSetDay!==_tdy&&PT.month<_curM){PT.month="";PT.monthSetDay="";}
+  const month=PT.month||_curM;
   const [it,cal,cnt] = await Promise.all([
     Backend.integral(acc.userId,1),
     Backend.supplement("month",acc.userId,{month:month}),
     Backend.supplement("count",acc.userId,{})
   ]);
   let html=accChipsHtml("pt");
-  // 总览
-  const total=it&&it.total?deepPick(it.total,["integralTotal","totalIntegral","score","integral","total"],4):"";
-  const cardNum=cnt&&cnt.data!=null?deepPick(cnt.data,["count","cardNum","cardCount","number","num"],4):"";
+  // 总览（v2.14.20 兼容 data 为纯数字或对象两种返回）
+  const total=(it&&it.total!=null)?((typeof it.total==="number"||(typeof it.total==="string"&&it.total!==""))?String(it.total):deepPick(it.total,["integralTotal","totalIntegral","score","integral","total"],4)):"";
+  const cardNum=(cnt&&cnt.data!=null)?((typeof cnt.data==="number"||(typeof cnt.data==="string"&&cnt.data!==""))?String(cnt.data):deepPick(cnt.data,["count","cardNum","cardCount","number","num","signCount","signSupplementCount","reissueCardNum","supplementCardNum","cardTotal","total"],4)):"";
   let expTxt="";
   if(it&&Array.isArray(it.expire)&&it.expire.length){
     const e0=it.expire.find(x=>Number(x.integralScore)>0)||it.expire[0];
@@ -1384,14 +1396,18 @@ async function renderPoints(){
     html+='<div style="color:var(--txt3);font-size:12px;padding:8px 0">'+(cal&&cal.message?esc(cal.message):"日历加载失败（可能限流，稍后再试）")+'</div>';
   }
   html+='</div>';
-  // 积分流水
+  // 积分流水（v2.14.20 去重：按 integralDetailId 去重，避免官方分页边界重复导致加载更多看起来"没反应"）
   html+='<div class="panel-card"><div class="pc-head"><h4>'+I.zap+'积分流水</h4><button class="btn sm" onclick="ptMoreFlow()">加载更多</button></div><div id="ptFlow">';
-  html+=flowHtml((it&&it.detail)||[]);
+  PT.flowSeen={};PT.flowList=[];
+  const flowArr0=(it&&Array.isArray(it.detail))?it.detail:(it&&it.detail&&Array.isArray(it.detail.records)?it.detail.records:(it&&it.detail&&Array.isArray(it.detail.list)?it.detail.list:(it&&it.detail&&Array.isArray(it.detail.rows)?it.detail.rows:[])));
+  if(Array.isArray(flowArr0))for(const x of flowArr0){const k=flowKey(x);if(!PT.flowSeen[k]){PT.flowSeen[k]=true;PT.flowList.push(x)}}
+  html+=flowHtml(PT.flowList);
   html+='</div></div>';
   html+='<div class="foot">积分数据来自极核实时 API · 补签限 30 天内漏签，每次消耗 1 张补签卡</div>';
   el.innerHTML=html;
   PT.flowPage=1;
 }
+function flowKey(x){return (x&&x.integralDetailId!=null)?String(x.integralDetailId):String((x&&x.createDateStr)||"")+"|"+String((x&&x.name)||"")+"|"+String((x&&x.integralScore!=null)?x.integralScore:"")}
 function calHtml(days,month,userId){
   const ym=month.split("-");const y=Number(ym[0]),m=Number(ym[1]);
   const first=new Date(y,m-1,1).getDay();
@@ -1430,14 +1446,21 @@ async function ptMoreFlow(){
   PT.flowPage=(PT.flowPage||1)+1;
   const it=await Backend.integral(acc.userId,PT.flowPage);
   const el=document.getElementById("ptFlow");
-  if(el&&it&&Array.isArray(it.detail)&&it.detail.length)el.innerHTML+=flowHtml(it.detail);
-  else toast("没有更多了","info");
+  const flowArr=(it&&Array.isArray(it.detail))?it.detail:(it&&it.detail&&Array.isArray(it.detail.records)?it.detail.records:(it&&it.detail&&Array.isArray(it.detail.list)?it.detail.list:(it&&it.detail&&Array.isArray(it.detail.rows)?it.detail.rows:[])));
+  if(!Array.isArray(flowArr)||!flowArr.length){toast("没有更多了","info");return}
+  const fresh=flowArr.filter(x=>{const k=flowKey(x);if(PT.flowSeen[k])return false;PT.flowSeen[k]=true;return true});
+  if(!fresh.length){toast("没有更多了","info");return}
+  PT.flowList=PT.flowList.concat(fresh);
+  if(el)el.innerHTML+=flowHtml(fresh);
 }
 function ptMonthShift(dir){
   const cur=PT.month||new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0");
   const ym=cur.split("-");let y=Number(ym[0]),m=Number(ym[1])+dir;
   if(m<1){m=12;y--}if(m>12){m=1;y++}
   PT.month=y+"-"+String(m).padStart(2,"0");
+  // 记录设置该月份的当天，跨月后 renderPoints 据此把滞留的上月自动复位到当前月
+  const d=new Date();
+  PT.monthSetDay=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
   renderPoints();
 }
 async function supConsume(date,userId){
