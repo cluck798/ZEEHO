@@ -6,6 +6,7 @@
 #import <WebKit/WebKit.h>
 #import <AVFoundation/AVFoundation.h>
 #import <UserNotifications/UserNotifications.h>
+#import "ZeehoPanel-Swift.h"
 
 static NSString * const kPanelScheme = @"zeeho";
 // POST 请求体桥接头：WKWebView 对自定义 scheme 的 fetch/XHR POST 会剥离请求体
@@ -38,6 +39,7 @@ static const NSTimeInterval kMonitorTickInterval = 180.0;
 @property (nonatomic, strong) NSHashTable<id<WKURLSchemeTask>> *activeTasks;
 @property (nonatomic, strong) AVAudioPlayer *silencePlayer;
 @property (nonatomic, strong) NSTimer *monitorTimer;
+@property (nonatomic, strong) UIView *loadingView;
 @end
 
 @implementation WebViewController
@@ -79,6 +81,25 @@ static UIColor *ZHPanelBackgroundColor(void) {
 
     NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"%@://panel/", kPanelScheme]];
     [webView loadRequest:[NSURLRequest requestWithURL:url]];
+
+    // 加载提示：JS 引擎初始化期间显示，页面渲染完后自动隐藏
+    UIView *loading = [[UIView alloc] initWithFrame:self.view.bounds];
+    loading.backgroundColor = ZHPanelBackgroundColor();
+    loading.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    UIActivityIndicatorView *spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleLarge];
+    spinner.color = [UIColor colorWithRed:43/255.0 green:212/255.0 blue:242/255.0 alpha:1.0];
+    spinner.center = CGPointMake(loading.center.x, loading.center.y - 20);
+    [spinner startAnimating];
+    [loading addSubview:spinner];
+    UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(0, loading.center.y + 20, loading.bounds.size.width, 24)];
+    label.text = @"加载中…";
+    label.textColor = [UIColor colorWithRed:147/255.0 green:160/255.0 blue:184/255.0 alpha:1.0];
+    label.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    label.textAlignment = NSTextAlignmentCenter;
+    label.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    [loading addSubview:label];
+    [self.view addSubview:loading];
+    self.loadingView = loading;
 
     [self requestNotificationAuth];
     [self startBackgroundKeepAlive];
@@ -166,20 +187,23 @@ static UIColor *ZHPanelBackgroundColor(void) {
         if (!dir) return;
         NSURL *file = [dir URLByAppendingPathComponent:@"widget_snapshot.json"];
         [respBody writeToFile:file.path atomically:YES encoding:NSUTF8StringEncoding error:NULL];
-        // 通过 ObjC runtime 动态调用 WidgetCenter.shared.reloadAllTimelines()
-        // （WidgetKit 是 Swift framework，ObjC 无法直接 import，用 NSClassFromString 桥接）
-        Class wcClass = NSClassFromString(@"WidgetCenter");
-        if (wcClass) {
-            SEL sharedSel = NSSelectorFromString(@"shared");
-            SEL reloadSel = NSSelectorFromString(@"reloadAllTimelines");
-            if ([wcClass respondsToSelector:sharedSel]) {
-                id shared = [wcClass performSelector:sharedSel];
-                if (shared && [shared respondsToSelector:reloadSel]) {
-                    [shared performSelector:reloadSel];
-                }
-            }
-        }
+        // 通过 Swift 桥接调用 WidgetCenter.shared.reloadAllTimelines()
+        [WidgetBridge reloadAll];
     }];
+}
+
+#pragma mark - WKNavigationDelegate
+
+- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation {
+    // 页面渲染完成，隐藏加载提示
+    if (self.loadingView) {
+        [UIView animateWithDuration:0.25 animations:^{
+            self.loadingView.alpha = 0;
+        } completion:^(BOOL finished) {
+            [self.loadingView removeFromSuperview];
+            self.loadingView = nil;
+        }];
+    }
 }
 
 - (void)dealloc {
