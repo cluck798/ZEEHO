@@ -6,7 +6,6 @@
 #import <WebKit/WebKit.h>
 #import <AVFoundation/AVFoundation.h>
 #import <UserNotifications/UserNotifications.h>
-#import "ZeehoPanel-Swift.h"
 
 static NSString * const kPanelScheme = @"zeeho";
 // POST 请求体桥接头：WKWebView 对自定义 scheme 的 fetch/XHR POST 会剥离请求体
@@ -187,8 +186,11 @@ static UIColor *ZHPanelBackgroundColor(void) {
         if (!dir) return;
         NSURL *file = [dir URLByAppendingPathComponent:@"widget_snapshot.json"];
         [respBody writeToFile:file.path atomically:YES encoding:NSUTF8StringEncoding error:NULL];
-        // 通过 Swift 桥接调用 WidgetCenter.shared.reloadAllTimelines()
-        [WidgetBridge reloadAll];
+        // 通过 ObjC runtime 调用 WidgetBridge.reloadAll()（Swift 桥接类，@objcMembers 暴露到 ObjC runtime）
+        Class bridgeClass = NSClassFromString(@"WidgetBridge");
+        if (bridgeClass) {
+            [bridgeClass performSelector:NSSelectorFromString(@"reloadAll")];
+        }
     }];
 }
 
