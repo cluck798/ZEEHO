@@ -32,7 +32,7 @@ static NSString * const kFetchBodyShim =
 // 后台充电/离线监控轮询间隔（秒）
 static const NSTimeInterval kMonitorTickInterval = 180.0;
 
-@interface WebViewController () <WKURLSchemeHandler, WKNavigationDelegate, WKUIDelegate>
+@interface WebViewController () <WKURLSchemeHandler, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler>
 @property (nonatomic, strong) WKWebView *webView;
 @property (nonatomic, strong) ZHDispatcher *dispatcher;
 @property (nonatomic, strong) NSHashTable<id<WKURLSchemeTask>> *activeTasks;
@@ -57,6 +57,22 @@ static UIColor *ZHPanelBackgroundColor(void) {
     WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
     [config setURLSchemeHandler:self forURLScheme:kPanelScheme];
     config.allowsInlineMediaPlayback = YES;
+
+    // 注入 JS：hook hideSplash，数据就绪时通知原生隐藏加载提示
+    WKUserContentController *userCtrl = [[WKUserContentController alloc] init];
+    [userCtrl addScriptMessageHandler:self name:@"hideLoading"];
+    static NSString * const kSplashHook =
+    @"<script>(function(){"
+    "var s=document.getElementById('splash');"
+    "if(s&&s.classList.contains('out')){window.webkit.messageHandlers.hideLoading.postMessage(null);return;}"
+    "var o=window.hideSplash;"
+    "if(typeof o==='function'){window.hideSplash=function(){o.apply(this,arguments);"
+    "if(window.webkit&&window.webkit.messageHandlers.hideLoading)window.webkit.messageHandlers.hideLoading.postMessage(null)}}"
+    "})();</script>";
+    [userCtrl addUserScript:[[WKUserScript alloc] initWithSource:kSplashHook
+                                                   injectionTime:WKUserScriptInjectionTimeAtDocumentEnd
+                                                forMainFrameOnly:YES]];
+    config.userContentController = userCtrl;
 
     WKWebView *webView = [[WKWebView alloc] initWithFrame:CGRectZero configuration:config];
     webView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -194,18 +210,36 @@ static UIColor *ZHPanelBackgroundColor(void) {
     }];
 }
 
+#pragma mark - WKScriptMessageHandler
+
+- (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message {
+    if ([message.name isEqualToString:@"hideLoading"]) {
+        // HTML 数据就绪，淡出加载提示
+        if (self.loadingView) {
+            [UIView animateWithDuration:0.3 animations:^{
+                self.loadingView.alpha = 0;
+            } completion:^(BOOL finished) {
+                [self.loadingView removeFromSuperview];
+                self.loadingView = nil;
+            }];
+        }
+    }
+}
+
 #pragma mark - WKNavigationDelegate
 
 - (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation {
-    // 页面渲染完成，隐藏加载提示
-    if (self.loadingView) {
-        [UIView animateWithDuration:0.25 animations:^{
-            self.loadingView.alpha = 0;
-        } completion:^(BOOL finished) {
-            [self.loadingView removeFromSuperview];
-            self.loadingView = nil;
-        }];
-    }
+    // 兜底：若 JS hook 未触发（如数据极快返回或出错），15 秒后强制隐藏
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(15 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if (self.loadingView) {
+            [UIView animateWithDuration:0.3 animations:^{
+                self.loadingView.alpha = 0;
+            } completion:^(BOOL finished) {
+                [self.loadingView removeFromSuperview];
+                self.loadingView = nil;
+            }];
+        }
+    });
 }
 
 - (void)dealloc {
