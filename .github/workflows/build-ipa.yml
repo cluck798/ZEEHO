@@ -49,9 +49,9 @@ jobs:
           rm -rf Payload
           mkdir Payload
           cp -R build/Build/Products/Release-iphoneos/ZeehoPanel.app Payload/
-          # v2.14.21 桌面小组件：ad-hoc 签名 Widget Extension（TrollStore 安装时会重签主 App）
+          # v2.14.21 桌面小组件：ad-hoc 签名 Widget Extension 并嵌入 App Group 权限（TrollStore 按已嵌入 entitlements 重签，不嵌入则共享容器不可用）
           if [ -d Payload/ZeehoPanel.app/PlugIns/ZeehoWidget.appex ]; then
-            codesign --force --sign - Payload/ZeehoPanel.app/PlugIns/ZeehoWidget.appex
+            codesign --force --sign - --entitlements Widget/ZeehoWidget.entitlements Payload/ZeehoPanel.app/PlugIns/ZeehoWidget.appex
           fi
           # 注入 BackRun dylib（后台常驻增强）：复制到 Frameworks 并给主二进制追加 LC_LOAD_DYLIB
           mkdir -p Payload/ZeehoPanel.app/Frameworks
@@ -61,6 +61,8 @@ jobs:
           clang -O2 -o insert_dylib insert_dylib.c
           ./insert_dylib --all-yes --inplace --strip-codesig @rpath/BackRun.dylib Payload/ZeehoPanel.app/ZeehoPanel
           codesign --force --sign - Payload/ZeehoPanel.app/Frameworks/BackRun.dylib 2>/dev/null || true
+          # 主二进制同样 ad-hoc 签名并嵌入 App Group 权限（insert_dylib 已剥掉签名，放其之后）
+          codesign --force --sign - --entitlements App/ZeehoPanel.entitlements Payload/ZeehoPanel.app/ZeehoPanel
           ls -la Payload/ZeehoPanel.app/Frameworks/
           zip -qry ../ZeehoSignPanel.ipa Payload
           ls -la ../ZeehoSignPanel.ipa
