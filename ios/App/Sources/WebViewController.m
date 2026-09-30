@@ -103,42 +103,13 @@ static UIColor *ZHPanelBackgroundColor(void) {
     loading.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     loading.translatesAutoresizingMaskIntoConstraints = NO;
 
-    // Logo：圆角方块 + ZEEHO SVG 仪表图标
-    UIView *logo = [[UIView alloc] init];
+    // Logo：ZEEHO 图标图片
+    UIImageView *logo = [[UIImageView alloc] init];
     logo.translatesAutoresizingMaskIntoConstraints = NO;
+    logo.contentMode = UIViewContentModeScaleAspectFit;
+    logo.image = [UIImage imageNamed:@"splash_icon"];
     logo.layer.cornerRadius = 24;
-    logo.layer.backgroundColor = [UIColor colorWithRed:14/255.0 green:143/255.0 blue:178/255.0 alpha:1.0].CGColor;
-    logo.layer.shadowColor = [UIColor colorWithRed:14/255.0 green:143/255.0 blue:178/255.0 alpha:0.4].CGColor;
-    logo.layer.shadowRadius = 20;
-    logo.layer.shadowOpacity = 1;
-    logo.layer.shadowOffset = CGSizeZero;
-    // SVG 仪表路径（与 HTML 闪屏一致的 ZEEHO 标志）
-    CAShapeLayer *icon = [CAShapeLayer layer];
-    UIBezierPath *iconPath = [UIBezierPath bezierPath];
-    [iconPath moveToPoint:CGPointMake(4, 13.5)];
-    [iconPath addLineToPoint:CGPointMake(4, 9.08)];
-    [iconPath addCurveToPoint:CGPointMake(12, 5.5) controlPoint1:CGPointMake(7.58, 5.5) controlPoint2:CGPointMake(12, 5.5)];
-    [iconPath addCurveToPoint:CGPointMake(20, 13.5) controlPoint1:CGPointMake(12, 13.5) controlPoint2:CGPointMake(20, 9.08)];
-    [iconPath moveToPoint:CGPointMake(12, 13)];
-    [iconPath addLineToPoint:CGPointMake(19.5, 18.5)];
-    icon.path = iconPath.CGPath;
-    icon.strokeColor = [UIColor colorWithRed:4/255.0 green:18/255.0 blue:28/255.0 alpha:1.0].CGColor;
-    icon.lineWidth = 2.4;
-    icon.lineCap = kCALineCapRound;
-    icon.fillColor = nil;
-    // 两个圆点
-    CAShapeLayer *dot1 = [CAShapeLayer layer];
-    dot1.path = [UIBezierPath bezierPathWithOvalInRect:CGRectMake(5.3, 14.3, 4.4, 4.4)].CGPath;
-    dot1.fillColor = [UIColor colorWithRed:4/255.0 green:18/255.0 blue:28/255.0 alpha:1.0].CGColor;
-    CAShapeLayer *dot2 = [CAShapeLayer layer];
-    dot2.path = [UIBezierPath bezierPathWithOvalInRect:CGRectMake(14.8, 16.8, 4.4, 4.4)].CGPath;
-    dot2.fillColor = [UIColor colorWithRed:4/255.0 green:18/255.0 blue:28/255.0 alpha:1.0].CGColor;
-    [logo.layer addSublayer:icon];
-    [logo.layer addSublayer:dot1];
-    [logo.layer addSublayer:dot2];
-    icon.frame = CGRectMake(30, 19, 24, 24);
-    dot1.frame = CGRectMake(30, 19, 24, 24);
-    dot2.frame = CGRectMake(30, 19, 24, 24);
+    logo.layer.masksToBounds = YES;
 
     UILabel *title = [[UILabel alloc] init];
     title.translatesAutoresizingMaskIntoConstraints = NO;

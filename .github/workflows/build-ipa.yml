@@ -31,6 +31,7 @@ jobs:
           set -e
           cp repo/zeeho_box_enhanced.js ios/App/Resources/zeeho_box_enhanced.js
           sips -z 1024 1024 desktop/build/icon.png --out ios/App/Resources/Assets.xcassets/AppIcon.appiconset/icon.png
+          sips -z 168 168 desktop/build/icon.png --out ios/App/Resources/splash_icon.png
 
       - name: Generate project and build
         run: |
