@@ -1549,6 +1549,7 @@ async function renderVehiclePage(){
   html+='</div>';
   html+='<div class="foot">车控扩展指令经云端下发，响应可能较慢</div>';
   el.innerHTML=html;
+  navInitOnTab();
 }
 /* ================= v2.14.22 Motoplay 导航投屏 ================= */
 let NAV={map:null,driving:null,placeSearch:null,autoComplete:null,route:null,navSteps:[],curStep:0,casting:false,watchId:null,amapLoaded:false,amapKey:"5a9739e42d1d40ee9b88a2582ed93818"};
