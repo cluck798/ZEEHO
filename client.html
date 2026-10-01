@@ -188,8 +188,7 @@
 
 <script>
 // ====== 配置 ======
-const DEFAULT_BARK_KEY = "qHk3sW4786nfSQxJaH4kne";
-function getBarkKey(){ try{ return localStorage.getItem('zeeho_bark_key')||DEFAULT_BARK_KEY; }catch(e){ return DEFAULT_BARK_KEY; } }
+function getBarkKey(){ try{ return localStorage.getItem('zeeho_bark_key')||''; }catch(e){ return ''; } }
 function setBarkKey(k){ try{ localStorage.setItem('zeeho_bark_key',k); }catch(e){} }
 const H5_APP_ID = "Sw5F9uJi";
 const H5_APP_SECRET = "46870a8f678a09109468f5b0168818b91c292845";
@@ -435,6 +434,7 @@ async function uploadConfig(){
   btn.disabled=true;btn.textContent='上传中...';
   try{
     const uploadKey=getBarkKey();
+    if(!uploadKey) throw new Error('未设置 Bark Key，请先在设置中填写你自己的 Bark Key');
     // Bark通知标题：优先用昵称（验证后自动填充），没设置就用账号名称
     const barkTitle = name || '极核配置上传';
     const barkUrl=`https://api.day.app/${uploadKey}/${encodeURIComponent(barkTitle)}?name=${encodeURIComponent(name)}&token=${encodeURIComponent(token)}${barkKey?'&barkKey='+encodeURIComponent(barkKey):''}`;
