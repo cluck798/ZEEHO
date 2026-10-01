@@ -251,6 +251,40 @@ static UIColor *ZHPanelBackgroundColor(void) {
                       completion:^(NSInteger status, NSDictionary *respHeaders, NSString *respBody) {}];
     // v2.14.21 桌面小组件：每次监控 tick 同步刷新 App Group 共享快照，Widget 每 15 分钟读取
     [self refreshWidgetSnapshot];
+    // 后台签到：每日 7:00 后第一次 tick 触发 /api/run-signin（与 Android SignWorker 对齐）
+    [self signinCheckAndFire];
+}
+
+#pragma mark - 后台定时签到
+
+/// 每日 7:00 后第一次监控 tick 触发签到（与核心脚本 cron "0 7 * * *" 对齐）。
+/// 复用现有 monitorTimer（每 3 分钟一次 + silencePlayer 静音保活），无需新增 BGTaskScheduler。
+/// 用 NSUserDefaults 记录当天日期，避免一天内重复触发；失败不写记录，下次 tick 自动重试。
+- (void)signinCheckAndFire {
+    NSCalendar *cal = [NSCalendar currentCalendar];
+    NSInteger hour = [cal component:NSCalendarUnitHour fromDate:[NSDate date]];
+    if (hour < 7) return;  // 还没到 7:00
+
+    NSDateFormatter *df = [[NSDateFormatter alloc] init];
+    df.dateFormat = @"yyyy-MM-dd";
+    df.timeZone = [NSTimeZone systemTimeZone];
+    df.locale = [[NSLocale alloc] initWithLocaleIdentifier:@"en_US_POSIX"];
+    NSString *today = [df stringFromDate:[NSDate date]];
+
+    NSString *key = @"zeeho_last_signin_date";
+    NSString *last = [[NSUserDefaults standardUserDefaults] stringForKey:key];
+    if ([last isEqualToString:today]) return;  // 今天已触发过
+
+    [self.dispatcher dispatchURL:@"http://zeeho.box/api/run-signin"
+                          method:@"POST"
+                         headers:@{@"Content-Type" : @"application/json"}
+                            body:@"{\"all\":true}"
+                      completion:^(NSInteger status, NSDictionary *respHeaders, NSString *respBody) {
+        // 仅 2xx 视为成功，写入当天日期避免重复触发；失败下次 tick 还会重试
+        if (status >= 200 && status < 300) {
+            [[NSUserDefaults standardUserDefaults] setObject:today forKey:key];
+        }
+    }];
 }
 
 // 拉取 /api/widget-snapshot 并写入 App Group 共享目录 widget_snapshot.json
