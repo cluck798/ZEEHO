@@ -1,16 +1,16 @@
 /*
-#!name=极核 ZEEHO 签到面板 V2.14.21
+#!name=极核 ZEEHO 签到面板 V2.14.24
 #!desc=极核ZEEHO多账号签到面板 + 网页配置，访问 http://zeeho.box
 #!author=lucky
 #!homepage=https://github.com/cluck798/ZEEHO
-#!version=2.14.21
+#!version=2.14.24
 
 图标: https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/ZEEHO.png
 
 [Script]
 # ========== 极核 ZEEHO ==========
 # 面板 + 极核API自动捕获appId/appSecret
-http-request ^https?://(zeeho\.box|.*zeehoev\.com)/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js?v=2.14.21, requires-body=true, timeout=60, tag=极核面板V2.14.21
+http-request ^https?://(zeeho\.box|.*zeehoev\.com)/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js?v=2.14.24, requires-body=true, timeout=60, tag=极核面板V2.14.24
 
 # 极核Token自动捕获（打开极核App-我的页面）
 http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/mine\/cfmotoservermine\/setting script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho.js, requires-body=true, timeout=30, tag=极核抓Token
@@ -37,8 +37,8 @@ hostname = tapi.zeehoev.com, h5.zeehoev.com, zeeho.box
 const $ = new Env("极核看板增强版");
 
 // ========== 极核 ZEEHO 签到面板脚本 ==========
-// 版本: v2.14.23
-// 更新日期: 2026-10-01
+// 版本: v2.14.24
+// 更新日期: 2026-10-02
 // 作者: @lucky
 // 主页: https://github.com/cluck798/ZEEHO
 // ============================================
