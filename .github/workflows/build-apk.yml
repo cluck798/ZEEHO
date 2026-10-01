@@ -34,6 +34,11 @@ jobs:
         with:
           packages: 'platforms;android-34 build-tools;34.0.0'
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-disabled: false
+
       - name: Sync core script
         run: cp repo/zeeho_box_enhanced.js android/app/src/main/assets/zeeho_box_enhanced.js
 
@@ -42,7 +47,7 @@ jobs:
         run: |
           chmod +x ./gradlew
           # --no-daemon：CI 单次构建无需常驻 daemon
-          ./gradlew assembleRelease --no-daemon --no-build-cache
+          ./gradlew assembleRelease --no-daemon
 
       - name: Sign APK
         run: |
