@@ -34,9 +34,10 @@ class MainActivity : AppCompatActivity() {
     private var port: Int = -1
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    private val notifPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { /* granted 或被拒都接受；ZHNotifier 内部会降级 Toast */ }
+    /** 一次申请多个权限（POST_NOTIFICATIONS / ACCESS_FINE_LOCATION / NEARBY_WIFI_DEVICES） */
+    private val multiPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { /* 任意权限被拒都接受：WiFi 自动投屏会拿不到 SSID，但其他功能正常 */ }
 
     private val portPollRunnable = object : Runnable {
         override fun run() {
@@ -63,9 +64,20 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // 安卓 13+ 申请 POST_NOTIFICATIONS（ZHNotifier 在被拒时降级 Toast）
+        // 收集需要申请的权限并一次性弹窗（按版本）
+        val toRequest = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            notifPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            toRequest.add(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Android 10+ 读 WiFi SSID 必需位置权限（车机 WiFi 自动投屏功能）
+            toRequest.add(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            toRequest.add(android.Manifest.permission.NEARBY_WIFI_DEVICES)
+        }
+        if (toRequest.isNotEmpty()) {
+            multiPermissionLauncher.launch(toRequest.toTypedArray())
         }
 
         // 启动前台 Service（NanoHTTPD + 监控循环）
@@ -190,8 +202,9 @@ class MainActivity : AppCompatActivity() {
 
         // 投屏 JS 桥：window.motoplayHandler(action, data, callback) → ZeehoMotoplay
         // 对齐 iOS WKScriptMessageHandler：在 Android 上用 JavascriptInterface + 闭包回调
+        // MotoplayManager 已是 object 单例：ZHPanelService 后台监控共享同一 TCP socket
         MotoplayManager.init(webView)
-        MotoplayManager().inject(webView)
+        MotoplayManager.inject(webView)
     }
 
     /**

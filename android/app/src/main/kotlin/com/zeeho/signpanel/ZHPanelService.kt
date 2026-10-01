@@ -45,6 +45,9 @@ class ZHPanelService : Service() {
                 // 监控 tick 异步触发，结果丢弃（脚本侧负责发通知 / 更新 store）
                 Thread {
                     runCatching {
+                        // 先做车机 WiFi 检测：若连上 ZEEHO 车机热点自动启动/重连投屏
+                        runCatching { ZEEHOWifiMonitor.checkAndAutoConnect(this@ZHPanelService) }
+                            .onFailure { ZHLog.error("wifi monitor failed", it) }
                         runBlocking(Dispatchers.Default) {
                             withTimeoutOrNull(170_000) {
                                 d.dispatch("GET", MONITOR_TICK_URL, emptyMap(), null)
@@ -78,6 +81,11 @@ class ZHPanelService : Service() {
             }
         }
 
+        // 启动后立即跑一次 WiFi 检测，避免等到 3 分钟后才识别 ZEEHO 车机
+        Thread {
+            runCatching { ZEEHOWifiMonitor.checkAndAutoConnect(this) }
+                .onFailure { ZHLog.error("initial wifi monitor failed", it) }
+        }.start()
         monitorHandler.postDelayed(monitorRunnable, MONITOR_INTERVAL_MS)
     }
 
