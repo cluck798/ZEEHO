@@ -1,0 +1,62 @@
+name: build-pc
+
+# 极核签到面板 Windows 桌面版构建：push 到 main（desktop/ 或核心脚本变动）时构建 NSIS Setup + Portable 并发布到 Release
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "desktop/**"
+      - "repo/zeeho_box_enhanced.js"
+      - ".github/workflows/build-pc.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-pc
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Install dependencies
+        working-directory: desktop
+        run: npm install --legacy-peer-deps
+
+      - name: Build (NSIS Setup + Portable)
+        working-directory: desktop
+        run: |
+          npm run dist
+          npm run dist:portable
+
+      - name: List dist
+        working-directory: desktop
+        shell: pwsh
+        run: Get-ChildItem dist | Format-Table Name,Length
+
+      - name: Publish to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: pc-latest
+          name: 极核签到面板 Windows 桌面版
+          body: |
+            Windows 桌面版安装包。
+            - Setup 安装版（NSIS，x64）
+            - Portable 便携版（x64）
+            - 内核：构建时打包 repo/zeeho_box_enhanced.js
+            - 构建提交：${{ github.sha }}
+          files: |
+            desktop/dist/*Setup*.exe
+            desktop/dist/*Portable*.exe
+          overwrite: true
+          make_latest: true

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.ZEEHO.NoActionBar" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="colorPrimary">@color/brand_primary</item>
+        <item name="colorPrimaryVariant">@color/brand_secondary</item>
+        <item name="colorOnPrimary">@color/text_primary</item>
+        <item name="android:windowBackground">@color/panel_bg</item>
+        <item name="android:statusBarColor">@color/panel_bg</item>
+        <item name="android:navigationBarColor">@color/panel_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

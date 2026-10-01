@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">极核签到面板</string>
+    <string name="splash_title">极核 ZEEHO</string>
+    <string name="splash_subtitle">签到 · 车辆 · 控车</string>
+    <string name="splash_loading">正在加载数据…</string>
+    <string name="notif_channel_name">面板通知</string>
+    <string name="notif_channel_desc">签到结果、充电提醒、车辆状态</string>
+    <string name="notif_fg_title">极核签到面板运行中</string>
+    <string name="notif_fg_text">后台签到 / 充电监控进行中</string>
+</resources>

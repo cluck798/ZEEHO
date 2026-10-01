@@ -1,0 +1,97 @@
+name: build-apk
+
+# 极核签到面板 Android APK 构建：push 到 main（android/ 或核心脚本变动）时构建签名 APK 并发布到 Release
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "android/**"
+      - "repo/zeeho_box_enhanced.js"
+      - ".github/workflows/build-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-apk
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-34 build-tools;34.0.0'
+
+      - name: Sync core script
+        run: cp repo/zeeho_box_enhanced.js android/app/src/main/assets/zeeho_box_enhanced.js
+
+      - name: Build release APK
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          # --no-daemon：CI 单次构建无需常驻 daemon
+          ./gradlew assembleRelease --no-daemon --no-build-cache
+
+      - name: Sign APK
+        run: |
+          set -e
+          cd android
+          # 生成一次性签名密钥（CI 内生成，每次构建密钥不同；更新需先卸载旧版）
+          keytool -genkeypair -v -keystore release.keystore \
+            -alias zeeho -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android \
+            -dname "CN=ZEEHO, OU=CI, O=cluck798, L=CI, S=CI, C=CN"
+          BUILD_TOOLS=$(ls -d $ANDROID_HOME/build-tools/* | tail -1)
+          ZIPALIGN="$BUILD_TOOLS/zipalign"
+          APKSIGNER="$BUILD_TOOLS/apksigner"
+          UNSIGNED=app/build/outputs/apk/release/app-release-unsigned.apk
+          ALIGNED=app/build/outputs/apk/release/app-release-aligned.apk
+          FINAL=ZeehoSignPanel.apk
+          "$ZIPALIGN" -f -v 4 "$UNSIGNED" "$ALIGNED"
+          "$APKSIGNER" sign --ks release.keystore --ks-pass pass:android \
+            --ks-key-alias zeeho --key-pass pass:android "$ALIGNED"
+          "$APKSIGNER" verify --verbose "$ALIGNED" || true
+          mv "$ALIGNED" "$FINAL"
+          ls -la "$FINAL"
+
+      - name: Publish APK to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: 极核签到面板 Android APK
+          body: |
+            Android 安装包（APK）。
+            - minSdk 24 / targetSdk 34
+            - 内核：构建时自动同步 repo/zeeho_box_enhanced.js
+            - 签名：CI 内一次性自签名，更新版本前请先卸载旧版
+            - 构建提交：${{ github.sha }}
+          files: android/ZeehoSignPanel.apk
+          overwrite: true
+          make_latest: true
+
+      - name: Collect build log on failure
+        if: failure()
+        run: |
+          touch android/build.log
+          tail -c 300000 android/build.log > android/build-tail.log || true
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: 极核签到面板 Android APK
+          files: android/build-tail.log
+          overwrite: true
