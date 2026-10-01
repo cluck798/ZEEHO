@@ -14,3 +14,9 @@ build.log
 
 # 核心脚本由 CI 从 repo/zeeho_box_enhanced.js 同步，避免重复
 app/src/main/assets/zeeho_box_enhanced.js
+
+# 签名密钥（敏感，切勿提交；CI 从 GitHub Secret SIGNING_KEYSTORE 读取）
+release.keystore
+release.keystore.b64
+*.keystore
+*.keystore.b64

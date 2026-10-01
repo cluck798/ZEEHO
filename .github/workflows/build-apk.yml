@@ -49,15 +49,21 @@ jobs:
           # --no-daemon：CI 单次构建无需常驻 daemon
           ./gradlew assembleRelease --no-daemon
 
+      - name: Decode keystore from secret
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::Secret SIGNING_KEYSTORE is not set. Generate a fixed keystore locally and add its Base64 to repository secrets (key name: SIGNING_KEYSTORE)."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > android/release.keystore
+          ls -la android/release.keystore
+
       - name: Sign APK
         run: |
           set -e
           cd android
-          # 生成一次性签名密钥（CI 内生成，每次构建密钥不同；更新需先卸载旧版）
-          keytool -genkeypair -v -keystore release.keystore \
-            -alias zeeho -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass android -keypass android \
-            -dname "CN=ZEEHO, OU=CI, O=cluck798, L=CI, S=CI, C=CN"
           BUILD_TOOLS=$(ls -d $ANDROID_HOME/build-tools/* | tail -1)
           ZIPALIGN="$BUILD_TOOLS/zipalign"
           APKSIGNER="$BUILD_TOOLS/apksigner"
@@ -65,6 +71,7 @@ jobs:
           ALIGNED=app/build/outputs/apk/release/app-release-aligned.apk
           FINAL=ZeehoSignPanel.apk
           "$ZIPALIGN" -f -v 4 "$UNSIGNED" "$ALIGNED"
+          # 使用仓库 Secret 中固定的 keystore 签名（覆盖安装升级，无需卸载旧版）
           "$APKSIGNER" sign --ks release.keystore --ks-pass pass:android \
             --ks-key-alias zeeho --key-pass pass:android "$ALIGNED"
           "$APKSIGNER" verify --verbose "$ALIGNED" || true
@@ -80,7 +87,7 @@ jobs:
             Android 安装包（APK）。
             - minSdk 24 / targetSdk 34
             - 内核：构建时自动同步 repo/zeeho_box_enhanced.js
-            - 签名：CI 内一次性自签名，更新版本前请先卸载旧版
+            - 签名：仓库固定 keystore 签名，新版本可直接覆盖安装（无需卸载旧版）
             - 构建提交：${{ github.sha }}
           files: android/ZeehoSignPanel.apk
           overwrite: true
