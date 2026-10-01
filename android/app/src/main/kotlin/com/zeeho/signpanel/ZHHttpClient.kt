@@ -74,14 +74,16 @@ object ZHHttpClient {
         }
 
         val upperMethod = method.uppercase()
-        val hasBody = body != null && upperMethod != "GET" && upperMethod != "HEAD"
+        // PUT/POST/PATCH 按 HTTP 规范必须有 body；核心脚本的 httpPut(url, headers) 不传 body 时
+        // 用空串填充，否则 OkHttp builder.method("PUT", null) 抛 IllegalArgumentException
+        val requiresBody = upperMethod == "POST" || upperMethod == "PUT" || upperMethod == "PATCH"
         val mediaType = headers.entries.firstOrNull {
             it.key.equals("Content-Type", ignoreCase = true)
         }?.value?.toMediaTypeOrNull()
-        val reqBody: RequestBody? = if (hasBody) {
-            (body ?: "").toRequestBody(mediaType)
-        } else {
-            null
+        val reqBody: RequestBody? = when {
+            requiresBody -> (body ?: "").toRequestBody(mediaType)
+            body != null && upperMethod != "GET" && upperMethod != "HEAD" -> body.toRequestBody(mediaType)
+            else -> null
         }
 
         builder.method(upperMethod, reqBody)
