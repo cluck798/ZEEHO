@@ -62,11 +62,6 @@
 | :--: | :--: |
 | <img src="screenshots/demo_vehicle.png" width="240" alt="车辆" /> | <img src="screenshots/demo_cfg.png" width="240" alt="设置" /> |
 
-演示页特性：
-- 内置示例账号/车辆/积分/日历/日志数据，**任何标签页都不会空白**；点「立即签到」会模拟一次签到并弹出结果
-- 纯静态单文件，无后端、无网络请求、无 Token，可安全公开分享
-- 顶部副标题标注「演示模式 · 示例数据（不联网）」，避免与真实面板混淆
-
 ## ⚠️ 注意事项
 - `boxjs_store.json` 含 Token，已被 `.gitignore` 忽略，禁止提交
 - App 更新导致接口加密变化时脚本可能失效，等待适配
