@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 启动图标背景：与 splash_bg / panel_bg 一致的深色，避免白色方块观感 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/panel_bg" />
+</shape>

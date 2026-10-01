@@ -4,11 +4,13 @@
 /.idea/
 .DS_Store
 /build
+app/build/
 /captures
 .externalNativeBuild
 .cxx
 local.properties
 build.log
+.kotlin/
 
 # 核心脚本由 CI 从 repo/zeeho_box_enhanced.js 同步，避免重复
 app/src/main/assets/zeeho_box_enhanced.js

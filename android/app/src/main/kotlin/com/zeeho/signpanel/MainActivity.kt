@@ -140,6 +140,8 @@ class MainActivity : AppCompatActivity() {
                       |})();""".trimMargin(),
                     null
                 )
+                // 注入投屏 JS 桥：window.motoplayHandler(action, data, callback) → ZeehoMotoplay
+                view.evaluateJavascript(MotoplayManager.JS_HOOK, null)
             }
         }
 
@@ -185,6 +187,11 @@ class MainActivity : AppCompatActivity() {
             },
             "ZeehoNative"
         )
+
+        // 投屏 JS 桥：window.motoplayHandler(action, data, callback) → ZeehoMotoplay
+        // 对齐 iOS WKScriptMessageHandler：在 Android 上用 JavascriptInterface + 闭包回调
+        MotoplayManager.init(webView)
+        MotoplayManager().inject(webView)
     }
 
     /**

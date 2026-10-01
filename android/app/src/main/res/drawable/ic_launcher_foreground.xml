@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 启动图标前景：ZEEHO 黑底 logo，留出 adaptive icon 安全区（108dp 中可见 72dp） -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/zeeho_logo"
+    android:insetTop="25%"
+    android:insetBottom="25%"
+    android:insetLeft="25%"
+    android:insetRight="25%" />

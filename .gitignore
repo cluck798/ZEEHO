@@ -1,1 +1,4 @@
-﻿ios/dist/
+ios/dist/
+
+# IDE / 工具缓存
+.trae/
