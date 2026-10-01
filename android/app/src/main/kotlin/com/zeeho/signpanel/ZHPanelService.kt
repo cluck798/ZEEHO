@@ -129,7 +129,7 @@ class ZHPanelService : Service() {
      *   - POST body：NanoHTTPD 不会自动解析 application/json，必须按 Content-Length
      *     从 session.inputStream 手动读字节
      *   - 响应：用 result.status / result.headers / result.body 构造，附 Cache-Control: no-store
-     *     防止 WebView 缓存 /api/* GET 响应
+     *     防止 WebView 缓存 /api 路径下的 GET 响应
      */
     class ZHServer(
         @Suppress("unused") private val host: ZHPanelService,
@@ -181,17 +181,17 @@ class ZHPanelService : Service() {
 
             val mime = mimeForPath(uri)
             val response = newFixedLengthResponse(
-                Response.Status.lookupStatus(result.status) ?: Response.Status.OK,
+                Response.Status.lookup(result.status) ?: Response.Status.OK,
                 mime,
                 result.body
             )
             // 防止 WebView 缓存 /api/* 的 GET 响应导致数据陈旧（对齐 iOS finalHeaders[@"Cache-Control"]=@"no-store"）
-            response.setHeader("Cache-Control", "no-store")
-            response.setHeader("Access-Control-Allow-Origin", "*")
-            response.setHeader("Access-Control-Allow-Headers", "*")
-            response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, HEAD")
+            response.addHeader("Cache-Control", "no-store")
+            response.addHeader("Access-Control-Allow-Origin", "*")
+            response.addHeader("Access-Control-Allow-Headers", "*")
+            response.addHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, HEAD")
             for ((k, v) in result.headers) {
-                response.setHeader(k, v)
+                response.addHeader(k, v)
             }
             return response
         }
