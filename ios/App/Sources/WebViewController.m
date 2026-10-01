@@ -345,8 +345,12 @@ static UIColor *ZHPanelBackgroundColor(void) {
             [self evaluateJS:[NSString stringWithFormat:@"window.__mpCbs['%@'](%@)", cbId, ok ? @"true" : @"false"]];
         } else if ([cmd isEqualToString:@"sendNavData"]) {
             // data = "COMMAND_TYPE|jsonPayload"
+            static NSSet *allowedNavCommands = nil;
+            if (!allowedNavCommands) {
+                allowedNavCommands = [NSSet setWithArray:@[@"ROUTE", @"TURN_BY_TURN", @"ETA", @"SPEED_LIMIT", @"CLEAR"]];
+            }
             NSArray *parts = [data componentsSeparatedByString:@"|"];
-            if (parts.count >= 2) {
+            if (parts.count >= 2 && [allowedNavCommands containsObject:parts[0]]) {
                 NSString *command = parts[0];
                 NSString *payload = [[parts subarrayWithRange:NSMakeRange(1, parts.count - 1)] componentsJoinedByString:@"|"];
                 SEL sel = NSSelectorFromString(@"mpSendNavData:data:callback:");
@@ -354,6 +358,8 @@ static UIColor *ZHPanelBackgroundColor(void) {
                 castSel(mpClass, sel, command, payload, ^(BOOL ok) {
                     [self evaluateJS:[NSString stringWithFormat:@"window.__mpCbs['%@'](%@)", cbId, ok ? @"true" : @"false"]];
                 });
+            } else {
+                [self evaluateJS:[NSString stringWithFormat:@"window.__mpCbs['%@'](false)", cbId]];
             }
         }
     }
