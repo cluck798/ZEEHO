@@ -1116,7 +1116,7 @@ function renderCfg(){
 '<div class="f-item"><label>短信验证码</label><input type="text" id="pl_code" placeholder="6 位验证码" style="font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>'+
 '</div>'+
 '<div class="btn-row"><button class="btn sm" onclick="sendSmsCode()" id="pl_send_btn">获取验证码</button><button class="btn primary" onclick="phoneLoginUI()" id="pl_login_btn">登录并添加账号</button></div>'+
-'<div class="hint" style="margin-top:10px">用手机号 + 短信验证码登录，自动获取 Token 与用户ID并加入账号列表，登录成功后自动保存并刷新页面。<br>· 小号登录：可多次登录不同手机号，按小号逐个添加与管理。<br>· 服务到期 / 绑定续费：车辆智能服务到期、或需要绑定续费时，重新用手机号登录即可刷新授权，全程无需抓包。</div>'+
+'<div class="hint" style="margin-top:10px">用手机号 + 短信验证码登录，自动获取 Token 与用户ID并加入账号列表，登录成功后自动保存并刷新页面。<br>· 建议使用小号登录，因为极核是单会话模式（手机号登录情况下只能一台设备）。<br>· 服务到期 / 绑定续费：车辆智能服务到期、或需要绑定续费时，重新用手机号登录即可刷新授权，全程无需抓包。</div>'+
 '</div></div>'+
   '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar green"></span>定时签到</h3></div><div class="cfg-body">'+
   sw("auto_signin","定时签到","到点自动为全部账号签到",cfg.autoSignin===true)+
