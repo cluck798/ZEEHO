@@ -53,12 +53,32 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE }}
         run: |
+          set -e
           if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::error::Secret SIGNING_KEYSTORE is not set. Generate a fixed keystore locally and add its Base64 to repository secrets (key name: SIGNING_KEYSTORE)."
+            echo "::error::Secret SIGNING_KEYSTORE is empty or not set. Go to Settings → Secrets and variables → Actions, ensure a secret named EXACTLY 'SIGNING_KEYSTORE' (case-sensitive) exists with the Base64 content of release.keystore.b64 (one single line, no leading/trailing whitespace)."
             exit 1
           fi
+          # 诊断：长度、首尾字符、是否包含空白（不输出 Secret 内容本身）
+          echo "Secret length: ${#KEYSTORE_BASE64} chars"
+          echo "First 8 chars: ${KEYSTORE_BASE64:0:8}..."
+          echo "Last 8 chars: ...${KEYSTORE_BASE64: -8}"
+          if echo "$KEYSTORE_BASE64" | grep -q '[[:space:]]'; then
+            echo "::error::Secret contains whitespace (spaces/newlines/tabs). Re-paste the Base64 as a single line with no leading/trailing whitespace."
+            exit 1
+          fi
+          # 解码并验证字节数
           echo "$KEYSTORE_BASE64" | base64 -d > android/release.keystore
+          BYTE_SIZE=$(wc -c < android/release.keystore)
+          echo "Decoded keystore size: ${BYTE_SIZE} bytes"
+          if [ "$BYTE_SIZE" -lt 1000 ]; then
+            echo "::error::Decoded keystore is too small (${BYTE_SIZE} bytes < 1000). Secret content is likely corrupted or incomplete."
+            exit 1
+          fi
           ls -la android/release.keystore
+          # keytool 验证 keystore 是否合法（密码错误也会失败，但能确认是合法 PKCS12）
+          if ! keytool -list -keystore android/release.keystore -storepass android 2>&1 | tee keystore-check.log; then
+            echo "::warning::keytool verification failed; see log above. Build will still attempt to continue, signing will fail if keystore is invalid."
+          fi
 
       - name: Sign APK
         run: |
