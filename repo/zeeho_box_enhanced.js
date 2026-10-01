@@ -42,8 +42,8 @@ const $ = new Env("极核看板增强版");
 // 作者: @lucky
 // 主页: https://github.com/cluck798/ZEEHO
 // ============================================
-const SCRIPT_VERSION = "v2.14.23";
-console.log(`🚀 [极核面板] 脚本版本: ${SCRIPT_VERSION} (2026-10-01 v2.14.23 Motoplay导航投屏：高德JS SDK+WiFi直连TCP+车机TFT推送)`);
+const SCRIPT_VERSION = "v2.14.24";
+console.log(`🚀 [极核面板] 脚本版本: ${SCRIPT_VERSION} (2026-10-02 v2.14.24 耗电统计：今日耗电/本月耗电/本月充电/充电次数)`);
 
 // 面板入口域名：Loon 用虚拟域名 zeeho.box（Loon 可虚拟劫持不存在的域名），
 // QX 必须用真实可解析域名（默认 www.example.com，IANA 保留域名保证可解析）。
@@ -1206,21 +1206,30 @@ async function fetchBatteryChargeState(acc, cfg, vinNo) {
       // 尝试提取电池温度
       const batteryTemp = Number(d.batteryTemp || d.batTemp || d.temp || d.temperature || d.bmsTemp || d.batteryTemperature || 0);
       const range = Number(d.hmiRidableMile || d.vehicleRidableMile || d.ridableMileage || d.residualRange || 0);
+      // 耗电统计（官方直接给累计值，单位 kWh）
+      const powerUseToday = Number(d.powerUseToday || 0);
+      const powerUseMonth = Number(d.powerUseMonth || 0);
+      const powerChargeMonth = Number(d.powerChargeMonth || 0);
+      const chargeCount = Number(d.chargeCount || 0);
       return {
         chargeState: String(d.chargeStateStr || d.chargeState || "未充电"),
         voltage: isFinite(voltage) && voltage > 0 ? voltage : 0,
         current: isFinite(current) ? current : 0,
         batteryTemp: isFinite(batteryTemp) ? batteryTemp : 0,
         soc: Number(d.soc || d.batteryLevel || d.bmssoc || 0),
-        residualRangeKm: isFinite(range) ? range : 0
+        residualRangeKm: isFinite(range) ? range : 0,
+        powerUseToday: isFinite(powerUseToday) ? powerUseToday : 0,
+        powerUseMonth: isFinite(powerUseMonth) ? powerUseMonth : 0,
+        powerChargeMonth: isFinite(powerChargeMonth) ? powerChargeMonth : 0,
+        chargeCount: isFinite(chargeCount) ? chargeCount : 0
       };
     }
-    return { chargeState: "未充电", voltage: 0, current: 0, batteryTemp: 0, soc: 0, residualRangeKm: 0 };
-  } catch(e) { return { chargeState: "未充电", voltage: 0, current: 0, batteryTemp: 0, soc: 0, residualRangeKm: 0 }; }
+    return { chargeState: "未充电", voltage: 0, current: 0, batteryTemp: 0, soc: 0, residualRangeKm: 0, powerUseToday: 0, powerUseMonth: 0, powerChargeMonth: 0, chargeCount: 0 };
+  } catch(e) { return { chargeState: "未充电", voltage: 0, current: 0, batteryTemp: 0, soc: 0, residualRangeKm: 0, powerUseToday: 0, powerUseMonth: 0, powerChargeMonth: 0, chargeCount: 0 }; }
 }
 
 async function fetchVehicleInfo(acc, cfg, vinNo) {
-  const result = { hasVehicle: false, vehicleName: "", vinNo: "", voltage: 0, current: 0, batteryTemp: 0, batteryPercent: 0, residualRangeKm: 0, rangeEstimated: false, address: "", locationTime: "", chargeState: "未充电", frontPressure: "", rearPressure: "", frontTemp: "", rearTemp: "", todayDistance: 0, todayDuration: 0, todayMaxSpeed: 0, lastRideMileage: 0, totalMileage: 0, yesterdayDistance: 0, vehicleImageUrl: "", serviceEndDate: "", serviceRemainDays: 0, serviceStatus: "", powerStatus: "", lockState: "", online: "", rideState: "", cushionState: "", longitude: "", latitude: "" };
+  const result = { hasVehicle: false, vehicleName: "", vinNo: "", voltage: 0, current: 0, batteryTemp: 0, batteryPercent: 0, residualRangeKm: 0, rangeEstimated: false, address: "", locationTime: "", chargeState: "未充电", frontPressure: "", rearPressure: "", frontTemp: "", rearTemp: "", todayDistance: 0, todayDuration: 0, todayMaxSpeed: 0, lastRideMileage: 0, totalMileage: 0, yesterdayDistance: 0, vehicleImageUrl: "", serviceEndDate: "", serviceRemainDays: 0, serviceStatus: "", powerStatus: "", lockState: "", online: "", rideState: "", cushionState: "", longitude: "", latitude: "", powerUseToday: 0, powerUseMonth: 0, powerChargeMonth: 0, chargeCount: 0 };
   try {
     const allVehicles = await fetchVehicleList(acc, cfg);
     // 名下的模拟车不参与展示（首页不显示模拟车）
@@ -1237,7 +1246,7 @@ async function fetchVehicleInfo(acc, cfg, vinNo) {
       fetchVehicleWidgets(acc, cfg, v.vinNo).catch(() => null),
       fetchTirePressure(acc, cfg, v.vinNo).catch(() => null),
       fetchRideInfo(acc, cfg, v.vinNo).catch(() => null),
-      fetchBatteryChargeState(acc, cfg, v.vinNo).catch(() => ({ chargeState: "未充电", voltage: 0, current: 0, batteryTemp: 0, soc: 0 })),
+      fetchBatteryChargeState(acc, cfg, v.vinNo).catch(() => ({ chargeState: "未充电", voltage: 0, current: 0, batteryTemp: 0, soc: 0, powerUseToday: 0, powerUseMonth: 0, powerChargeMonth: 0, chargeCount: 0 })),
       fetchServiceRechargeDetail(acc, cfg, v.vinNo).catch(() => null),
       fetchVehicleHomePage(acc, cfg, v.vinNo).catch(() => null)
     ]);
@@ -1286,6 +1295,11 @@ async function fetchVehicleInfo(acc, cfg, vinNo) {
     if (battery.voltage) result.voltage = battery.voltage;
     if (battery.current) result.current = battery.current;
     if (battery.batteryTemp) result.batteryTemp = battery.batteryTemp;
+    // 耗电统计（官方接口累计值，0 也保留——可能确实没骑/没充）
+    if (typeof battery.powerUseToday === "number") result.powerUseToday = battery.powerUseToday;
+    if (typeof battery.powerUseMonth === "number") result.powerUseMonth = battery.powerUseMonth;
+    if (typeof battery.powerChargeMonth === "number") result.powerChargeMonth = battery.powerChargeMonth;
+    if (typeof battery.chargeCount === "number") result.chargeCount = battery.chargeCount;
     // 续航兜底：充电时 widgets/batteryInfo 都可能返回0，先尝试 batteryInfo，再基于电量估算
     if ((!result.residualRangeKm || result.residualRangeKm === 0) && battery.residualRangeKm) {
       result.residualRangeKm = battery.residualRangeKm;
@@ -1658,11 +1672,15 @@ function renderDashboard(accounts, data, cfg, updateTime) {
           <div class="tire-item"><span class="tire-icon">🛞</span>前 ${a.vehicle.frontPressure || "-"} ${a.vehicle.frontTemp ? `<span class="tire-temp">${a.vehicle.frontTemp}</span>` : ""}</div>
           <div class="tire-item"><span class="tire-icon">🛞</span>后 ${a.vehicle.rearPressure || "-"} ${a.vehicle.rearTemp ? `<span class="tire-temp">${a.vehicle.rearTemp}</span>` : ""}</div>
         </div>` : ""}
-        ${(a.vehicle.voltage || (isCharging && a.vehicle.current) || a.vehicle.batteryTemp) ? `
+        ${(a.vehicle.voltage || (isCharging && a.vehicle.current) || a.vehicle.batteryTemp || a.vehicle.powerUseToday > 0 || a.vehicle.powerUseMonth > 0 || a.vehicle.powerChargeMonth > 0 || a.vehicle.chargeCount > 0) ? `
         <div class="battery-row">
           ${a.vehicle.voltage ? `<div class="battery-item"><span class="battery-icon">⚡</span>电压 ${a.vehicle.voltage.toFixed(1)}V</div>` : ""}
           ${isCharging && a.vehicle.current ? `<div class="battery-item"><span class="battery-icon">🔌</span>电流 ${a.vehicle.current.toFixed(1)}A</div>` : ""}
           ${a.vehicle.batteryTemp ? `<div class="battery-item"><span class="battery-icon">🌡️</span>电池温度 ${a.vehicle.batteryTemp.toFixed(0)}°C</div>` : ""}
+          ${a.vehicle.powerUseToday > 0 ? `<div class="battery-item"><span class="battery-icon">📉</span>今日耗电 ${a.vehicle.powerUseToday.toFixed(2)}kWh</div>` : ""}
+          ${a.vehicle.powerUseMonth > 0 ? `<div class="battery-item"><span class="battery-icon">📊</span>本月耗电 ${a.vehicle.powerUseMonth.toFixed(2)}kWh</div>` : ""}
+          ${a.vehicle.powerChargeMonth > 0 ? `<div class="battery-item"><span class="battery-icon">🔋</span>本月充电 ${a.vehicle.powerChargeMonth.toFixed(2)}kWh</div>` : ""}
+          ${a.vehicle.chargeCount > 0 ? `<div class="battery-item"><span class="battery-icon">🔁</span>充电次数 ${a.vehicle.chargeCount}</div>` : ""}
         </div>` : ""}
         ${a.vehicle.serviceEndDate ? `
         <div class="service-row">
