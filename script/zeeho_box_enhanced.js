@@ -113,10 +113,10 @@ function normalizeRefreshSec(v) {
   return Math.max(15, Math.min(3600, Math.round(n)));
 }
 const DEFAULT_CONFIG = {
-  app: { appId: "S7qPWPU1", appSecret: "c5e0da7f4da28df805694ec3dd1fc6792e9df99d" },
-  h5:  { appId: "Sw5F9uJi", appSecret: "46870a8f678a09109468f5b0168818b91c292845" },
+  app: { appId: "", appSecret: "" }, // 不再内置真实密钥，需通过捕获脚本写入 $persistentStore 或配置页填写
+  h5:  { appId: "", appSecret: "" }, // 不再内置真实密钥，需通过捕获脚本写入 $persistentStore 或配置页填写
   community: { enablePost: true, enableLike: true, enableComment: true, enableShare: true, enableDelete: true },
-  vehicleAesKey: "ce2cd7cb57124c1349dd8543bf6fd31d", // 云端开/关锁AES-256-ECB密钥(32位)。已内置默认密钥，可在配置页修改
+  vehicleAesKey: "", // 不再内置真实AES密钥，需在配置页填写
   vehicleControlRisk: "", // 车控风险确认：需在设置页填写「我自愿承担相关风险」并保存后才能使用车控功能
   autoRefreshSec: 60 // 看板首页自动刷新间隔(秒)，配置页可改；规范化见 normalizeRefreshSec
 };
