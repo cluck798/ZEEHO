@@ -38,6 +38,8 @@ jobs:
           set -eo pipefail
           cd ios
           xcodegen generate
+          # 先解析 SPM 依赖（VLCKit 等），避免 build 时网络竞态
+          xcodebuild -project ZeehoSignPanel.xcodeproj -resolvePackageDependencies 2>&1 | tail -50 || true
           xcodebuild -project ZeehoSignPanel.xcodeproj -scheme ZeehoPanel -configuration Release \
             -sdk iphoneos -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= \

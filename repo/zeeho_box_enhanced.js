@@ -42,8 +42,8 @@ const $ = new Env("极核看板增强版");
 // 作者: @lucky
 // 主页: https://github.com/cluck798/ZEEHO
 // ============================================
-const SCRIPT_VERSION = "v2.14.24";
-console.log(`🚀 [极核面板] 脚本版本: ${SCRIPT_VERSION} (2026-10-02 v2.14.24 耗电统计：今日耗电/本月耗电/本月充电/充电次数)`);
+const SCRIPT_VERSION = "v2.15.0";
+console.log(`🚀 [极核面板] 脚本版本: ${SCRIPT_VERSION} (2026-10-02 v2.15.0 行车记录仪 RTSP 预览：原生 VLCKit 桥接 + 192.168.49.1 直播)`);
 
 // 面板入口域名：Loon 用虚拟域名 zeeho.box（Loon 可虚拟劫持不存在的域名），
 // QX 必须用真实可解析域名（默认 www.example.com，IANA 保留域名保证可解析）。
@@ -1698,6 +1698,7 @@ function renderDashboard(accounts, data, cfg, updateTime) {
           <button class="vctrl-btn" onclick="vehicleCtrl('${a.userId}','cushion',this,'${v.vinNo || ''}')">💺 坐垫</button>
           <button class="vctrl-btn vctrl-unlock" onclick="vehicleCtrl('${a.userId}','unlock',this,'${v.vinNo || ''}')">🔓 开锁</button>
           <button class="vctrl-btn vctrl-lock" onclick="vehicleCtrl('${a.userId}','lock',this,'${v.vinNo || ''}')">🔒 关锁</button>
+          <button class="vctrl-btn vctrl-dashcam" id="dashcam-btn-${idx}" onclick="event.stopPropagation();openDashcam(${idx},this)">📹 行车记录仪</button>
         </div>
       </div>` : ""}
     </div>`;
@@ -1926,6 +1927,28 @@ function openMap(idx) {
   var lat = Number(v.latitude), lng = Number(v.longitude);
   var url = 'https://maps.apple.com/?q=' + lat + ',' + lng + '&z=17';
   window.open(url, '_blank');
+}
+// 行车记录仪 RTSP 实时预览（iOS/Android 原生桥接，Loon/QX 等纯代理环境无 effect）
+// 用户需先在系统设置连接行车记录仪 WiFi（默认 SSID: ZEEHO-DashCam, IP: 192.168.49.1）
+function openDashcam(idx, btn) {
+  if (typeof window.dashcamHandler !== 'function') {
+    showToast('当前环境不支持行车记录仪预览（需 iOS/Android 原生 App）', 'err');
+    return;
+  }
+  // 先 check 探测，再 play 调起播放器
+  if (btn) { btn.disabled = true; btn.textContent = '📹 探测中…'; }
+  window.dashcamHandler('check', function(ok) {
+    if (!ok) {
+      if (btn) { btn.disabled = false; btn.textContent = '📹 行车记录仪'; }
+      showToast('未连接行车记录仪 WiFi，请在系统设置连接（SSID: ZEEHO-DashCam）', 'err');
+      return;
+    }
+    // 探测成功 → 调起全屏播放器
+    window.dashcamHandler('play', function(played) {
+      if (btn) { btn.disabled = false; btn.textContent = '📹 行车记录仪'; }
+      if (!played) showToast('打开播放器失败', 'err');
+    });
+  });
 }
 function startAutoRefresh() {
   if (autoRefreshTimer) clearInterval(autoRefreshTimer);

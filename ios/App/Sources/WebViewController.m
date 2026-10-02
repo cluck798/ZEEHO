@@ -58,10 +58,11 @@ static UIColor *ZHPanelBackgroundColor(void) {
     [config setURLSchemeHandler:self forURLScheme:kPanelScheme];
     config.allowsInlineMediaPlayback = YES;
 
-    // 注入 JS：hook hideSplash + Motoplay 投屏桥接
+    // 注入 JS：hook hideSplash + Motoplay 投屏桥接 + 行车记录仪 RTSP 桥接
     WKUserContentController *userCtrl = [[WKUserContentController alloc] init];
     [userCtrl addScriptMessageHandler:self name:@"hideLoading"];
     [userCtrl addScriptMessageHandler:self name:@"motoplay"];
+    [userCtrl addScriptMessageHandler:self name:@"dashcam"];
     static NSString * const kSplashHook =
     @"<script>(function(){"
     "var s=document.getElementById('splash');"
@@ -74,6 +75,14 @@ static UIColor *ZHPanelBackgroundColor(void) {
     "if(!window.webkit||!window.webkit.messageHandlers.motoplay)return cb(false);"
     "var id='mp_'+Date.now();window.__mpCbs=window.__mpCbs||{};if(cb)window.__mpCbs[id]=cb;"
     "window.webkit.messageHandlers.motoplay.postMessage({command:cmd,data:data||'',id:id})"
+    "};"
+    // 行车记录仪桥接：前端通过 dashcamHandler(action, cb) 调原生
+    // action: 'check' → 探测记录仪 WiFi 是否可达(回调 true/false)
+    //         'play'  → 调起 RTSP 播放器全屏页（无需回调）
+    "window.dashcamHandler=function(action,cb){"
+    "if(!window.webkit||!window.webkit.messageHandlers.dashcam)return cb&&cb(false);"
+    "var id='dc_'+Date.now();if(cb)window.__mpCbs=window.__mpCbs||{},window.__mpCbs[id]=cb;"
+    "window.webkit.messageHandlers.dashcam.postMessage({action:action||'check',id:id})"
     "};"
     "})();</script>";
     [userCtrl addUserScript:[[WKUserScript alloc] initWithSource:kSplashHook
@@ -355,6 +364,28 @@ static UIColor *ZHPanelBackgroundColor(void) {
                     [self evaluateJS:[NSString stringWithFormat:@"window.__mpCbs['%@'](%@)", cbId, ok ? @"true" : @"false"]];
                 });
             }
+        }
+    }
+    // 行车记录仪 RTSP 桥接
+    if ([message.name isEqualToString:@"dashcam"]) {
+        NSDictionary *body = message.body;
+        NSString *action = body[@"action"];
+        NSString *cbId = body[@"id"];
+        Class dmClass = NSClassFromString(@"DashcamManager");
+        if (!dmClass) {
+            if (cbId.length) [self evaluateJS:[NSString stringWithFormat:@"window.__mpCbs['%@'](false)", cbId]];
+            return;
+        }
+        if ([action isEqualToString:@"check"]) {
+            // 探测 192.168.49.1:554 是否可达
+            [dmClass performSelector:NSSelectorFromString(@"mpCheckDashcam:") withObject:^(BOOL ok) {
+                if (cbId.length) [self evaluateJS:[NSString stringWithFormat:@"window.__mpCbs['%@'](%@)", cbId, ok ? @"true" : @"false"]];
+            }];
+        } else if ([action isEqualToString:@"play"]) {
+            // 调起 RTSP 播放器（先探测再 present）
+            [dmClass performSelector:NSSelectorFromString(@"mpPresentPlayer:callback:") withObject:self withObject:^(BOOL ok) {
+                if (cbId.length) [self evaluateJS:[NSString stringWithFormat:@"window.__mpCbs['%@'](%@)", cbId, ok ? @"true" : @"false"]];
+            }];
         }
     }
 }
