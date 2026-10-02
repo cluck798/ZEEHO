@@ -58,13 +58,15 @@ class DashcamManager: NSObject {
     }
 
     // MARK: - ObjC 桥接方法（供 NSClassFromString 调用）
-    /// 检测是否已连上行车记录仪 WiFi
+    /// 检测是否已连上行车记录仪 WiFi（无 VLCKit 时也能探测，仅返回连接状态）
     @objc static func mpCheckDashcam(_ callback: @escaping (Bool) -> Void) {
         shared.checkConnection(completion: callback)
     }
 
     /// 调起 RTSP 播放器（先探测，成功后 present）
+    /// 无 VLCKit 集成时（CI 构建未集成第三方库）返回 false 并提示用户
     @objc static func mpPresentPlayer(_ rootVC: UIViewController, callback: @escaping (Bool) -> Void) {
+        #if canImport(VLCKit)
         shared.checkConnection { ok in
             DispatchQueue.main.async {
                 if ok {
@@ -73,7 +75,6 @@ class DashcamManager: NSObject {
                     rootVC.present(player, animated: true)
                     callback(true)
                 } else {
-                    // 弹窗提示连 WiFi
                     let alert = UIAlertController(
                         title: "未连接行车记录仪",
                         message: "请先在系统设置连接行车记录仪 WiFi（默认 SSID: ZEEHO-DashCam）后重试。\nIP: 192.168.49.1  端口: 554",
@@ -85,5 +86,18 @@ class DashcamManager: NSObject {
                 }
             }
         }
+        #else
+        // 无 VLCKit 集成：提示用户当前版本不支持
+        DispatchQueue.main.async {
+            let alert = UIAlertController(
+                title: "暂不支持行车记录仪预览",
+                message: "当前 IPA 未集成 RTSP 播放器库（VLCKit），需重新构建版本。",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "好的", style: .default))
+            rootVC.present(alert, animated: true)
+            callback(false)
+        }
+        #endif
     }
 }

@@ -8,10 +8,6 @@ settings:
     CODE_SIGNING_ALLOWED: "NO"
     CODE_SIGNING_REQUIRED: "NO"
     CODE_SIGN_IDENTITY: ""
-packages:
-  VLCKit:
-    url: https://github.com/videolan/VLCKit.git
-    from: 4.1.0
 targets:
   ZeehoPanel:
     type: application
@@ -34,7 +30,6 @@ targets:
         OTHER_LDFLAGS: "-weak_framework WidgetKit"
     dependencies:
       - target: ZeehoWidget
-      - package: VLCKit, product: MobileVLCKit
   ZeehoWidget:
     type: app-extension
     platform: iOS

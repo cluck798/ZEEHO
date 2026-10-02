@@ -1,6 +1,5 @@
 import Foundation
 import UIKit
-import VLCKit
 import Network
 
 /// 行车记录仪 RTSP 实时预览播放器
@@ -11,6 +10,12 @@ import Network
 ///
 /// 行车记录仪 WiFi 是独立热点（不是车机 TFT 192.168.0.1），需手机先手动连上
 /// SSID 通常为 ZEEHO-DashCam 或类似名称，IP 固定 192.168.49.1
+///
+/// 注意：VLCKit 通过 SPM 集成，CI 上可能因 binary xcframework 下载/兼容问题失败。
+/// 用 #if canImport(VLCKit) 保护，未集成时本类不可用（DashcamManager 会返回 false）。
+#if canImport(VLCKit)
+import VLCKit
+
 class DashcamPlayerViewController: UIViewController {
 
     // MARK: - 常量
@@ -28,7 +33,6 @@ class DashcamPlayerViewController: UIViewController {
     private var statusLabel: UILabel!
     private var reconnectButton: UIButton!
     private var hintLabel: UILabel!
-    private var connectCheck: NWConnection?
 
     // MARK: - 生命周期
     override func viewDidLoad() {
@@ -51,13 +55,11 @@ class DashcamPlayerViewController: UIViewController {
 
     // MARK: - UI
     private func setupUI() {
-        // 视频显示层
         videoView = UIView()
         videoView.backgroundColor = .black
         videoView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(videoView)
 
-        // 关闭按钮（右上）
         closeButton = UIButton(type: .system)
         closeButton.setTitle("✕", for: .normal)
         closeButton.setTitleColor(.white, for: .normal)
@@ -68,7 +70,6 @@ class DashcamPlayerViewController: UIViewController {
         closeButton.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
         view.addSubview(closeButton)
 
-        // 状态提示（居中）
         statusLabel = UILabel()
         statusLabel.text = "正在连接行车记录仪…"
         statusLabel.textColor = .white
@@ -78,11 +79,8 @@ class DashcamPlayerViewController: UIViewController {
         statusLabel.layer.cornerRadius = 8
         statusLabel.layer.masksToBounds = true
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
-        // 内边距用 padding
-        statusLabel.textAlignment = .center
         view.addSubview(statusLabel)
 
-        // 重连按钮（底部）
         reconnectButton = UIButton(type: .system)
         reconnectButton.setTitle("重新连接", for: .normal)
         reconnectButton.setTitleColor(.white, for: .normal)
@@ -95,7 +93,6 @@ class DashcamPlayerViewController: UIViewController {
         reconnectButton.isHidden = true
         view.addSubview(reconnectButton)
 
-        // 连接提示（顶部）
         hintLabel = UILabel()
         hintLabel.text = "📡 RTSP 192.168.49.1"
         hintLabel.textColor = UIColor(white: 1, alpha: 0.7)
@@ -144,7 +141,7 @@ class DashcamPlayerViewController: UIViewController {
             return
         }
         let media = VLCMedia(url: url)
-        // RTSP over TCP（避免 UDP 在 WiFi 弱信号下丢包，车机环境首选）
+        // RTSP over TCP（避免 UDP 在 WiFi 弱信号下丢包）
         media.addOption(":rtsp-tcp")
         media.addOption(":rtsp-tcp=1")
         // 网络缓冲 1000ms（默认 600ms，行车记录仪低延迟场景保留 1s 平衡卡顿）
@@ -172,7 +169,6 @@ class DashcamPlayerViewController: UIViewController {
 
     @objc private func reconnectTapped() {
         stopPlayback()
-        // 重连前再次探测 TCP，避免一直失败
         DashcamManager.shared.checkConnection { [weak self] ok in
             guard let self = self else { return }
             DispatchQueue.main.async {
@@ -226,3 +222,4 @@ extension DashcamPlayerViewController: VLCMediaPlayerDelegate {
         }
     }
 }
+#endif

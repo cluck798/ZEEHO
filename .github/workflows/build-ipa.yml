@@ -38,8 +38,6 @@ jobs:
           set -eo pipefail
           cd ios
           xcodegen generate
-          # 先解析 SPM 依赖（VLCKit 等），避免 build 时网络竞态
-          xcodebuild -project ZeehoSignPanel.xcodeproj -resolvePackageDependencies 2>&1 | tail -50 || true
           xcodebuild -project ZeehoSignPanel.xcodeproj -scheme ZeehoPanel -configuration Release \
             -sdk iphoneos -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= \
@@ -81,13 +79,17 @@ jobs:
             - 安装：TrollStore 中点击 + 选择本 IPA 即可，永久签名不掉签
             - 构建提交：${{ github.sha }}
           files: ZeehoSignPanel.ipa
-          overwrite: true
+          overwrite_files: true
           make_latest: true
 
       - name: Collect build log on failure
         if: failure()
         run: |
           touch ios/xcodebuild.log
+          # 兜底：如果 log 为空，写入占位信息避免上传 0 字节文件失败
+          if [ ! -s ios/xcodebuild.log ]; then
+            echo "xcodebuild.log is empty (build failed before any output, likely xcodegen or environment issue)" > ios/xcodebuild.log
+          fi
           tail -c 300000 ios/xcodebuild.log > ios/xcodebuild-tail.log
 
       - name: Upload build log on failure
@@ -97,4 +99,4 @@ jobs:
           tag_name: ios-latest
           name: 极核签到面板 iOS IPA（巨魔/TrollStore）
           files: ios/xcodebuild-tail.log
-          overwrite: true
+          overwrite_files: true
