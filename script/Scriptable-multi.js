@@ -1,16 +1,11 @@
-// ============= 极核 ZEEHO · Scriptable（单账号版 v1.2） =============
-// 单账号：只维护一个账号，菜单内可随时「手机号登录 / 粘贴 Token」重设
-// 功能全集：自动签到 / 盲盒 / 补签 / 发布动态 · 车辆控制 · 充电监控 · 小组件（小 / 中 / 大 + 锁屏圆形 / 长方形）
-// v1.2：① 单账号化改造（功能保留）② 发布内容 lucky ③ 随机设备指纹 ④ 服务端当日记录判签 ⑤ 中尺寸显示电压
 // ============= 配置与常量 =========
 const BASE = "https://tapi.zeehoev.com";
 const H5_BASE = "https://h5.zeehoev.com";
 
-// ========== 🔑 Token（单账号版说明） ==========
-// 单账号：Token 保存在 zeeho_accounts.json（只含一个账号），首次运行会弹菜单引导设置。
-// 此处仅作为「旧版数据迁移」的兜底：从旧版升级粘贴新脚本会清空这里。
-// 推荐"手机号登录"（免抓包），也可在菜单 →「账号 / Token」里粘贴 Token。
-// 💡 从 v1.1（旧单账号版）升级：Token 未随脚本携带，首次运行按弹窗重设一次即可。
+// ========== 🔑 Token（多账号版说明） ==========
+// ⚠️ 新版为多账号模式：Token 保存在 zeeho_accounts.json，运行脚本后按菜单引导设置。
+// 此处仅作为「旧版数据迁移」的兜底：从旧版升级粘贴新脚本会清空这里，
+// 首次运行会弹菜单引导重新设置 Token（推荐"手机号登录"，免抓包）。
 const HARDCODED_TOKEN = "";
 
 // ========== 🔄 强制重置（调试用） ==========
@@ -78,11 +73,12 @@ function logDebug(...args) {
 }
 
 // ========== 📝 发布动态默认配置（可在 App 菜单 → 设置 中修改） ==========
-const POST_CONTENT = "lucky"; // 每天发布的动态内容（默认值）
+const POST_CONTENT = "开心的一天"; // 每天发布的动态内容（默认值）
 const ENABLE_AUTO_POST = true; // 是否启用自动发布动态（默认值）
 
 // ========== 🧩 全局默认配置（保存后可在 App 菜单中修改） ==========
 const DEFAULT_CFG = {
+  concurrency: 3,            // 多账号并发数（建议 2~3，过高可能触发风控）
   autoPost: ENABLE_AUTO_POST,
   postContent: POST_CONTENT,
   autoSupplement: true,      // 自动补签（只消耗已有补签卡，不自动花积分兑换）
@@ -494,15 +490,15 @@ function sleep(ms) {
   });
 }
 
-// ============= 持久化（账号 + 全局配置） ===============
+// ============= 持久化（多账号 + 全局配置） ===============
 const FM = FileManager.local();
 const STATE_FILE = FM.joinPath(FM.documentsDirectory(), "zeeho_signin.json"); // 旧版单账号状态（仅迁移/兼容用）
-const STORE_FILE = FM.joinPath(FM.documentsDirectory(), "zeeho_accounts.json"); // 账号 + 全局配置
+const STORE_FILE = FM.joinPath(FM.documentsDirectory(), "zeeho_accounts.json"); // 多账号 + 全局配置
 
-const UID_BY_TOKEN = {}; // token → userId（请求头 user_id 的来源）
-let STORE = null;        // 账号数据（内存缓存）
+const UID_BY_TOKEN = {}; // token → userId（并发批量时请求头 user_id 的来源，避免全局状态串号）
+let STORE = null;        // 多账号数据（内存缓存）
 let CFG = null;          // 全局配置快捷引用（= STORE.cfg）
-let CURRENT_ACC = null;  // 当前账号（内存上下文）
+let CURRENT_ACC = null;  // 单账号路径当前账号（批量并发不依赖它）
 
 function readStoreFile() {
   try {
@@ -550,7 +546,7 @@ function readState() {
   return legacyReadState();
 }
 
-// 写回当前账号状态（部分路径使用显式 persist 回调，避免依赖全局上下文）
+// 写回当前账号状态（批量并发路径请使用显式 persist 回调，勿依赖全局账号）
 function writeState(obj) {
   const payload = obj && typeof obj === "object" ? obj : {};
   delete payload.token;
@@ -577,24 +573,6 @@ function registerUid(acc) {
 
 function dispName(acc) {
   return String((acc && (acc.userName || acc.phone || acc.userId)) || "账号");
-}
-
-// ============== 单账号约束 ==============
-// 本脚本为单账号版：任何时刻只保留一个账号（默认账号优先，其次第一个有Token的账号）
-function enforceSingleAccount(store) {
-  if (!store.accounts || store.accounts.length <= 1) return store;
-  const keep = store.accounts.find((a) => a.id === store.cfg.defaultAccountId)
-    || store.accounts.find((a) => a.token)
-    || store.accounts[0];
-  const dropped = store.accounts.filter((a) => a !== keep);
-  store.accounts = [keep];
-  store.cfg.defaultAccountId = keep.id;
-  for (const a of dropped) delete UID_BY_TOKEN[cleanToken(a.token)];
-  if (CURRENT_ACC && dropped.indexOf(CURRENT_ACC) >= 0) CURRENT_ACC = null;
-  MENU_ACC = null;
-  saveStore(store);
-  logStep("单账号模式", "info", `仅保留「${dispName(keep)}」，已移除 ${dropped.length} 个多余账号`);
-  return store;
 }
 
 function getStore() {
@@ -644,7 +622,6 @@ function getStore() {
     if (!a.activeVin && a.vehicles[0]) a.activeVin = a.vehicles[0].vinNo;
     registerUid(a);
   }
-  enforceSingleAccount(store);
   STORE = store;
   return STORE;
 }
@@ -694,9 +671,7 @@ async function requestWithSign(type, method, url, params, data, token, label = "
 
   const req = new Request(fullUrl);
   req.method = method;
-
-  // 每次请求一套随机设备指纹：UA / x-app-info 与官方 App 同格式，避免固定指纹被风控判为脚本
-  const deviceUA = randomDeviceUA();
+  
   req.headers = useV2
     ? {
         "content-type": "application/json",
@@ -704,17 +679,15 @@ async function requestWithSign(type, method, url, params, data, token, label = "
         "authorization": `Bearer ${cleanToken(token)}`,
         "accept": "*/*",
         "accept-language": "zh-CN",
-        "user-agent": deviceUA,
+        "user-agent": OFFICIAL_UA,
         "interfaceversion": "2",
-        "x-app-info": deviceUA,
+        "x-app-info": OFFICIAL_UA,
         ...signHeaders,
       }
     : {
         "Content-Type": "application/json;charset=UTF-8",
         "Accept-Language": "zh-CN",
         "interfaceversion": "2",
-        "user-agent": deviceUA,
-        "x-app-info": deviceUA,
         "Authorization": `Bearer ${cleanToken(token)}`,
         ...signHeaders
       };
@@ -775,7 +748,7 @@ async function requestWriteWithFallback(method, url, params, data, token, label)
   return json;
 }
 
-// ========== Token过期处理（更新当前账号的Token） ==========
+// ========== Token过期处理（多账号：只更新对应账号的Token） ==========
 async function handleTokenExpired() {
   if (config.runsInWidget) return false;
   
@@ -784,7 +757,7 @@ async function handleTokenExpired() {
   
   const alert = new Alert();
   alert.title = "🔑 Token已过期";
-  alert.message = `账号「${acc ? dispName(acc) : "默认"}」的Token已过期，请登录极核App抓包获取新Token。\n\n获取方式：\n1. 打开ZEEHO App\n2. 抓包获取Authorization头\n3. 复制Token内容粘贴到下方\n\n💡 也可在菜单→账号 / Token 里用「手机号登录」免抓包更新`;
+  alert.message = `账号「${acc ? dispName(acc) : "默认"}」的Token已过期，请登录极核App抓包获取新Token。\n\n获取方式：\n1. 打开ZEEHO App\n2. 抓包获取Authorization头\n3. 复制Token内容粘贴到下方\n\n💡 也可在菜单→账号管理 里用「手机号登录」免抓包更新`;
   alert.addTextField("粘贴新Token", "");
   alert.addAction("✅ 更新Token");
   alert.addCancelAction("取消");
@@ -963,7 +936,7 @@ async function deleteArticle({ articleId, token }) {
   return await safeRequest(requestWithSign, 'app', "DELETE", url, { articleId, postType: "1" }, null, token, "deleteArticle");
 }
 
-// ========== 领取分享积分接口（带每日检查；支持传入账号状态） ==========
+// ========== 领取分享积分接口（带每日检查；支持传入账号状态，供并发批量使用） ==========
 async function adjustByShare({ token, state }) {
   const st = state || readState() || {};
   const today = todayISO();
@@ -984,7 +957,7 @@ async function adjustByShare({ token, state }) {
   return result;
 }
 
-// ========== 自动发布动态流程（persist 显式传入，避免依赖全局上下文） ==========
+// ========== 自动发布动态流程（persist 供并发批量传入，避免依赖全局账号） ==========
 async function autoPublishArticle(token, state, persist = writeState) {
   const today = todayISO();
   const content = String((getStore().cfg.postContent || POST_CONTENT) || "").trim() || POST_CONTENT;
@@ -1296,38 +1269,7 @@ function vehicleHeaders(acc, signHeaders) {
 
 // 写操作"新协议"（2026-09-24 起网关收紧：缺少 appid 头 / 官方UA / Cookie 会返回 30121 permit error。
 // 与参考实现里已验证的发帖协议 1:1 一致；车控同样走这套，被拦截时再回退旧通道）
-// ============= 随机设备指纹 =============
-// 背景：服务端风控会按"设备"标记脚本客户端——固定设备标识一旦被标记，写操作会持续返回
-// 430 {"code":"31001","message":"非法的请求"}（换设备即可恢复）。因此每次请求随机生成一套
-// 真实设备指纹（UA 格式与官方 App 一致），避免固定指纹被风控拉黑。
-const ZEEHO_APP_UA_VERSION = "3.0.5";
-const DEVICE_MODELS = [
-  ["iPhone 11", "828*1792"], ["iPhone XR", "828*1792"], ["iPhone SE (3rd generation)", "750*1334"],
-  ["iPhone 12 mini", "1080*2340"], ["iPhone 12", "1170*2532"], ["iPhone 12 Pro", "1170*2532"],
-  ["iPhone 13 mini", "1080*2340"], ["iPhone 13", "1170*2532"], ["iPhone 13 Pro", "1170*2532"], ["iPhone 13 Pro Max", "1284*2778"],
-  ["iPhone 14", "1170*2532"], ["iPhone 14 Plus", "1284*2778"], ["iPhone 14 Pro", "1179*2556"], ["iPhone 14 Pro Max", "1290*2796"],
-  ["iPhone 15", "1179*2556"], ["iPhone 15 Pro", "1179*2556"], ["iPhone 15 Pro Max", "1290*2796"],
-  ["iPhone 16", "1179*2556"], ["iPhone 16 Pro", "1206*2622"], ["iPhone 16 Pro Max", "1320*2868"]
-];
-const IOS_VERSIONS = ["16.1.1", "16.6.1", "16.7.8", "17.1.1", "17.2.1", "17.4.1", "17.5.1", "17.6.1", "18.0", "18.1.1", "18.3.1"];
-
-function pickRandomDevice(list) {
-  return list[Math.floor(Math.random() * list.length)];
-}
-
-function randomDeviceUuid() {
-  const hex = "0123456789ABCDEF";
-  let s = "";
-  for (let i = 0; i < 32; i++) s += hex[Math.floor(Math.random() * 16)];
-  return `${s.slice(0, 8)}-${s.slice(8, 12)}-${s.slice(12, 16)}-${s.slice(16, 20)}-${s.slice(20)}`;
-}
-
-// 官方 App UA：MOBILE|iOS|<系统>|ZEEHO_APP|<版本>|iPhone|<机型>|<分辨率>|<设备UUID>|<网络>|iOS
-function randomDeviceUA() {
-  const m = pickRandomDevice(DEVICE_MODELS);
-  const net = Math.random() < 0.7 ? "WWAN" : "WIFI";
-  return `MOBILE|iOS|${pickRandomDevice(IOS_VERSIONS)}|ZEEHO_APP|${ZEEHO_APP_UA_VERSION}|iPhone|${m[0]}|${m[1]}|${randomDeviceUuid()}|${net}|iOS`;
-}
+const OFFICIAL_UA = "MOBILE|iOS|16.1.1|ZEEHO_APP|3.0.5|iPhone|iPhone 14 Pro|1179*2556|DC0C4906-A4A8-4866-9432-B31E1E252D53|WWAN|iOS";
 
 function newProtoSign(queryStr, bodyStr) {
   const ac = APP_CONFIG.app;
@@ -1346,16 +1288,15 @@ function newProtoSign(queryStr, bodyStr) {
 }
 
 function vehicleHeadersV2(acc, signHeaders) {
-  const deviceUA = randomDeviceUA();
   const h = {
     "content-type": "application/json",
     "appid": APP_CONFIG.app.appId,
     "authorization": `Bearer ${cleanToken(acc.token)}`,
     "accept": "*/*",
     "accept-language": "zh-CN",
-    "user-agent": deviceUA,
+    "user-agent": OFFICIAL_UA,
     "interfaceversion": "2",
-    "x-app-info": deviceUA,
+    "x-app-info": OFFICIAL_UA,
     ...(signHeaders || {}),
   };
   if (acc.userId) h["cookie"] = `user_id=${acc.userId}`;
@@ -1520,16 +1461,6 @@ function adaptSigninStatus(raw) {
     lastSignDate = datePart;
     alreadySignedToday = datePart === todayISO();
   }
-  // 以服务端返回的"当日记录"为准（nowSignDetailVos: createDate + signStatue；3/5=已签，0=盲盒开启日也计已签）
-  // 每次运行都按接口数据判断今天是否已签 → 决定是否执行签到（本地状态仅作缓存，避免状态文件与实际不一致）
-  const todayKey = todayISO();
-  const vos = Array.isArray(d.nowSignDetailVos) ? d.nowSignDetailVos : [];
-  const todayVo = vos.find((x) => String(x?.createDate || "") === todayKey);
-  if (todayVo) {
-    const st = Number(todayVo.signStatue);
-    alreadySignedToday = (st === 3 || st === 5 || st === 0);
-    if (alreadySignedToday) lastSignDate = todayKey;
-  }
 
   return {
     todayScore,
@@ -1575,8 +1506,6 @@ function adaptWidgets(raw) {
   const loc = d.location || {};
   const soc = Number(d.bmssoc ?? d.batteryLevel ?? 0);
   const range = Number(d.hmiRidableMile ?? d.vehicleRidableMile ?? d.ridableMileage ?? 0);
-  // 电压（中尺寸组件显示）：兼容官方多种字段名
-  const voltage = Number(d.voltage ?? d.batteryVoltage ?? d.bmsVoltage ?? d.totalVoltage ?? d.batteryTotalVoltage ?? 0);
   const address = String(d.address || "").trim();
   const locationTime = String(loc.locationTime || "").trim();
   const pulledOut = String(d.batteryPullOutFlag ?? "") === "1";
@@ -1585,7 +1514,6 @@ function adaptWidgets(raw) {
   return {
     batteryPercent: Math.max(0, Math.min(100, isFinite(soc) ? soc : 0)),
     residualRangeKm: isFinite(range) ? range : 0,
-    voltage: isFinite(voltage) && voltage > 0 ? voltage : 0,
     address,
     locationTime,
     longitude: Number(loc.longitude),
@@ -1698,7 +1626,7 @@ async function runForegroundMonitor(acc, { intervalMin, durationMin } = {}) {
   return { ticks, notified, last };
 }
 
-// ========== 盲盒抽取（组件流水线与菜单流程共用） ==========
+// ========== 盲盒抽取（组件流水线 / 并发批量共用） ==========
 async function tryBlindBox({ token, state, cont, isBlindDay, today, persist }) {
   if (!isBlindDay) return { skipped: true, reason: `非盲盒日(剩${calcDaysUntilLottery(cont)}天)` };
   if (String(state.lastBlindBoxDate || "") === today) return { skipped: true, reason: "今日已抽" };
@@ -1727,7 +1655,7 @@ async function tryBlindBox({ token, state, cont, isBlindDay, today, persist }) {
       state.lastBlindBoxDate = today;
       if (persist) persist(state);
     }
-    logStep("盲盒", "fail", msg || "请求失败（可能Token过期或网络异常，可到 6️⃣ 账号 / Token 检查）");
+    logStep("盲盒", "fail", msg || "请求失败（可能Token过期或网络异常，可到 6️⃣ 账号管理 检查）");
     notifyBlindBoxResult({ ok: false, msg });
     return { ok: false, msg };
   } catch (e) {
@@ -1790,12 +1718,12 @@ async function runSupplementFlow(acc) {
   return { found: missing.length, used, msg: "" };
 }
 
-// ========== 完整签到流程（菜单一键 / action=checkin 使用，不依赖全局上下文） ==========
+// ========== 单账号完整签到流程（并发批量 / action=checkin 使用，不依赖全局账号） ==========
 async function runAccountFlow(acc) {
   const persist = () => saveStore(getStore());
   const out = { id: acc.id, name: dispName(acc), signed: null, signSkip: false, signScore: 0, blind: "", supplement: "", post: "", points: null, error: "" };
-  if (!acc.token) { out.error = "缺少Token（到 6️⃣ 账号 / Token 设置）"; return out; }
-  setCurrentAcc(null); // 不依赖全局账号上下文
+  if (!acc.token) { out.error = "缺少Token（到 6️⃣ 账号管理 设置）"; return out; }
+  setCurrentAcc(null); // 并发安全：不依赖全局账号上下文
   registerUid(acc);
   const state = acc.state = acc.state || {};
   const today = todayISO();
@@ -1858,10 +1786,39 @@ async function runAccountFlow(acc) {
     out.points = Number(state.totalPoints || 0);
   } catch (e) {
     const m = String(e?.message || e);
-    out.error = out.error || (m === "TOKEN_EXPIRED" ? "Token过期（到 6️⃣ 账号 / Token 更新）" : m);
+    out.error = out.error || (m === "TOKEN_EXPIRED" ? "Token过期（到 6️⃣ 账号管理 更新）" : m);
   }
   persist();
   return out;
+}
+
+// ========== 多账号并发签到（并发池 + 错峰启动，降低风控概率） ==========
+async function runBatchSignin(accounts) {
+  const cfg = getStore().cfg;
+  const limit = Math.max(1, Math.min(5, Number(cfg.concurrency || 3)));
+  const list = (accounts || []).filter((a) => a && a.token);
+  const queue = list.slice();
+  const results = new Array(list.length).fill(null);
+  const idxOf = new Map(list.map((a, i) => [a.id, i]));
+  const t0 = Date.now();
+
+  const workerCount = Math.min(limit, queue.length);
+  const workers = [];
+  for (let wi = 0; wi < workerCount; wi++) {
+    workers.push((async () => {
+      await sleep(wi * 900); // 错峰启动
+      while (queue.length) {
+        const acc = queue.shift();
+        let r = null;
+        try { r = await runAccountFlow(acc); }
+        catch (e) { r = { id: acc.id, name: dispName(acc), error: String(e?.message || e) }; }
+        if (r) results[idxOf.get(acc.id)] = r;
+        await sleep(600);
+      }
+    })());
+  }
+  await Promise.all(workers);
+  return { results: results.filter(Boolean), ms: Date.now() - t0, count: list.length };
 }
 
 function batchSummaryLines(batch) {
@@ -1965,7 +1922,7 @@ async function saveTokenToScript(token) {
   }
 }
 
-// ========== 账号：手机号免抓包登录 / Token 设置 / 车辆选择入库 ==========
+// ========== 账号管理：手机号免抓包登录 / Token添加 / 车辆选择入库 ==========
 async function simpleAlert(title, message) {
   try {
     const a = new Alert();
@@ -1979,8 +1936,8 @@ async function simpleAlert(title, message) {
 // 把技术性错误翻译成用户能看懂、能行动的提示
 function friendlyErr(e) {
   const m = String((e && (e.message || e)) || "未知错误");
-  if (m === "TOKEN_EXPIRED") return "Token已过期，请到 6️⃣ 账号 / Token → 重新登录/更新Token";
-  if (m === "缺少Token") return "该账号缺少Token，请到 6️⃣ 账号 / Token 设置";
+  if (m === "TOKEN_EXPIRED") return "Token已过期，请到 6️⃣ 账号管理 → 重新登录/更新Token";
+  if (m === "缺少Token") return "该账号缺少Token，请到 6️⃣ 账号管理 设置";
   if (/获取车辆列表失败/.test(m)) return m + (m.includes("Token已过期") ? "" : "（Token可能已过期）");
   if (/timeout|timed out/i.test(m)) return "网络超时，请检查网络后重试";
   return m;
@@ -2075,7 +2032,7 @@ async function pickVehicleForAccount(token, { title = "🚗 选择车辆" } = {}
     items = mapVehicleList(res);
   } catch (e) {
     const m = String(e?.message || e);
-    if (m === "TOKEN_EXPIRED") throw new Error("获取车辆列表失败：Token已过期（到 6️⃣ 账号 / Token 更新）");
+    if (m === "TOKEN_EXPIRED") throw new Error("获取车辆列表失败：Token已过期（到 6️⃣ 账号管理 更新）");
     throw new Error("获取车辆列表失败：" + m);
   }
   if (!items.length) throw new Error("该账号下未查到绑定车辆，请先在极核App绑定车辆");
@@ -2098,7 +2055,7 @@ async function pickVehicleForAccount(token, { title = "🚗 选择车辆" } = {}
   return { picked: items[idx], vehicles: items };
 }
 
-// 账号入库（单账号：同一 userId / token 更新，否则替换旧账号）
+// 账号入库（新增或更新；同一 userId / token 视为同一账号）
 async function finalizeAccount({ token, userId, userName, phone, picked, vehicles }) {
   const store = getStore();
   const uid = String(userId || "");
@@ -2108,15 +2065,15 @@ async function finalizeAccount({ token, userId, userName, phone, picked, vehicle
     acc = {
       id: "acc_" + (uid || Date.now().toString(36)),
       userId: uid,
-      userName: userName || phone || "我的账号",
+      userName: userName || phone || ("账号" + (store.accounts.length + 1)),
       phone: phone || "",
       token: tk,
       vehicles: [],
       activeVin: "",
       state: {},
     };
+    store.accounts.push(acc);
   }
-  store.accounts = [acc]; // 单账号版：始终只保留一个账号
   acc.token = tk;
   if (uid) acc.userId = uid;
   if (userName) acc.userName = userName;
@@ -2132,13 +2089,13 @@ async function finalizeAccount({ token, userId, userName, phone, picked, vehicle
     acc.state.licensePlate = picked.licensePlate || acc.state.licensePlate || "";
     acc.state.vehicleImageUrl = acc.state.vehicleImageUrl || picked.pic || "";
   }
-  store.cfg.defaultAccountId = acc.id;
+  if (!store.cfg.defaultAccountId) store.cfg.defaultAccountId = acc.id;
   registerUid(acc);
   saveStore(store);
   return acc;
 }
 
-// 手机号登录设置账号（免抓包）
+// 手机号登录添加账号（免抓包）
 async function addAccountByPhone() {
   const pa = new Alert();
   pa.title = "📱 手机号登录（免抓包）";
@@ -2187,14 +2144,14 @@ async function addAccountByPhone() {
 
   let picked = null;
   try { picked = await pickVehicleForAccount(token, { title: "🚗 选择默认车辆" }); }
-  catch (e) { await simpleAlert("❌ 设置失败", friendlyErr(e)); return null; }
+  catch (e) { await simpleAlert("❌ 添加失败", friendlyErr(e)); return null; }
 
   const acc = await finalizeAccount({ token, userId, userName, phone, picked: picked.picked, vehicles: picked.vehicles });
-  await simpleAlert("✅ 设置成功", `${dispName(acc)} · 默认车辆 ${picked.picked.name}`);
+  await simpleAlert("✅ 添加成功", `${dispName(acc)} · 默认车辆 ${picked.picked.name}`);
   return acc;
 }
 
-// 粘贴 Token 设置账号
+// 粘贴 Token 添加账号
 async function addAccountByToken() {
   let t = "";
   try { t = await promptForToken(""); } catch { return null; }
@@ -2208,17 +2165,17 @@ async function addAccountByToken() {
 
   let picked = null;
   try { picked = await pickVehicleForAccount(token, { title: "🚗 选择默认车辆" }); }
-  catch (e) { await simpleAlert("❌ 设置失败", friendlyErr(e)); return null; }
+  catch (e) { await simpleAlert("❌ 添加失败", friendlyErr(e)); return null; }
 
   const acc = await finalizeAccount({ token, userId, userName, phone: "", picked: picked.picked, vehicles: picked.vehicles });
-  await simpleAlert("✅ 设置成功", `${dispName(acc)} · 默认车辆 ${picked.picked.name}`);
+  await simpleAlert("✅ 添加成功", `${dispName(acc)} · 默认车辆 ${picked.picked.name}`);
   return acc;
 }
 
-// 设置账号向导
+// 添加账号向导
 async function addAccountWizard() {
   const a = new Alert();
-  a.title = "➕ 设置账号";
+  a.title = "➕ 添加账号";
   a.message = "选择添加方式：\n· 手机号登录：免抓包（推荐）\n· 粘贴Token：需先从 App 抓包获取 Authorization";
   a.addAction("📱 手机号登录（免抓包）");
   a.addAction("🔑 粘贴Token");
@@ -2391,9 +2348,6 @@ const C_DIVIDER = new Color("#475569");   // 分隔符 · - 石板灰
   const blindScore = isFinite(Number(data.points.blindBoxScore)) ? Number(data.points.blindBoxScore) : Number(data.points.today || 0);
   const percent = Math.round(data.batteryPercent);
   const range = data.residualRangeKm;
-  // 电压：中尺寸显示（数据缺失时自动隐藏）
-  const volt = Number(data.voltage || 0);
-  const showVolt = volt > 0 && config.widgetFamily !== "small";
   const isCharging = chargeStateStr && chargeStateStr !== "未充电";
   const dist = isFinite(data.today.distanceKm) ? data.today.distanceKm.toFixed(1) : "—";
   const dur = isFinite(data.today.durationMin) ? toMinutesStr(data.today.durationMin) : "—";
@@ -2481,13 +2435,6 @@ const C_DIVIDER = new Color("#475569");   // 分隔符 · - 石板灰
   rangeTxt.font = Font.systemFont(9);
   rangeTxt.textColor = C_TEXT_DIM;
   rangeTxt.lineLimit = 1;
-
-  if (showVolt) {
-    const voltTxt = pctRow.addText(`·${Math.round(volt)}V`);
-    voltTxt.font = Font.systemFont(9);
-    voltTxt.textColor = C_TEXT_DIM;
-    voltTxt.lineLimit = 1;
-  }
 
   if (isCharging) {
     const chargeStateTxt = pctRow.addText(`·🔋${chargeStateStr}`);
@@ -3293,7 +3240,6 @@ async function runSinglePipeline(acc, vinNo, opts = {}) {
     signedToday: alreadySignedToday,
     batteryPercent: widgets.batteryPercent,
     residualRangeKm: widgets.residualRangeKm,
-    voltage: widgets.voltage || Number(batteryInfo.voltage || 0),
     address: widgets.address,
     locationTime: widgets.locationTime,
     statusText: widgets.statusText,
@@ -3364,7 +3310,6 @@ function replaceStore(parsed) {
     registerUid(a);
   }
   CURRENT_ACC = null;
-  enforceSingleAccount(STORE);
   saveStore(STORE);
   applyStoreConfig(STORE);
 }
@@ -3393,15 +3338,14 @@ async function doImportClipboard() {
   }
   const ca = new Alert();
   ca.title = "⚠️ 确认导入";
-  ca.message = "导入将覆盖当前账号与配置（含 Token），确定继续？";
+  ca.message = "导入将覆盖当前所有账号与配置（含 Token），确定继续？";
   ca.addAction("覆盖导入");
   ca.addCancelAction("取消");
   if ((await ca.present()) !== 0) return false;
   try {
     const parsed = JSON.parse(txt);
     replaceStore(parsed);
-    const accNow = defaultOrFirstAccount(getStore());
-    await simpleAlert("✅ 导入成功", `已恢复账号「${accNow ? dispName(accNow) : "—"}」。若组件未更新，请手动运行一次。`);
+    await simpleAlert("✅ 导入成功", `已恢复 ${getStore().accounts.length} 个账号。若组件未更新，请手动运行一次。`);
     return true;
   } catch (e) {
     await simpleAlert("❌ 导入失败", String(e?.message || e));
@@ -3411,6 +3355,22 @@ async function doImportClipboard() {
 
 // ============== App 内交互菜单 ==============
 let MENU_ACC = null; // 菜单当前操作账号（会话级）
+
+async function pickAccountInteractive(prompt = "选择账号") {
+  const store = getStore();
+  if (!store.accounts.length) { await simpleAlert("提示", "尚未添加账号"); return null; }
+  const a = new Alert();
+  a.title = "👤 " + prompt;
+  a.message = `共 ${store.accounts.length} 个账号`;
+  store.accounts.slice(0, 12).forEach((acc) => {
+    const v = acc.vehicles.find((x) => x.vinNo === acc.activeVin) || acc.vehicles[0] || {};
+    a.addAction(`${dispName(acc)}${v.name ? " · " + v.name : ""}`);
+  });
+  a.addCancelAction("取消");
+  const idx = await a.present();
+  if (idx === -1) return null;
+  return store.accounts[idx];
+}
 
 // 账号就绪检查：缺少Token时引导设置（手机号登录 / 粘贴Token），避免后续操作全部失败
 async function ensureAccountReady(acc) {
@@ -3461,36 +3421,39 @@ async function showMainMenu() {
     const veh = acc ? (acc.vehicles.find((v) => v.vinNo === acc.activeVin) || acc.vehicles[0] || {}) : {};
     const st = (acc && acc.state) || {};
     const lines = [];
-    lines.push(acc ? `👤 ${dispName(acc)} · ${veh.name || "未选车"}` : "👤 未设置账号");
+    lines.push(acc ? `👤 ${dispName(acc)} · ${veh.name || "未选车"}` : "👤 未添加账号");
     if (acc) {
       const socStr = st.lastSoc != null ? `${st.lastSoc}%` : "—";
       lines.push(`🔋 ${socStr}${st.lastVoltage ? " · " + Number(st.lastVoltage).toFixed(1) + "V" : ""} · ⭐${st.totalPoints || 0}分`);
       lines.push(`📅 ${st.lastSignDate === todayISO() ? "今日已签" : "今日未签"} · 连签${st.continueDays || 0}天`);
     }
+    lines.push(`👥 ${store.accounts.length}账号 · 并发${store.cfg.concurrency}`);
 
     const a = new Alert();
     a.title = "🏍️ ZEEHO 极核助手";
     a.message = lines.join("\n");
-    a.addAction("一键签到（签到 / 盲盒 / 补签 / 发布）");
-    a.addAction("车辆控制 🔐");
-    a.addAction("充电监控 🔋");
-    a.addAction("车辆与组件显示");
-    a.addAction("账号 / Token 👤");
-    a.addAction("组件预览 📱");
-    a.addAction("配置导出 / 导入 💾");
-    a.addAction("设置 ⚙️");
+    a.addAction(`1️⃣ 一键全部签到（${store.accounts.length}账号 · 并发${store.cfg.concurrency}）`);
+    a.addAction("2️⃣ 本账号：签到 / 补签 / 盲盒");
+    a.addAction("3️⃣ 车辆控制 🔐");
+    a.addAction("4️⃣ 充电监控 🔋");
+    a.addAction("5️⃣ 车辆与组件显示");
+    a.addAction("6️⃣ 账号管理 👥");
+    a.addAction("7️⃣ 组件预览 📱");
+    a.addAction("8️⃣ 配置导出 / 导入 💾");
+    a.addAction("9️⃣ 设置 ⚙️");
     a.addCancelAction("🚪 退出");
     const idx = await a.present();
     if (idx === -1) return;
     try {
       if (idx === 0) await menuBatch();
-      else if (idx === 1) await menuVehicleControl();
-      else if (idx === 2) await menuMonitor();
-      else if (idx === 3) await menuVehicleDisplay();
-      else if (idx === 4) await menuAccounts();
-      else if (idx === 5) await menuPreview();
-      else if (idx === 6) await menuExportImport();
-      else if (idx === 7) await menuSettings();
+      else if (idx === 1) await menuMine();
+      else if (idx === 2) await menuVehicleControl();
+      else if (idx === 3) await menuMonitor();
+      else if (idx === 4) await menuVehicleDisplay();
+      else if (idx === 5) await menuAccounts();
+      else if (idx === 6) await menuPreview();
+      else if (idx === 7) await menuExportImport();
+      else if (idx === 8) await menuSettings();
     } catch (e) {
       console.error("[菜单操作异常]", (e && (e.stack || e.message)) || e);
       const detail = String((e && (e.message || e)) || "未知错误");
@@ -3510,29 +3473,83 @@ async function showMainMenu() {
 }
 
 async function menuBatch() {
-  const acc = MENU_ACC || defaultOrFirstAccount(getStore());
-  if (!acc) { await simpleAlert("提示", "尚未设置账号"); return; }
+  let store = getStore();
+  let list = store.accounts.filter((a) => a.token);
+  if (!list.length) {
+    // 没有可用账号：先引导设置Token（优先默认账号）
+    const target = defaultOrFirstAccount(store);
+    if (target) {
+      if (!(await ensureAccountReady(target))) return;
+      store = getStore();
+      list = store.accounts.filter((a) => a.token);
+    }
+  }
+  if (!list.length) { await simpleAlert("提示", "尚未添加账号"); return; }
+  logStep("批量签到", "start", `${list.length}个账号 · 并发${store.cfg.concurrency}`);
+  const batch = await runBatchSignin(list);
+  const summary = `⏱ ${Math.round(batch.ms / 1000)}s · ${batch.count}个账号\n\n${batchSummaryLines(batch)}`;
+  await notifySimple("🏍️ ZEEHO 批量签到完成", `共 ${batch.count} 个账号`);
+  await simpleAlert("✅ 批量签到完成", summary);
+}
+
+async function menuMine() {
+  let acc = MENU_ACC || defaultOrFirstAccount(getStore());
+  if (!acc) { await simpleAlert("提示", "尚未添加账号"); return; }
   if (!(await ensureAccountReady(acc))) return;
-  logStep("一键签到", "start", dispName(acc));
-  const r = await runAccountFlow(acc);
-  const summary = batchSummaryLines({ results: [r] });
-  await notifySimple("🏍️ ZEEHO 签到完成", summary.replace(/\n/g, " ").slice(0, 200));
-  await simpleAlert("✅ 执行完成", summary);
+  if (MENU_ACC && MENU_ACC.token) acc = MENU_ACC;
+  const a = new Alert();
+  a.title = `👤 ${dispName(acc)}`;
+  a.message = "签到 / 补签 / 盲盒操作";
+  a.addAction("✅ 立即签到（完整流程）");
+  a.addAction("📅 检测漏签并补签");
+  a.addAction("🎁 手动抽盲盒");
+  a.addAction("🔄 刷新积分");
+  a.addAction("👥 切换目标账号");
+  a.addCancelAction("返回");
+  const idx = await a.present();
+  if (idx === -1) return;
+  if (idx === 4) {
+    const p = await pickAccountInteractive("切换目标账号");
+    if (p) MENU_ACC = p;
+    return;
+  }
+  setCurrentAcc(acc);
+  if (idx === 0) {
+    const r = await runAccountFlow(acc);
+    await simpleAlert("✅ 执行完成", batchSummaryLines({ results: [r] }));
+  } else if (idx === 1) {
+    const r = await runSupplementFlow(acc);
+    await simpleAlert("📅 补签结果", r.found === 0 ? "无漏签" : `发现漏签 ${r.found} 天，已补 ${r.used} 天${r.msg ? "（" + r.msg + "）" : ""}`);
+  } else if (idx === 2) {
+    const state = acc.state = acc.state || {};
+    const cont = Number(state.continueDays || 0);
+    const br = await tryBlindBox({ token: acc.token, state, cont, isBlindDay: true, today: todayISO(), persist: () => saveStore(getStore()) });
+    await simpleAlert("🎁 盲盒结果", br.ok ? `恭喜：${br.prizeName || "奖励"}${br.integral ? " " + br.integral + "分" : ""}` : (br.skipped ? br.reason : (br.msg || "未中")));
+  } else if (idx === 3) {
+    try {
+      const int2 = await fetchTotalIntegral({ token: acc.token });
+      const total = adaptTotalIntegral(int2);
+      acc.state.totalPoints = total;
+      saveStore(getStore());
+      await simpleAlert("⭐ 积分", `当前总积分：${total}`);
+    } catch (e) { await simpleAlert("❌ 查询失败", friendlyErr(e)); }
+  }
 }
 
 async function menuVehicleControl() {
   let acc = MENU_ACC || defaultOrFirstAccount(getStore());
-  if (!acc) { await simpleAlert("提示", "尚未设置账号"); return; }
+  if (!acc) { await simpleAlert("提示", "尚未添加账号"); return; }
   if (!(await ensureAccountReady(acc))) return;
   if (MENU_ACC && MENU_ACC.token) acc = MENU_ACC;
   if (!(await ensureVehicleRisk())) return;
 
-  // ① 选择要控制的车辆（多车时先说清楚控制哪台）
+  // ① 选择要控制的车辆（多车 / 多账号时先说清楚控制哪台）
   let veh = acc.vehicles.find((v) => v.vinNo === acc.activeVin) || acc.vehicles[0] || {};
-  if (acc.vehicles.length > 1) {
+  const multiAcc = getStore().accounts.length > 1;
+  if (acc.vehicles.length > 1 || multiAcc) {
     const va = new Alert();
     va.title = "🚗 选择控制车辆";
-    va.message = `账号「${dispName(acc)}」有 ${acc.vehicles.length} 辆车\n当前车辆：${veh.name || "未命名"}${veh.vinNo === acc.activeVin ? "（默认）" : ""}`;
+    va.message = `账号「${dispName(acc)}」${acc.vehicles.length > 1 ? `有 ${acc.vehicles.length} 辆车` : ""}\n当前车辆：${veh.name || "未命名"}${veh.vinNo === acc.activeVin ? "（默认）" : ""}`;
     acc.vehicles.slice(0, 12).forEach((v) => {
       const desc = [
         v.name || "未命名",
@@ -3542,9 +3559,15 @@ async function menuVehicleControl() {
       ].filter(Boolean).join(" · ");
       va.addAction(desc);
     });
+    if (multiAcc) va.addAction("🔁 切换账号后再选车");
     va.addCancelAction("取消");
     const vi = await va.present();
     if (vi === -1) return;
+    if (multiAcc && vi === Math.min(acc.vehicles.length, 12)) {
+      const p = await pickAccountInteractive("切换为哪个账号");
+      if (p) MENU_ACC = p;
+      return await menuVehicleControl();
+    }
     if (acc.vehicles[vi]) veh = acc.vehicles[vi];
   }
   if (!veh.vinNo) { await simpleAlert("提示", "该账号下未配置车辆"); return; }
@@ -3579,7 +3602,7 @@ async function menuVehicleControl() {
 
 async function menuMonitor() {
   let acc = MENU_ACC || defaultOrFirstAccount(getStore());
-  if (!acc) { await simpleAlert("提示", "尚未设置账号"); return; }
+  if (!acc) { await simpleAlert("提示", "尚未添加账号"); return; }
   if (!(await ensureAccountReady(acc))) return;
   if (MENU_ACC && MENU_ACC.token) acc = MENU_ACC;
   const cfg = getStore().cfg;
@@ -3678,7 +3701,7 @@ async function menuMonitor() {
       "4. URL 填写：scriptable:///run/Scriptable?action=all&silent=1",
       "5. 关闭「运行前询问」并保存",
       "",
-      "可选 action：all / checkin=一键签到；monitor=仅充电监控；supplement=补签",
+      "可选 action：all=全部签到；monitor=仅充电监控；checkin=单账号；supplement=补签",
       "silent=1 表示只发通知、不弹窗（适合无人值守）",
       "",
       "另外：桌面组件每次刷新也会自动检测充电状态（方案A）",
@@ -3687,47 +3710,22 @@ async function menuMonitor() {
 }
 
 async function menuVehicleDisplay() {
-  const acc = MENU_ACC || defaultOrFirstAccount(getStore());
-  if (!acc) { await simpleAlert("提示", "尚未设置账号"); return; }
+  const store = getStore();
+  let acc = MENU_ACC || defaultOrFirstAccount(store);
+  if (!acc) { await simpleAlert("提示", "尚未添加账号"); return; }
   if (!(await ensureAccountReady(acc))) return;
+  if (MENU_ACC && MENU_ACC.token) acc = MENU_ACC;
   const veh = acc.vehicles.find((v) => v.vinNo === acc.activeVin) || acc.vehicles[0] || {};
+  const defAcc = store.accounts.find((x) => x.id === store.cfg.defaultAccountId);
   const a = new Alert();
   a.title = "🚗 车辆与组件显示";
-  a.message = `当前车辆：${veh.name || "未选择"}${veh.licensePlate ? " · " + veh.licensePlate : ""}`;
-  a.addAction("选择 / 刷新车辆列表");
-  a.addCancelAction("返回");
-  const idx = await a.present();
-  if (idx !== 0) return;
-  try {
-    const r = await pickVehicleForAccount(acc.token, { title: "🚗 选择显示车辆" });
-    acc.vehicles = r.vehicles;
-    acc.activeVin = r.picked.vinNo;
-    acc.state = acc.state || {};
-    acc.state.vehicleName = r.picked.name;
-    saveStore(getStore());
-    await simpleAlert("✅ 已保存", `组件将显示：${r.picked.name}`);
-  } catch (e) { await simpleAlert("❌ 失败", friendlyErr(e)); }
-}
-
-async function menuAccounts() {
-  const store = getStore();
-  const acc = defaultOrFirstAccount(store);
-  const veh = acc ? (acc.vehicles.find((v) => v.vinNo === acc.activeVin) || acc.vehicles[0] || {}) : {};
-  const a = new Alert();
-  a.title = "👤 账号 / Token";
-  a.message = acc
-    ? `当前账号：${dispName(acc)}\nToken：${acc.token ? "已设置 ✓" : "未设置"}\n车辆：${veh.name || "未选择"}`
-    : "尚未设置账号";
-  a.addAction("📱 手机号登录（重设）");
-  a.addAction("🔑 粘贴 Token（重设）");
-  a.addAction("🚗 选择 / 刷新车辆列表");
+  a.message = `组件默认账号：${defAcc ? dispName(defAcc) : "未设置"}\n本账号当前车辆：${veh.name || "未选择"}${veh.licensePlate ? " · " + veh.licensePlate : ""}`;
+  a.addAction("1️⃣ 选择 / 刷新车辆列表");
+  a.addAction("2️⃣ 设为组件默认账号");
   a.addCancelAction("返回");
   const idx = await a.present();
   if (idx === -1) return;
-  if (idx === 0) { const r = await addAccountByPhone(); if (r) MENU_ACC = r; }
-  else if (idx === 1) { const r = await addAccountByToken(); if (r) MENU_ACC = r; }
-  else if (idx === 2) {
-    if (!acc || !acc.token) { await simpleAlert("提示", "请先设置 Token（手机号登录 / 粘贴 Token）"); return; }
+  if (idx === 0) {
     try {
       const r = await pickVehicleForAccount(acc.token, { title: "🚗 选择显示车辆" });
       acc.vehicles = r.vehicles;
@@ -3737,6 +3735,50 @@ async function menuAccounts() {
       saveStore(getStore());
       await simpleAlert("✅ 已保存", `组件将显示：${r.picked.name}`);
     } catch (e) { await simpleAlert("❌ 失败", friendlyErr(e)); }
+  } else if (idx === 1) {
+    store.cfg.defaultAccountId = acc.id;
+    saveStore(getStore());
+    await simpleAlert("✅ 已设为默认", `组件将显示账号「${dispName(acc)}」的车辆\n如需指定账号/车辆，可在组件配置参数里填：acc=${acc.id}&vin=车架号`);
+  }
+}
+
+async function menuAccounts() {
+  const store = getStore();
+  const a = new Alert();
+  a.title = "👥 账号管理";
+  a.message = store.accounts.length
+    ? `共 ${store.accounts.length} 个账号：\n` + store.accounts.map((x, i) => `${i + 1}. ${dispName(x)}${x.id === store.cfg.defaultAccountId ? "（默认）" : ""}`).join("\n")
+    : "尚未添加账号";
+  a.addAction("➕ 手机号登录（免抓包）");
+  a.addAction("🔑 粘贴 Token 添加");
+  a.addAction("🗑 删除账号");
+  a.addCancelAction("返回");
+  const idx = await a.present();
+  if (idx === -1) return;
+  if (idx === 0) { const r = await addAccountByPhone(); if (r) MENU_ACC = r; }
+  else if (idx === 1) { const r = await addAccountByToken(); if (r) MENU_ACC = r; }
+  else if (idx === 2) {
+    if (!store.accounts.length) { await simpleAlert("提示", "暂无账号"); return; }
+    const da = new Alert();
+    da.title = "🗑 删除账号";
+    da.message = "选择要删除的账号（不可恢复）";
+    store.accounts.slice(0, 12).forEach((x) => da.addAction(dispName(x)));
+    da.addCancelAction("取消");
+    const di = await da.present();
+    if (di === -1) return;
+    const target = store.accounts[di];
+    const c = new Alert();
+    c.title = "⚠️ 确认删除";
+    c.message = `确定删除「${dispName(target)}」？其 Token 与数据都会被移除`;
+    c.addAction("确认删除");
+    c.addCancelAction("取消");
+    if ((await c.present()) !== 0) return;
+    store.accounts = store.accounts.filter((x) => x.id !== target.id);
+    delete UID_BY_TOKEN[cleanToken(target.token)];
+    if (store.cfg.defaultAccountId === target.id) store.cfg.defaultAccountId = (store.accounts[0] && store.accounts[0].id) || "";
+    if (MENU_ACC && MENU_ACC.id === target.id) MENU_ACC = null;
+    saveStore(getStore());
+    await simpleAlert("✅ 已删除", `${dispName(target)} 已移除`);
   }
 }
 
@@ -3760,7 +3802,7 @@ async function previewWidget(family) {
   const store = getStore();
   applyStoreConfig(store);
   let acc = MENU_ACC || defaultOrFirstAccount(store);
-  if (!acc) { await simpleAlert("提示", "尚未设置账号"); return; }
+  if (!acc) { await simpleAlert("提示", "尚未添加账号"); return; }
   if (!(await ensureAccountReady(acc))) return;
   if (MENU_ACC && MENU_ACC.token) acc = MENU_ACC;
   const vin = (getParam("vin") || acc.activeVin || (acc.vehicles[0] && acc.vehicles[0].vinNo) || "").trim();
@@ -3799,14 +3841,15 @@ async function menuSettings() {
   const cfg = getStore().cfg;
   const a = new Alert();
   a.title = "⚙️ 设置";
-  a.message = `自动发布：${cfg.autoPost ? "开" : "关"} · 内容「${cfg.postContent}」\n自动补签：${cfg.autoSupplement ? "开" : "关"} · 每次最多${cfg.supplementMaxPerRun}天\n满电判断：${Number(cfg.voltageThreshold || 0) > 0 ? `电压≥${cfg.voltageThreshold}V` : "电量100%"}`;
+  a.message = `自动发布：${cfg.autoPost ? "开" : "关"} · 内容「${cfg.postContent}」\n自动补签：${cfg.autoSupplement ? "开" : "关"} · 每次最多${cfg.supplementMaxPerRun}天\n并发数：${cfg.concurrency} · 满电判断：${Number(cfg.voltageThreshold || 0) > 0 ? `电压≥${cfg.voltageThreshold}V` : "电量100%"}`;
   a.addAction(`1️⃣ 自动发布：${cfg.autoPost ? "✅开（点按关闭）" : "❌关（点按开启）"}`);
   a.addAction("2️⃣ 修改发布内容");
   a.addAction(`3️⃣ 自动补签：${cfg.autoSupplement ? "✅开（点按关闭）" : "❌关（点按开启）"}`);
-  a.addAction("4️⃣ 控车 AES 密钥");
-  a.addAction("5️⃣ 重置车控风险确认");
-  a.addAction("6️⃣ 🗑 清空所有数据");
-  a.addAction("7️⃣ 关于 / 使用说明");
+  a.addAction(`4️⃣ 并发数：${cfg.concurrency}`);
+  a.addAction("5️⃣ 控车 AES 密钥");
+  a.addAction("6️⃣ 重置车控风险确认");
+  a.addAction("7️⃣ 🗑 清空所有数据");
+  a.addAction("8️⃣ 关于 / 使用说明");
   a.addCancelAction("返回");
   const idx = await a.present();
   if (idx === -1) return;
@@ -3833,6 +3876,18 @@ async function menuSettings() {
     await simpleAlert("✅ 已更新", `自动补签：${cfg.autoSupplement ? "开" : "关"}`);
   } else if (idx === 3) {
     const pa = new Alert();
+    pa.title = "并发数";
+    pa.message = "多账号并发签到的同时请求数（建议 2~3，过高可能触发风控）";
+    pa.addTextField("并发数(1~5)", String(cfg.concurrency));
+    pa.addAction("保存");
+    pa.addCancelAction("取消");
+    if ((await pa.present()) === -1) return;
+    const v = Math.max(1, Math.min(5, Number(pa.textFieldValue(0)) || 3));
+    cfg.concurrency = v;
+    saveStore(getStore());
+    await simpleAlert("✅ 已保存", `并发数：${v}`);
+  } else if (idx === 4) {
+    const pa = new Alert();
     pa.title = "云端控车 AES 密钥";
     pa.message = "32位十六进制字符串，用于开/关锁加密（已内置默认密钥）";
     pa.addTextField("AES Key", cfg.aesKey);
@@ -3844,14 +3899,14 @@ async function menuSettings() {
     cfg.aesKey = v;
     saveStore(getStore());
     await simpleAlert("✅ 已保存", "密钥已更新");
-  } else if (idx === 4) {
+  } else if (idx === 5) {
     cfg.vehicleRiskAck = false;
     saveStore(getStore());
     await simpleAlert("✅ 已重置", "下次使用车控会重新弹出风险确认");
-  } else if (idx === 5) {
+  } else if (idx === 6) {
     const c = new Alert();
     c.title = "⚠️ 危险操作";
-    c.message = "将删除账号、Token、签到记录与配置，且不可恢复。确定继续？";
+    c.message = "将删除所有账号、Token、签到记录与配置，且不可恢复。确定继续？";
     c.addAction("我确定清空");
     c.addCancelAction("取消");
     if ((await c.present()) !== 0) return;
@@ -3863,18 +3918,19 @@ async function menuSettings() {
     for (const k of Object.keys(UID_BY_TOKEN)) delete UID_BY_TOKEN[k];
     getStore();
     applyStoreConfig(getStore());
-    await simpleAlert("✅ 已清空", "所有数据已清除，请重新设置账号");
-  } else if (idx === 6) {
+    await simpleAlert("✅ 已清空", "所有数据已清除，请重新添加账号");
+  } else if (idx === 7) {
     await simpleAlert("ℹ️ 关于", [
-      "ZEEHO 极核助手 · Scriptable 单账号版",
+      "ZEEHO 极核助手 · Scriptable 多账号版",
       "",
       "· 自动签到 / 盲盒 / 补签 / 发布动态（发布→点赞→分享→领分→删除）",
+      "· 多账号并发签到（错峰并发池）",
       "· 车辆控制：寻车 / 鸣笛 / 坐垫 / 云端开关锁",
       "· 充电监控：充满(100%或电压阈值) / 低电量 通知",
       "· 多尺寸组件：小 / 中 / 大 / 锁屏圆形 / 锁屏长方形",
       "· 停车地址、电压、胎压、骑行数据展示",
       "",
-      "组件参数示例：vin=车架号（组件配置 Parameter 里填写）",
+      "组件参数示例：acc=账号ID&vin=车架号（组件配置 Parameter 里填写）",
       "快捷指令：scriptable:///run/Scriptable?action=all&silent=1",
     ].join("\n"));
   }
@@ -3887,29 +3943,33 @@ async function runDirectAction(action) {
   applyStoreConfig(store);
   const acc = defaultOrFirstAccount(store);
 
-  if (action === "all" || action === "signin-all" || action === "checkin") {
-    if (!acc || !acc.token) {
-      if (!silent) await simpleAlert("提示", "尚未设置账号，请先在 Scriptable 内运行脚本设置");
+  if (action === "all" || action === "signin-all") {
+    if (!store.accounts.filter((a) => a.token).length) {
+      if (!silent) await simpleAlert("提示", "尚未添加账号，请先在 Scriptable 内运行脚本添加");
       Script.complete();
       return;
     }
-    setCurrentAcc(acc);
-    const r = await runAccountFlow(acc);
-    const line = batchSummaryLines({ results: [r] });
-    await notifySimple("🏍️ ZEEHO 签到完成", line.replace(/\n/g, " ").slice(0, 200));
-    if (!silent) await simpleAlert("✅ 执行完成", line);
+    const batch = await runBatchSignin(store.accounts);
+    const summary = `⏱ ${Math.round(batch.ms / 1000)}s · ${batch.count}个账号\n${batchSummaryLines(batch)}`;
+    await notifySimple("🏍️ ZEEHO 批量签到完成", summary.replace(/\n/g, " ").slice(0, 200));
+    if (!silent) await simpleAlert("✅ 批量签到完成", summary);
     Script.complete();
     return;
   }
 
   if (!acc || !acc.token) {
-    if (!silent) await simpleAlert("提示", "尚未设置账号，请先在 Scriptable 内运行脚本设置");
+    if (!silent) await simpleAlert("提示", "尚未添加账号，请先在 Scriptable 内运行脚本添加");
     Script.complete();
     return;
   }
   setCurrentAcc(acc);
 
-  if (action === "monitor") {
+  if (action === "checkin") {
+    const r = await runAccountFlow(acc);
+    const line = batchSummaryLines({ results: [r] });
+    await notifySimple("🏍️ ZEEHO 签到", line.replace(/\n/g, " ").slice(0, 200));
+    if (!silent) await simpleAlert("✅ 签到完成", line);
+  } else if (action === "monitor") {
     try {
       const r = await monitorOnce(acc);
       const b = r.battery;
@@ -3961,7 +4021,7 @@ async function main() {
   }
   logDebug("启动参数", __PARAMS);
 
-  // 兼容旧用法：URL/参数里带 token=xxx 时，更新默认账号的 Token（无账号则走设置流程）
+  // 兼容旧用法：URL/参数里带 token=xxx 时，更新默认账号的 Token（无账号则走添加流程）
   const pToken = cleanToken(getParam("token") || "");
   if (pToken) {
     const accT = defaultOrFirstAccount(getStore());
@@ -3977,9 +4037,9 @@ async function main() {
         registerUid({ token: pToken, userId: info.userId, state: { userId: info.userId } });
         const picked = await pickVehicleForAccount(pToken, { title: "🚗 选择默认车辆" });
         const acc2 = await finalizeAccount({ token: pToken, userId: info.userId, userName: info.nick, phone: "", picked: picked.picked, vehicles: picked.vehicles });
-        await simpleAlert("✅ 设置成功", `${dispName(acc2)} · 默认车辆 ${picked.picked.name}`);
+        await simpleAlert("✅ 添加成功", `${dispName(acc2)} · 默认车辆 ${picked.picked.name}`);
       } catch (e) {
-        await simpleAlert("❌ 设置失败", String(e?.message || e));
+        await simpleAlert("❌ 添加失败", String(e?.message || e));
       }
     }
   }
@@ -3998,7 +4058,7 @@ async function main() {
     if (!getStore().accounts.length) {
       const a = new Alert();
       a.title = "👋 欢迎使用 ZEEHO 极核助手";
-      a.message = "尚未设置账号。\n\n· 手机号登录：免抓包，短信验证码即可\n· 粘贴Token：从 App 抓包获取 Authorization\n\n设置后桌面组件会自动显示车辆状态。";
+      a.message = "尚未添加账号。\n\n· 手机号登录：免抓包，短信验证码即可\n· 粘贴Token：从 App 抓包获取 Authorization\n\n添加后桌面组件会自动显示车辆状态。";
       a.addAction("知道了");
       await a.present();
       Script.complete();
@@ -4015,7 +4075,7 @@ async function main() {
     if (!acc || !acc.token) {
       Script.setWidget(buildFallbackWidget("🔑 需要配置", acc
         ? "账号缺少Token：请在 Scriptable 内运行脚本，菜单会自动引导设置"
-        : "请在 Scriptable 内运行脚本，设置账号后即可显示"));
+        : "请在 Scriptable 内运行脚本，添加账号后即可显示"));
       Script.complete();
       return;
     }

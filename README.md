@@ -5,7 +5,7 @@
 # ZEEHO
 > ⚠️本项目仅用于学习研究，禁止商用，使用产生一切风险自行承担
 
-极核ZEEHO电动车 **Loon / Quantumult X / Surge / Shadowrocket** 脚本：自动签到、社区积分任务、盲盒抽奖、车辆状态看板、远程车辆控制。HTML 可视化 BoxJS 面板，多账号管理，自动抓取 Token。另提供 **Windows 桌面版**与 **iOS 版（TrollStore）**。
+极核ZEEHO电动车 **Loon / Quantumult X / Surge / Shadowrocket** 脚本：自动签到、社区积分任务、盲盒抽奖、车辆状态看板、远程车辆控制。HTML 可视化 BoxJS 面板，多账号管理，自动抓取 Token。另提供 **Windows 桌面版**、**iOS 版（TrollStore）** 与 **Scriptable 小组件脚本（单账号 / 多账号）**。
 
 ## ✨ 主要功能
 
@@ -35,6 +35,23 @@
 - 小/中/大三种规格：电量/续航/电压/签到/积分实时状态
 - App Group 共享数据，WidgetCenter 通知刷新
 - 设置页可选指定小组件显示的账号与车辆
+
+### 🧩 Scriptable 小组件脚本（单账号版 / 多账号版）
+> 免安装 App：配合 [Scriptable](https://scriptable.app) 使用，支持桌面小组件、锁屏小组件与快捷指令自动化
+
+仓库提供两份独立脚本，功能一致（签到 / 盲盒 / 补签 / 发布 / 车控 / 充电监控 / 小组件），按需选择：
+
+| 版本 | 文件 | 特点 |
+| :-- | :-- | :-- |
+| **单账号版** | [`script/Scriptable.js`](script/Scriptable.js) | 只维护一个账号，菜单精简，日常使用推荐 |
+| **多账号版** | [`script/Scriptable-multi.js`](script/Scriptable-multi.js) | 多账号并存 + 并发签到，组件可按参数指定账号与车辆（`acc=账号ID&vin=车架号`） |
+
+- 小组件：小 / 中 / 大（中尺寸显示电压）+ 锁屏圆形 / 锁屏长方形
+- 自动流程：签到 → 盲盒 → 补签 → 发布动态（发布→点赞→分享→领分→删除）
+- 车辆控制：寻车闪灯 / 鸣笛 / 开坐垫 / 云端开关锁（含风险确认）
+- 快捷指令后台任务：`scriptable:///run/Scriptable?action=all&silent=1`（可选 `checkin` / `monitor` / `supplement`）
+
+**使用步骤**：安装 Scriptable → 新建脚本 → 粘贴对应文件全文 → 运行一次，按菜单引导设置账号（「手机号登录」免抓包，或粘贴 Token）→ 在桌面 / 锁屏添加 Scriptable 小组件并选择该脚本。
 
 ### 🖥️ 桌面版（Windows）
 - 托盘常驻、定时自动签到、开机自启
