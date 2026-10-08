@@ -65,11 +65,9 @@ static UIColor *ZHPanelBackgroundColor(void) {
     [userCtrl addScriptMessageHandler:self name:@"dashcam"];
     static NSString * const kSplashHook =
     @"<script>(function(){"
-    "var s=document.getElementById('splash');"
-    "if(s&&s.classList.contains('out')){window.webkit.messageHandlers.hideLoading.postMessage(null);return;}"
-    "var o=window.hideSplash;"
-    "if(typeof o==='function'){window.hideSplash=function(){o.apply(this,arguments);"
-    "if(window.webkit&&window.webkit.messageHandlers.hideLoading)window.webkit.messageHandlers.hideLoading.postMessage(null)}}"
+    // ⚠️ 两个原生桥必须最先定义：下面 hideSplash 的分支在"闪屏已撤下"时会直接 return，
+    // 若桥接写在 return 之后，一旦注入时机晚于首屏数据返回（页面越快越容易发生），投屏/记录仪桥就永久丢失，
+    // 前端点「投屏」只会看到"仅支持 iOS App 内使用"。
     // Motoplay 桥接：前端通过 motoplayHandler(command,data) 调原生
     "window.motoplayHandler=function(cmd,data,cb){"
     "if(!window.webkit||!window.webkit.messageHandlers.motoplay)return cb(false);"
@@ -84,6 +82,12 @@ static UIColor *ZHPanelBackgroundColor(void) {
     "var id='dc_'+Date.now();if(cb)window.__mpCbs=window.__mpCbs||{},window.__mpCbs[id]=cb;"
     "window.webkit.messageHandlers.dashcam.postMessage({action:action||'check',id:id})"
     "};"
+    // 闪屏：已撤下则直接通知原生隐藏启动图；未撤下则包一层 hook
+    "var s=document.getElementById('splash');"
+    "if(s&&s.classList.contains('out')){window.webkit.messageHandlers.hideLoading.postMessage(null);return;}"
+    "var o=window.hideSplash;"
+    "if(typeof o==='function'){window.hideSplash=function(){o.apply(this,arguments);"
+    "if(window.webkit&&window.webkit.messageHandlers.hideLoading)window.webkit.messageHandlers.hideLoading.postMessage(null)}}"
     "})();</script>";
     [userCtrl addUserScript:[[WKUserScript alloc] initWithSource:kSplashHook
                                                    injectionTime:WKUserScriptInjectionTimeAtDocumentEnd

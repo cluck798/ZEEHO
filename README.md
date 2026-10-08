@@ -44,7 +44,7 @@
 - WKWebView 面板 + 本地通知（签到结果、充电充满、车辆离线提醒）
 - 后台常驻充电监控（静音保活 + 周期轮询）
 - BackRun.dylib 注入（延长后台运行时间，TrollStore 自动注入）
-- 品牌开屏（ZEEHO logo + 加载提示，数据就绪后淡出）
+- 品牌开屏（ZEEHO logo + 加载提示，页面就绪即撤下，数据随后填充）
 - 安装信息检测（巨魔/企业签/个人自签/开发者）
 - 下载：[ios-latest Release](https://github.com/cluck798/ZEEHO/releases/tag/ios-latest)，TrollStore 中点击 + 选择 IPA 安装，永久签名不掉签
 

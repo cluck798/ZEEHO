@@ -488,6 +488,39 @@ function writeState(obj) {
   }
 }
 
+// ============= 随机设备指纹 =============
+// 背景：服务端风控会按"设备"标记脚本客户端——固定设备标识一旦被标记，写操作会持续返回
+// 430 {"code":"31001","message":"非法的请求"}（换设备即可恢复）。此前本脚本请求完全不带 UA，
+// 更容易被识别为脚本。因此每次请求随机生成一套真实设备指纹，UA 格式与官方 App 一致。
+const ZEEHO_APP_UA_VERSION = "3.0.5";
+const DEVICE_MODELS = [
+  ["iPhone 11", "828*1792"], ["iPhone XR", "828*1792"], ["iPhone SE (3rd generation)", "750*1334"],
+  ["iPhone 12 mini", "1080*2340"], ["iPhone 12", "1170*2532"], ["iPhone 12 Pro", "1170*2532"],
+  ["iPhone 13 mini", "1080*2340"], ["iPhone 13", "1170*2532"], ["iPhone 13 Pro", "1170*2532"], ["iPhone 13 Pro Max", "1284*2778"],
+  ["iPhone 14", "1170*2532"], ["iPhone 14 Plus", "1284*2778"], ["iPhone 14 Pro", "1179*2556"], ["iPhone 14 Pro Max", "1290*2796"],
+  ["iPhone 15", "1179*2556"], ["iPhone 15 Pro", "1179*2556"], ["iPhone 15 Pro Max", "1290*2796"],
+  ["iPhone 16", "1179*2556"], ["iPhone 16 Pro", "1206*2622"], ["iPhone 16 Pro Max", "1320*2868"]
+];
+const IOS_VERSIONS = ["16.1.1", "16.6.1", "16.7.8", "17.1.1", "17.2.1", "17.4.1", "17.5.1", "17.6.1", "18.0", "18.1.1", "18.3.1"];
+
+function pickRandomDevice(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function randomDeviceUuid() {
+  const hex = "0123456789ABCDEF";
+  let s = "";
+  for (let i = 0; i < 32; i++) s += hex[Math.floor(Math.random() * 16)];
+  return `${s.slice(0, 8)}-${s.slice(8, 12)}-${s.slice(12, 16)}-${s.slice(16, 20)}-${s.slice(20)}`;
+}
+
+// 官方 App UA：MOBILE|iOS|<系统>|ZEEHO_APP|<版本>|iPhone|<机型>|<分辨率>|<设备UUID>|<网络>|iOS
+function randomDeviceUA() {
+  const m = pickRandomDevice(DEVICE_MODELS);
+  const net = Math.random() < 0.7 ? "WWAN" : "WIFI";
+  return `MOBILE|iOS|${pickRandomDevice(IOS_VERSIONS)}|ZEEHO_APP|${ZEEHO_APP_UA_VERSION}|iPhone|${m[0]}|${m[1]}|${randomDeviceUuid()}|${net}|iOS`;
+}
+
 // ============= 请求封装 =============
 
 async function requestWithSign(type, method, url, params, data, token, label = "") {
@@ -499,10 +532,15 @@ async function requestWithSign(type, method, url, params, data, token, label = "
   const req = new Request(fullUrl);
   req.method = method;
   
+  // 每次请求一套随机设备指纹：UA / x-app-info 与官方 App 同格式，避免固定/缺失指纹被风控判为脚本
+  const deviceUA = randomDeviceUA();
   req.headers = {
     "Content-Type": "application/json;charset=UTF-8",
     "Accept-Language": "zh-CN",
+    "Accept": "*/*",
     "interfaceversion": "2",
+    "user-agent": deviceUA,
+    "x-app-info": deviceUA,
     "Authorization": `Bearer ${cleanToken(token)}`,
     ...signHeaders
   };
