@@ -5,7 +5,7 @@
 # ZEEHO
 > ⚠️本项目仅用于学习研究，禁止商用，使用产生一切风险自行承担
 
-极核ZEEHO电动车 **Loon / Quantumult X / Surge / Shadowrocket** 脚本：自动签到、社区积分任务、盲盒抽奖、车辆状态看板、远程车辆控制、Motoplay 导航投屏。HTML 可视化 BoxJS 面板，多账号管理，自动抓取 Token。另提供 **Windows 桌面版**与 **iOS 版（TrollStore）**。
+极核ZEEHO电动车 **Loon / Quantumult X / Surge / Shadowrocket** 脚本：自动签到、社区积分任务、盲盒抽奖、车辆状态看板、远程车辆控制。HTML 可视化 BoxJS 面板，多账号管理，自动抓取 Token。另提供 **Windows 桌面版**与 **iOS 版（TrollStore）**。
 
 ## ✨ 主要功能
 

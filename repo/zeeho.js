@@ -399,7 +399,7 @@ class UserInfo {
         dataType: "json",
         headers: Object.assign({}, this.headers, getSign('app')),
         body: {
-          postcontent: "开心的一天"
+          postcontent: "lucky"
         }
       }
       let res = await this.fetch(opts);

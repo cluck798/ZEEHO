@@ -1,3 +1,7 @@
+// ============= 极核 ZEEHO · Scriptable 小组件（单账号版 v1.1） =============
+// 单账号：顶部 HARDCODED_TOKEN 一个 Token 对应一个账号（多账号请复制本文件各用一份）
+// v1.1：① 每次运行按服务端当日签到记录（nowSignDetailVos）判断"今天是否已签"，以此为前提决定是否执行签到
+//       ② 中尺寸（medium）显示电池电压 ③ 设备指纹随机化（防风控拉黑）
 // ============= 配置与常量 =========
 const BASE = "https://tapi.zeehoev.com";
 const H5_BASE = "https://h5.zeehoev.com";
@@ -68,7 +72,7 @@ function logDebug(...args) {
 }
 
 // ========== 📝 发布动态配置 ==========
-const POST_CONTENT = "开心的一天"; // 每天发布的动态内容
+const POST_CONTENT = "lucky"; // 每天发布的动态内容
 const ENABLE_AUTO_POST = true; // 是否启用自动发布动态
 
 // =============================================
@@ -1003,6 +1007,16 @@ function adaptSigninStatus(raw) {
     lastSignDate = datePart;
     alreadySignedToday = datePart === todayISO();
   }
+  // 以服务端返回的"当日记录"为准（nowSignDetailVos: createDate + signStatue；3/5=已签，0=盲盒开启日也计已签）
+  // 每次运行都按接口数据判断今天是否已签 → 决定是否执行签到（本地状态仅作缓存，避免状态文件与实际不一致）
+  const todayKey = todayISO();
+  const vos = Array.isArray(d.nowSignDetailVos) ? d.nowSignDetailVos : [];
+  const todayVo = vos.find((x) => String(x?.createDate || "") === todayKey);
+  if (todayVo) {
+    const st = Number(todayVo.signStatue);
+    alreadySignedToday = (st === 3 || st === 5 || st === 0);
+    if (alreadySignedToday) lastSignDate = todayKey;
+  }
 
   return {
     todayScore,
@@ -1048,6 +1062,8 @@ function adaptWidgets(raw) {
   const loc = d.location || {};
   const soc = Number(d.bmssoc ?? d.batteryLevel ?? 0);
   const range = Number(d.hmiRidableMile ?? d.vehicleRidableMile ?? d.ridableMileage ?? 0);
+  // 电压（中尺寸组件显示）：兼容官方多种字段名
+  const voltage = Number(d.voltage ?? d.batteryVoltage ?? d.bmsVoltage ?? d.totalVoltage ?? d.batteryTotalVoltage ?? 0);
   const address = String(d.address || "").trim();
   const locationTime = String(loc.locationTime || "").trim();
   const pulledOut = String(d.batteryPullOutFlag ?? "") === "1";
@@ -1056,6 +1072,7 @@ function adaptWidgets(raw) {
   return {
     batteryPercent: Math.max(0, Math.min(100, isFinite(soc) ? soc : 0)),
     residualRangeKm: isFinite(range) ? range : 0,
+    voltage: isFinite(voltage) && voltage > 0 ? voltage : 0,
     address,
     locationTime,
     longitude: Number(loc.longitude),
@@ -1363,6 +1380,9 @@ const C_DIVIDER = new Color("#475569");   // 分隔符 · - 石板灰
   const blindScore = isFinite(Number(data.points.blindBoxScore)) ? Number(data.points.blindBoxScore) : Number(data.points.today || 0);
   const percent = Math.round(data.batteryPercent);
   const range = data.residualRangeKm;
+  // 电压：中/大尺寸显示（小尺寸空间不足，自动隐藏）
+  const volt = Number(data.voltage || 0);
+  const showVolt = volt > 0 && config.widgetFamily !== "small";
   const isCharging = chargeStateStr && chargeStateStr !== "未充电";
   const dist = isFinite(data.today.distanceKm) ? data.today.distanceKm.toFixed(1) : "—";
   const dur = isFinite(data.today.durationMin) ? toMinutesStr(data.today.durationMin) : "—";
@@ -1450,6 +1470,13 @@ const C_DIVIDER = new Color("#475569");   // 分隔符 · - 石板灰
   rangeTxt.font = Font.systemFont(9);
   rangeTxt.textColor = C_TEXT_DIM;
   rangeTxt.lineLimit = 1;
+
+  if (showVolt) {
+    const voltTxt = pctRow.addText(`·${Math.round(volt)}V`);
+    voltTxt.font = Font.systemFont(9);
+    voltTxt.textColor = C_TEXT_DIM;
+    voltTxt.lineLimit = 1;
+  }
 
   if (isCharging) {
     const chargeStateTxt = pctRow.addText(`·🔋${chargeStateStr}`);
@@ -2037,6 +2064,7 @@ async function main() {
     signedToday: alreadySignedToday,
     batteryPercent: widgets.batteryPercent,
     residualRangeKm: widgets.residualRangeKm,
+    voltage: widgets.voltage,
     address: widgets.address,
     locationTime: widgets.locationTime,
     statusText: widgets.statusText,

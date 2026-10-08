@@ -58,22 +58,14 @@ static UIColor *ZHPanelBackgroundColor(void) {
     [config setURLSchemeHandler:self forURLScheme:kPanelScheme];
     config.allowsInlineMediaPlayback = YES;
 
-    // 注入 JS：hook hideSplash + Motoplay 投屏桥接 + 行车记录仪 RTSP 桥接
+    // 注入 JS：hook hideSplash + 行车记录仪 RTSP 桥接
     WKUserContentController *userCtrl = [[WKUserContentController alloc] init];
     [userCtrl addScriptMessageHandler:self name:@"hideLoading"];
-    [userCtrl addScriptMessageHandler:self name:@"motoplay"];
     [userCtrl addScriptMessageHandler:self name:@"dashcam"];
     static NSString * const kSplashHook =
     @"<script>(function(){"
-    // ⚠️ 两个原生桥必须最先定义：下面 hideSplash 的分支在"闪屏已撤下"时会直接 return，
-    // 若桥接写在 return 之后，一旦注入时机晚于首屏数据返回（页面越快越容易发生），投屏/记录仪桥就永久丢失，
-    // 前端点「投屏」只会看到"仅支持 iOS App 内使用"。
-    // Motoplay 桥接：前端通过 motoplayHandler(command,data) 调原生
-    "window.motoplayHandler=function(cmd,data,cb){"
-    "if(!window.webkit||!window.webkit.messageHandlers.motoplay)return cb(false);"
-    "var id='mp_'+Date.now();window.__mpCbs=window.__mpCbs||{};if(cb)window.__mpCbs[id]=cb;"
-    "window.webkit.messageHandlers.motoplay.postMessage({command:cmd,data:data||'',id:id})"
-    "};"
+    // ⚠️ 原生桥必须最先定义：下面 hideSplash 的分支在"闪屏已撤下"时会直接 return，
+    // 若桥接写在 return 之后，一旦注入时机晚于首屏数据返回（页面越快越容易发生），记录仪桥就会永久丢失。
     // 行车记录仪桥接：前端通过 dashcamHandler(action, cb) 调原生
     // action: 'check' → 探测记录仪 WiFi 是否可达(回调 true/false)
     //         'play'  → 调起 RTSP 播放器全屏页（无需回调）
@@ -332,42 +324,6 @@ static UIColor *ZHPanelBackgroundColor(void) {
                 [self.loadingView removeFromSuperview];
                 self.loadingView = nil;
             }];
-        }
-    }
-    // Motoplay 投屏桥接
-    if ([message.name isEqualToString:@"motoplay"]) {
-        NSDictionary *body = message.body;
-        NSString *cmd = body[@"command"];
-        NSString *data = body[@"data"];
-        NSString *cbId = body[@"id"];
-        // 通过 ObjC runtime 调用 MotoplayManager
-        Class mpClass = NSClassFromString(@"MotoplayManager");
-        if (!mpClass) {
-            [self evaluateJS:[NSString stringWithFormat:@"window.__mpCbs['%@'](false)", cbId]];
-            return;
-        }
-        if ([cmd isEqualToString:@"connect"]) {
-            [mpClass performSelector:NSSelectorFromString(@"mpConnect:") withObject:^(BOOL ok) {
-                [self evaluateJS:[NSString stringWithFormat:@"window.__mpCbs['%@'](%@)", cbId, ok ? @"true" : @"false"]];
-            }];
-        } else if ([cmd isEqualToString:@"disconnect"]) {
-            [mpClass performSelector:NSSelectorFromString(@"mpDisconnect")];
-            [self evaluateJS:[NSString stringWithFormat:@"window.__mpCbs['%@'](true)", cbId]];
-        } else if ([cmd isEqualToString:@"isConnected"]) {
-            BOOL ok = [mpClass performSelector:NSSelectorFromString(@"mpIsConnected")];
-            [self evaluateJS:[NSString stringWithFormat:@"window.__mpCbs['%@'](%@)", cbId, ok ? @"true" : @"false"]];
-        } else if ([cmd isEqualToString:@"sendNavData"]) {
-            // data = "COMMAND_TYPE|jsonPayload"
-            NSArray *parts = [data componentsSeparatedByString:@"|"];
-            if (parts.count >= 2) {
-                NSString *command = parts[0];
-                NSString *payload = [[parts subarrayWithRange:NSMakeRange(1, parts.count - 1)] componentsJoinedByString:@"|"];
-                SEL sel = NSSelectorFromString(@"mpSendNavData:data:callback:");
-                id (*castSel)(id, SEL, id, id, id) = (void *)[mpClass methodForSelector:sel];
-                castSel(mpClass, sel, command, payload, ^(BOOL ok) {
-                    [self evaluateJS:[NSString stringWithFormat:@"window.__mpCbs['%@'](%@)", cbId, ok ? @"true" : @"false"]];
-                });
-            }
         }
     }
     // 行车记录仪 RTSP 桥接

@@ -6,14 +6,6 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- 车机 WiFi 自动投屏：读 SSID -->
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <!-- Android 13+（API 33）读 SSID 还需 NEARBY_WIFI_DEVICES，且不需要前台位置权限 -->
-    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES"
-        android:usesPermissionFlags="neverForLocation"
-        android:minSdkVersion="33" />
-
     <application
         android:name=".ZHApp"
         android:allowBackup="false"
