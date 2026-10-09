@@ -84,7 +84,7 @@
 - App 更新导致接口加密变化时脚本可能失效，等待适配
 - 使用第三方脚本存在账号风控风险，请自行评估
 - 官方 App 登录会顶掉面板 Token，需重新抓取
-- LOON插件订阅：https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/modules/zeeho.plugin
+- LOON插件订阅：https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js
 - Surge模块订阅：https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/modules/zeeho.sgmodule
 - QX订阅：https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/zeeho_qx.conf
 - Shadowrocket配置：https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/shadowrocket/zeeho.conf
