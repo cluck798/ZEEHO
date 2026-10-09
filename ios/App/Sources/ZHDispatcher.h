@@ -14,6 +14,11 @@ typedef void (^ZHDispatchCompletion)(NSInteger status, NSDictionary *headers, NS
                body:(nullable NSString *)body
          completion:(ZHDispatchCompletion)completion;
 
+/// 面板 HTML 原生直出（带缓存）：从核心脚本内嵌的 __APP_HTML_B64 原生解码并拼上
+/// __PANEL_MODE__ 前缀，供 App 首屏快路径使用，避免首屏等待一整轮脚本求值。
+/// 脚本结构变化导致提取失败时返回 nil（调用方回退引擎通道）。
+- (nullable NSString *)panelHTMLLocal;
+
 @end
 
 NS_ASSUME_NONNULL_END

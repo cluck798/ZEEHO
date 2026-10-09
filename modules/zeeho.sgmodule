@@ -3,13 +3,13 @@
 #!author=@ZEEHO
 #!homepage=https://github.com/cluck798/ZEEHO
 #!icon=https://raw.githubusercontent.com/cluck798/ZEEHO/main/ZEEHO.png
-#!version=2.15.4
+#!version=2.15.5
 #!system=ios
 #!date=2026-10-07
 
 [Script]
 # 面板 + 极核API自动捕获appId/appSecret（访问 http://zeeho.box 打开面板）
-http-request ^https?://(zeeho\.box|.*zeehoev\.com)/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/zeeho_box_enhanced.js?v=2.15.4, requires-body=true, timeout=60, tag=极核面板
+http-request ^https?://(zeeho\.box|.*zeehoev\.com)/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/zeeho_box_enhanced.js?v=2.15.5, requires-body=true, timeout=60, tag=极核面板
 
 # 极核Token自动捕获（打开极核App → 我的页面）
 http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/mine\/cfmotoservermine\/setting script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/zeeho.js, requires-body=true, timeout=30, tag=极核抓Token

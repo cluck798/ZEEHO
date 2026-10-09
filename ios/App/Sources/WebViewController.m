@@ -39,6 +39,7 @@ static const NSTimeInterval kMonitorTickInterval = 180.0;
 @property (nonatomic, strong) AVAudioPlayer *silencePlayer;
 @property (nonatomic, strong) NSTimer *monitorTimer;
 @property (nonatomic, strong) UIView *loadingView;
+@property (nonatomic, assign) CFTimeInterval launchT0;
 @end
 
 @implementation WebViewController
@@ -50,6 +51,7 @@ static UIColor *ZHPanelBackgroundColor(void) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    _launchT0 = CACurrentMediaTime(); // 首屏耗时基准（诊断日志用）
     self.view.backgroundColor = ZHPanelBackgroundColor();
     self.activeTasks = [NSHashTable hashTableWithOptions:NSPointerFunctionsStrongMemory];
     self.dispatcher = [[ZHDispatcher alloc] init];
@@ -318,6 +320,7 @@ static UIColor *ZHPanelBackgroundColor(void) {
     if ([message.name isEqualToString:@"hideLoading"]) {
         // HTML 数据就绪，淡出加载提示
         if (self.loadingView) {
+            NSLog(@"[ZH] 首屏完成（隐藏原生开屏）%.0fms", (CACurrentMediaTime() - self.launchT0) * 1000);
             [UIView animateWithDuration:0.3 animations:^{
                 self.loadingView.alpha = 0;
             } completion:^(BOOL finished) {
@@ -424,6 +427,29 @@ static UIColor *ZHPanelBackgroundColor(void) {
     if (reqURL.query.length) urlStr = [urlStr stringByAppendingFormat:@"?%@", reqURL.query];
 
     NSString *method = urlSchemeTask.request.HTTPMethod ?: @"GET";
+
+    // ===== v2.15.5 首屏快路径：面板首页 HTML 由原生直出 =====
+    // 原先首页要等一整轮「JSContext 创建 + 466KB 脚本求值 + JS 侧 B64/UTF-8 解码」才拿到 HTML；
+    // 现在直接从脚本内嵌 B64 原生解码返回（毫秒级）。提取失败自动回退引擎通道，行为不变。
+    if ([method isEqualToString:@"GET"] && ([path isEqualToString:@"/"] || path.length == 0)) {
+        NSString *fastHTML = [self.dispatcher panelHTMLLocal];
+        if (fastHTML.length) {
+            NSLog(@"[ZH] 首屏 HTML 原生直出 %.0fms", (CACurrentMediaTime() - self.launchT0) * 1000);
+            [self finishSchemeTask:urlSchemeTask url:reqURL status:200
+                           headers:@{ @"Content-Type": @"text/html; charset=utf-8" } body:fastHTML];
+            // 「打开面板」维护（自动补签 / 失败重试 / 车辆监控）：改到后台触发，不阻塞首屏
+            [self.dispatcher dispatchURL:@"http://zeeho.box/api/panel-open" method:@"GET" headers:@{} body:nil
+                              completion:^(NSInteger status, NSDictionary *respHeaders, NSString *respBody) {}];
+            return;
+        }
+    }
+    // favicon 直接 404：旧路径下会落到脚本兜底（返回整页 HTML）并白跑一轮脚本求值
+    if ([method isEqualToString:@"GET"] && [path isEqualToString:@"/favicon.ico"]) {
+        [self finishSchemeTask:urlSchemeTask url:reqURL status:404
+                       headers:@{ @"Content-Type": @"text/plain; charset=utf-8" } body:@""];
+        return;
+    }
+
     NSString *body = [self readRequestBody:urlSchemeTask.request];
     // 剔除 body 桥接头，避免泄漏进脚本 $request.headers
     NSDictionary *rawHeaders = urlSchemeTask.request.allHTTPHeaderFields ?: @{};
@@ -437,30 +463,37 @@ static UIColor *ZHPanelBackgroundColor(void) {
     __weak typeof(self) weakSelf = self;
     [self.dispatcher dispatchURL:urlStr method:method headers:headers body:body completion:^(NSInteger status, NSDictionary *respHeaders, NSString *respBody) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf || ![strongSelf.activeTasks containsObject:urlSchemeTask]) return;
-        [strongSelf.activeTasks removeObject:urlSchemeTask];
-        @try {
-            // 统一禁缓存，防止 WKWebView 缓存 /api/* 的 GET 响应导致数据陈旧
-            NSMutableDictionary *finalHeaders = [NSMutableDictionary dictionaryWithDictionary:respHeaders ?: @{}];
-            finalHeaders[@"Cache-Control"] = @"no-store";
-            NSString *finalBody = respBody ?: @"";
-            // HTML 响应（看板页/配置页）最前面注入 fetch body 桥接垫片
-            NSString *contentType = [finalHeaders[@"Content-Type"] isKindOfClass:[NSString class]] ? finalHeaders[@"Content-Type"] : @"";
-            if ([contentType containsString:@"text/html"]) {
-                finalBody = [kFetchBodyShim stringByAppendingString:finalBody];
-            }
-            NSHTTPURLResponse *response = [[NSHTTPURLResponse alloc] initWithURL:reqURL
-                                                                        statusCode:status
-                                                                       HTTPVersion:@"HTTP/1.1"
-                                                                      headerFields:finalHeaders];
-            [urlSchemeTask didReceiveResponse:response];
-            NSData *data = [finalBody dataUsingEncoding:NSUTF8StringEncoding] ?: [NSData data];
-            [urlSchemeTask didReceiveData:data];
-            [urlSchemeTask didFinish];
-        } @catch (NSException *exception) {
-            // 任务已被 WebKit 取消，忽略
-        }
+        if (!strongSelf) return;
+        [strongSelf finishSchemeTask:urlSchemeTask url:reqURL status:status headers:respHeaders body:respBody];
     }];
+}
+
+// 统一回包：禁缓存 + HTML 注入 fetch body 桥接垫片 + 完成 WKURLSchemeTask
+// （引擎通道与 v2.15.5 原生直出快路径共用）
+- (void)finishSchemeTask:(id<WKURLSchemeTask>)task url:(NSURL *)reqURL status:(NSInteger)status headers:(NSDictionary *)headers body:(NSString *)body {
+    if (![self.activeTasks containsObject:task]) return;
+    [self.activeTasks removeObject:task];
+    @try {
+        // 统一禁缓存，防止 WKWebView 缓存 /api/* 的 GET 响应导致数据陈旧
+        NSMutableDictionary *finalHeaders = [NSMutableDictionary dictionaryWithDictionary:headers ?: @{}];
+        finalHeaders[@"Cache-Control"] = @"no-store";
+        NSString *finalBody = body ?: @"";
+        // HTML 响应（看板页/配置页）最前面注入 fetch body 桥接垫片
+        NSString *contentType = [finalHeaders[@"Content-Type"] isKindOfClass:[NSString class]] ? finalHeaders[@"Content-Type"] : @"";
+        if ([contentType containsString:@"text/html"]) {
+            finalBody = [kFetchBodyShim stringByAppendingString:finalBody];
+        }
+        NSHTTPURLResponse *response = [[NSHTTPURLResponse alloc] initWithURL:reqURL
+                                                                    statusCode:status
+                                                                   HTTPVersion:@"HTTP/1.1"
+                                                                  headerFields:finalHeaders];
+        [task didReceiveResponse:response];
+        NSData *data = [finalBody dataUsingEncoding:NSUTF8StringEncoding] ?: [NSData data];
+        [task didReceiveData:data];
+        [task didFinish];
+    } @catch (NSException *exception) {
+        // 任务已被 WebKit 取消，忽略
+    }
 }
 
 - (void)webView:(WKWebView *)webView stopURLSchemeTask:(id<WKURLSchemeTask>)urlSchemeTask {

@@ -1,16 +1,16 @@
 /*
-#!name=极核 ZEEHO 签到面板 V2.15.4
+#!name=极核 ZEEHO 签到面板 V2.15.5
 #!desc=极核ZEEHO多账号签到面板 + 网页配置，访问 http://zeeho.box
 #!author=lucky
 #!homepage=https://github.com/cluck798/ZEEHO
-#!version=2.15.4
+#!version=2.15.5
 
 图标: https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/ZEEHO.png
 
 [Script]
 # ========== 极核 ZEEHO ==========
 # 面板 + 极核API自动捕获appId/appSecret
-http-request ^https?://(zeeho\.box|.*zeehoev\.com)/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js?v=2.15.4, requires-body=true, timeout=60, tag=极核面板V2.15.4
+http-request ^https?://(zeeho\.box|.*zeehoev\.com)/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js?v=2.15.5, requires-body=true, timeout=60, tag=极核面板V2.15.5
 
 # 极核Token自动捕获（打开极核App-我的页面）
 http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/mine\/cfmotoservermine\/setting script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho.js, requires-body=true, timeout=30, tag=极核抓Token
@@ -37,13 +37,13 @@ hostname = tapi.zeehoev.com, h5.zeehoev.com, zeeho.box
 const $ = new Env("极核看板增强版");
 
 // ========== 极核 ZEEHO 签到面板脚本 ==========
-// 版本: v2.15.4
-// 更新日期: 2026-10-07
+// 版本: v2.15.5
+// 更新日期: 2026-10-10
 // 作者: @lucky
 // 主页: https://github.com/cluck798/ZEEHO
 // ============================================
-const SCRIPT_VERSION = "v2.15.4";
-console.log(`🚀 [极核面板] 脚本版本: ${SCRIPT_VERSION} (2026-10-09 v2.15.4 删除导航投屏（Motoplay）功能；动态文案 lucky / 评论「今日已签到」；Scriptable 单账号版（按服务端当日记录判签、中尺寸电压）；随机设备指纹 + 官方 App 指纹自救 + 首屏提速)`);
+const SCRIPT_VERSION = "v2.15.5";
+console.log(`🚀 [极核面板] 脚本版本: ${SCRIPT_VERSION} (2026-10-10 v2.15.5 面板首屏提速：iOS 原生直出面板页 + 打开面板维护改为后台执行（新增 /api/panel-open）；v2.15.4 删除导航投屏（Motoplay）；动态文案 lucky / 评论「今日已签到」；Scriptable 单账号版；随机设备指纹 + 官方 App 指纹自救)`);
 
 // 面板入口域名：Loon 用虚拟域名 zeeho.box（Loon 可虚拟劫持不存在的域名），
 // QX 必须用真实可解析域名（默认 www.example.com，IANA 保留域名保证可解析）。
@@ -2778,6 +2778,35 @@ function accHeaders(acc, signH) {
   return h;
 }
 
+// v2.15.5 面板打开维护（响应后后台执行，不阻塞首屏）：
+// 定时签到（打开面板补签引擎）+ 失败重试队列 + 车辆监控。
+// iOS 原生 App 在「原生直出面板页」后调 /api/panel-open 触发，语义与「打开面板」一致。
+async function runPanelOpenMaintenance() {
+  if (runPanelOpenMaintenance._running) return;
+  runPanelOpenMaintenance._running = true;
+  // 定时签到（补签引擎）：设置页开启后，每天首次打开面板且已过设定时间 → 全账号签到一次（日期标记去重）
+  try {
+    const _cfg0 = getConfig();
+    if (_cfg0.autoSignin) {
+      const _now = new Date();
+      const _today = _now.getFullYear() + "-" + String(_now.getMonth()+1).padStart(2,"0") + "-" + String(_now.getDate()).padStart(2,"0");
+      const _hm = String(_now.getHours()).padStart(2,"0") + ":" + String(_now.getMinutes()).padStart(2,"0");
+      const _last = ($.getdata("zeeho_autosign_lastdate") || "");
+      if (_hm >= _cfg0.autoSigninTime && _last !== _today) {
+        $.setdata(_today, "zeeho_autosign_lastdate");
+        const _accs = getAccounts();
+        if (_accs.length) {
+          console.log("[定时签到] 已过 " + _cfg0.autoSigninTime + "，自动补签 " + _accs.length + " 个账号");
+          await runSigninBatch(_accs, _cfg0);
+        }
+      }
+    }
+  } catch(e) { console.log("[定时签到] 异常: " + e); }
+  try { await checkRetryQueue(getConfig()); } catch(e) {}
+  try { await checkVehicleMonitor(getConfig()); } catch(e) {}
+  runPanelOpenMaintenance._running = false;
+}
+
 !(async () => {
   if (typeof $request === "undefined" || !$request) {
     $.log("极核看板增强版：请通过重写规则访问 http://zeeho.box");
@@ -2829,6 +2858,14 @@ function accHeaders(acc, signH) {
   if (method === "GET" && (path === "/" || path === "")) {
     try { await checkRetryQueue(getConfig()); } catch(e) {}
     try { await checkVehicleMonitor(getConfig()); } catch(e) {}
+  }
+
+  // ========== v2.15.5 原生 App 快路径：面板 HTML 由原生直出，用它触发同一套「打开面板」维护 ==========
+  // 先立即响应，维护改到响应后后台执行（不再 await 网络任务挡在首屏前面）
+  if (method === "GET" && path === "/api/panel-open") {
+    sendResp(200, { "Content-Type": "application/json", "Cache-Control": "no-cache" }, '{"ok":true}');
+    setTimeout(function(){ runPanelOpenMaintenance(); }, 0);
+    return;
   }
 
   // API: 保存配置
