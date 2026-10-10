@@ -41,7 +41,12 @@ jobs:
           WECHAT_PRIVATE_KEY: ${{ secrets.WECHAT_PRIVATE_KEY }}
         run: |
           mkdir -p zeeho-miniprogram/.auth
-          echo "$WECHAT_PRIVATE_KEY" > zeeho-miniprogram/.auth/private.wx760d5359ef02d5ff.key
+          # 兼容两种 Secret 粘贴方式：真实换行 / 字面 \n（后者是 GitHub Secret 里最常见的粘贴事故）
+          printf '%b' "$WECHAT_PRIVATE_KEY" > zeeho-miniprogram/.auth/private.wx760d5359ef02d5ff.key
+          if ! grep -q 'PRIVATE KEY-----' zeeho-miniprogram/.auth/private.wx760d5359ef02d5ff.key; then
+            echo "::error::WECHAT_PRIVATE_KEY Secret 内容不是有效 PEM 私钥，请重新粘贴私钥全文（含 BEGIN/END 行，或直接粘贴本地 .auth/private.*.key 的内容）"
+            exit 1
+          fi
 
       - name: Build weapp
         working-directory: zeeho-miniprogram
