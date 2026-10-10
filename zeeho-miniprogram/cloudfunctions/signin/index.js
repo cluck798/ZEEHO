@@ -388,6 +388,21 @@ async function runPostMoment(accountIds) {
 }
 
 // ============ 入口（小程序端通过 wx.cloud.callFunction 调用） ============
+
+// 定时触发器事件（微信定时触发器：{ Type: 'Timer', TriggerName, Time }）
+function isTimerEvent(event) { return !!(event && event.Type === 'Timer') }
+
+// 当前北京时间小时（云端时区按北京时间处理，这里显式换算更稳）
+function bjHour() { return new Date(Date.now() + 8 * 3600 * 1000).getUTCHours() }
+
+// 读取全局设置（settings/global，小程序「我的」页写入；不存在返回 null）
+async function readGlobalSettings(db) {
+  try {
+    const res = await db.collection('settings').doc('global').get()
+    return res && res.data ? res.data : null
+  } catch (e) { return null }
+}
+
 exports.main = async (event = {}) => {
   const { action } = event
   const db = cloud.database()
@@ -460,6 +475,18 @@ exports.main = async (event = {}) => {
   }
 
   // 默认：全量签到（「一键签到」与定时触发器共用；签到完成后接着做发布动态任务）
+  // 定时触发时遵循「我的」页设置：自动签到开关 + 每日签到时间（小时级）
+  if (isTimerEvent(event)) {
+    try { await db.createCollection('settings') } catch (e) { /* 已存在 */ }
+    const st = await readGlobalSettings(db)
+    if (st && st.autoSign === false) {
+      return { code: 0, data: { success: 0, failed: 0, results: [], skipped: 'autoSign off' } }
+    }
+    const targetHour = Number(String((st && st.signTime) || '08:00').split(':')[0])
+    if (Number.isFinite(targetHour) && bjHour() !== targetHour) {
+      return { code: 0, data: { success: 0, failed: 0, results: [], skipped: 'not the time' } }
+    }
+  }
   const { data: accounts } = await db.collection('accounts').where({ enabled: true }).get()
   const results = []
   for (const a of accounts) {

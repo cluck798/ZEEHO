@@ -37,6 +37,18 @@ const defaultSettings: Settings = {
   msgNotify: true,
 }
 
+// 设置本地缓存 key（重进小程序不再回默认值）
+const SETTINGS_KEY = 'zh_settings'
+
+function loadLocalSettings(): Settings {
+  if (!isWeapp) return defaultSettings
+  try {
+    const raw = Taro.getStorageSync(SETTINGS_KEY)
+    if (raw && typeof raw === 'object') return { ...defaultSettings, ...raw }
+  } catch (e) { /* ignore */ }
+  return defaultSettings
+}
+
 const AppContext = createContext<AppState | null>(null)
 
 // 云数据库记录 → Account
@@ -75,7 +87,7 @@ function toRecord(acc: Account) {
 
 export function AppContextProvider({ children }: { children: ReactNode }) {
   const [accounts, setAccounts] = useState<Account[]>(isWeapp ? [] : mockAccounts)
-  const [settings, setSettings] = useState<Settings>(defaultSettings)
+  const [settings, setSettingsState] = useState<Settings>(loadLocalSettings())
   const [currentAccountId, setCurrentAccountId] = useState('')
   const [loading, setLoading] = useState(isWeapp)
 
@@ -108,8 +120,45 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     loadAccounts()
+    loadSettings()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // 设置：本地缓存 + 云端（settings/global，定时签到任务读取它决定是否执行）双写
+  const setSettings = (s: Settings) => {
+    setSettingsState(s)
+    try { Taro.setStorageSync(SETTINGS_KEY, s) } catch (e) { /* ignore */ }
+    if (isWeapp) {
+      ensureCloudInit()
+      try {
+        Taro.cloud.database().collection('settings').doc('global')
+          .set({ data: { ...s, updatedAt: Date.now() } })
+          .catch((e: any) => console.warn('[Cloud] 设置同步失败', e))
+      } catch (e) { console.warn('[Cloud] 设置同步失败', e) }
+    }
+  }
+
+  // 启动时从云端拉一次设置（重装/换设备也能恢复）
+  const loadSettings = async () => {
+    if (!isWeapp) return
+    ensureCloudInit()
+    try {
+      const res = await Taro.cloud.database().collection('settings').doc('global').get()
+      if (res && res.data) {
+        const merged = { ...defaultSettings, ...res.data }
+        setSettingsState(merged)
+        try { Taro.setStorageSync(SETTINGS_KEY, merged) } catch (e) { /* ignore */ }
+      }
+    } catch (e) {
+      // 云端还没有设置文档：把本地值推上去（集合不存在时会失败，忽略；执行过签到后集合自动创建）
+      const local = loadLocalSettings()
+      try {
+        Taro.cloud.database().collection('settings').doc('global')
+          .set({ data: { ...local, updatedAt: Date.now() } })
+          .catch(() => { /* ignore */ })
+      } catch (e2) { /* ignore */ }
+    }
+  }
 
   const addAccount = async (acc: Account) => {
     // 同一 Token 视为同一账号：已存在则更新，避免重复添加
