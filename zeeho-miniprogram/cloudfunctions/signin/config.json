@@ -2,6 +2,7 @@
   "permissions": {
     "openapi": []
   },
+  "timeout": 60,
   "triggers": [
     {
       "name": "dailySign",

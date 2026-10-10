@@ -98,7 +98,7 @@ const AccountEdit: React.FC = () => {
   const handleSave = async () => {
     if (submitting || sending) return
 
-    // Token 登录：直接粘贴 Token
+    // Token 登录：直接粘贴 Token（置 submitting 防连点重复入库）
     if (mode === 'token') {
       if (!nickname.trim()) {
         Taro.showToast({ title: '请输入昵称', icon: 'none' })
@@ -108,7 +108,14 @@ const AccountEdit: React.FC = () => {
         Taro.showToast({ title: '请输入 Token', icon: 'none' })
         return
       }
-      await saveAccount({ nickname: nickname.trim(), token: token.trim(), userId: existing?.userId })
+      setSubmitting(true)
+      try {
+        await saveAccount({ nickname: nickname.trim(), token: token.trim(), userId: existing?.userId })
+      } catch (e: any) {
+        Taro.showToast({ title: e?.message || '保存失败，请稍后重试', icon: 'none' })
+      } finally {
+        setSubmitting(false)
+      }
       return
     }
 
@@ -222,7 +229,7 @@ const AccountEdit: React.FC = () => {
 
         <View className={styles.saveBtn} onClick={handleSave}>
           <Text className={styles.saveBtnText}>
-            {submitting ? '登录中…' : isEdit ? '保存修改' : '保存账号'}
+            {submitting ? (mode === 'phone' ? '登录中…' : '保存中…') : isEdit ? '保存修改' : '保存账号'}
           </Text>
         </View>
 

@@ -5,6 +5,16 @@ import { mockAccounts } from '@/data/accounts'
 
 const isWeapp = process.env.TARO_ENV === 'weapp'
 
+// 云环境初始化兜底：任何云 API 调用前确保 init 已执行（重复调用 wx.cloud.init 是安全的）
+function ensureCloudInit() {
+  if (!isWeapp) return
+  try {
+    Taro.cloud.init({ env: 'cloudbase-d0gemr0f16e9211f0', traceUser: true })
+  } catch (e) {
+    console.error('[Cloud] init 失败', e)
+  }
+}
+
 interface AppState {
   accounts: Account[]
   settings: Settings
@@ -69,13 +79,24 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   const [currentAccountId, setCurrentAccountId] = useState('')
   const [loading, setLoading] = useState(isWeapp)
 
-  // weapp 下从云数据库读取账号
+  // weapp 下从云数据库读取账号（失败自动重试一次，避免初始化时序抖动导致列表空白）
   const loadAccounts = async () => {
     if (!isWeapp) return
-    try {
+    ensureCloudInit()
+    const readOnce = async () => {
       const db = Taro.cloud.database()
       const res = await db.collection('accounts').get()
-      const list = (res.data || []).map(mapRecord)
+      return (res.data || []).map(mapRecord)
+    }
+    try {
+      let list: Account[]
+      try {
+        list = await readOnce()
+      } catch (e) {
+        console.warn('[Cloud] 读取账号失败，800ms 后重试', e)
+        await new Promise(r => setTimeout(r, 800))
+        list = await readOnce()
+      }
       setAccounts(list)
       setCurrentAccountId(prev => prev || list[0]?.id || '')
     } catch (err) {
@@ -91,7 +112,19 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const addAccount = async (acc: Account) => {
+    // 同一 Token 视为同一账号：已存在则更新，避免重复添加
+    const dup = acc.token ? accounts.find(a => a.token && a.token === acc.token) : undefined
+    if (dup) {
+      await updateAccount(dup.id, {
+        nickname: acc.nickname || dup.nickname,
+        token: acc.token,
+        userId: acc.userId || dup.userId,
+        status: 'normal',
+      })
+      return
+    }
     if (isWeapp) {
+      ensureCloudInit()
       const db = Taro.cloud.database()
       const res = await db.collection('accounts').add({ data: toRecord(acc) })
       setAccounts(prev => [...prev, { ...acc, id: res._id }])
@@ -102,6 +135,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
 
   const updateAccount = async (id: string, patch: Partial<Account>) => {
     if (isWeapp && id) {
+      ensureCloudInit()
       const db = Taro.cloud.database()
       const data: Record<string, any> = {}
       if ('nickname' in patch) data.nickname = patch.nickname
@@ -125,6 +159,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
 
   const removeAccount = async (id: string) => {
     if (isWeapp && id) {
+      ensureCloudInit()
       const db = Taro.cloud.database()
       try {
         await db.collection('accounts').doc(id).remove()
