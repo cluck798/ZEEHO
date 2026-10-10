@@ -7,7 +7,7 @@ function App(props) {
   useEffect(() => {
     // 微信小程序下初始化云开发环境（H5 预览走 mock，不初始化）
     if (process.env.TARO_ENV === 'weapp') {
-      Taro.cloud.init({ env: 'cloudbase-d0gerrn0f16e9211f0', traceUser: true });
+      Taro.cloud.init({ env: 'cloudbase-d0gemr0f16e9211f0', traceUser: true });
     }
     console.log('[App] launched');
   }, []);
