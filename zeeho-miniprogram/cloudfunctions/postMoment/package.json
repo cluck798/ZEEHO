@@ -1,0 +1,9 @@
+{
+  "name": "postMoment",
+  "version": "1.0.0",
+  "description": "ZEEHO 发布动态云函数（发帖→点赞→评论→分享→删除）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

@@ -9,7 +9,7 @@ import Card from '@/components/Card'
 import TaskCard from '@/components/TaskCard'
 import { useAppStore } from '@/store/AppContext'
 import { mockTasks } from '@/data/tasks'
-import { signAll, supplementSign, SignAllResult } from '@/services/api'
+import { signAll, supplementSign, postMoment, SignAllResult, PostMomentResult } from '@/services/api'
 import styles from './index.module.scss'
 
 const Home: React.FC = () => {
@@ -18,6 +18,8 @@ const Home: React.FC = () => {
   const [result, setResult] = useState<SignAllResult | null>(null)
   const [supplementing, setSupplementing] = useState(false)
   const [suppResult, setSuppResult] = useState<SignAllResult | null>(null)
+  const [posting, setPosting] = useState(false)
+  const [postResult, setPostResult] = useState<PostMomentResult | null>(null)
 
   const signedCount = accounts.filter(a => a.todaySigned).length
   const pendingCount = accounts.filter(a => a.status === 'expired' || !a.todaySigned).length
@@ -53,6 +55,23 @@ const Home: React.FC = () => {
       Taro.showToast({ title: '补签失败，请稍后重试', icon: 'none' })
     } finally {
       setSupplementing(false)
+    }
+  }
+
+  // 发布动态（全部账号：发帖→点赞→评论→分享→删除，云端自动清理）
+  const handlePost = async () => {
+    if (posting) return
+    if (!accounts.length) { Taro.showToast({ title: '请先在「账号」页添加账号', icon: 'none' }); return }
+    setPosting(true)
+    setPostResult(null)
+    try {
+      const res = await postMoment('lucky', [])
+      setPostResult(res)
+      Taro.showToast({ title: '发布完成', icon: 'success' })
+    } catch (e) {
+      Taro.showToast({ title: (e && e.message) || '发布失败，请稍后重试', icon: 'none' })
+    } finally {
+      setPosting(false)
     }
   }
 
@@ -108,6 +127,32 @@ const Home: React.FC = () => {
             )}
           </View>
         )}
+
+        {/* 发布动态 */}
+        <View className={styles.suppCard}>
+          <View className={styles.suppHeader}>
+            <View className={styles.suppInfo}>
+              <Text className={styles.suppTitle}>发布动态</Text>
+              <Text className={styles.suppDesc}>内容「lucky」· 自动完成发帖/点赞/评论/分享并清理</Text>
+            </View>
+            <View className={styles.suppBtn} onClick={handlePost}>
+              <Text className={styles.suppBtnText}>{posting ? '发布中…' : '一键发布'}</Text>
+            </View>
+          </View>
+          {postResult && (
+            <View className={styles.suppResult}>
+              {(postResult.results && postResult.results.length
+                ? postResult.results
+                : [{ account: '全部账号', status: 'success' as const, msg: postResult.msg }]
+              ).map((r, i) => (
+                <View key={i} className={styles.resultRow}>
+                  <Text className={styles.resultName}>{r.account}</Text>
+                  <Text className={r.status === 'success' ? styles.resultOk : styles.resultFail}>{r.msg}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
 
         {/* 今日任务 */}
         <Text className={styles.sectionTitle}>今日任务</Text>

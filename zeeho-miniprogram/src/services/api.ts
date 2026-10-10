@@ -10,6 +10,8 @@ export interface SignAllResult {
 export interface PostMomentResult {
   momentId: string
   msg: string
+  // 云端逐账号明细（可选，用于结果列表展示）
+  results?: { account: string; status: 'success' | 'failed'; msg: string }[]
 }
 
 export interface LoginResult {
