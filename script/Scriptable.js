@@ -1,6 +1,7 @@
-// ============= 极核 ZEEHO · Scriptable（单账号版 v1.2） =============
+// ============= 极核 ZEEHO · Scriptable（单账号版 v1.3） =============
 // 单账号：只维护一个账号，菜单内可随时「手机号登录 / 粘贴 Token」重设
 // 功能全集：自动签到 / 盲盒 / 补签 / 发布动态 · 车辆控制 · 充电监控 · 小组件（小 / 中 / 大 + 锁屏圆形 / 长方形）
+// v1.3：① H5 通道密钥轮换（appId=AiTXmBrm）② 签到/盲盒/补签接口迁到 /H5/ 前缀（服务端 2026-10 调整）
 // v1.2：① 单账号化改造（功能保留）② 发布内容 lucky ③ 随机设备指纹 ④ 服务端当日记录判签 ⑤ 中尺寸显示电压
 // ============= 配置与常量 =========
 const BASE = "https://tapi.zeehoev.com";
@@ -127,7 +128,7 @@ const API = {
   vehicleList: "/v1.0/app/cfmotoserverapp/vehicle/list",
   vehicleHomePage: (vehicleId) =>
     `/v1.0/app/cfmotoserverapp/vehicleHomePage/${encodeURIComponent(vehicleId)}`,
-  signinLottery: "/cfmotoservermine/signin/lottery",
+  signinLottery: "/cfmotoservermine/H5/signin/lottery",
   totalIntegral: "/v1.0/mine/cfmotoservermine/integral/totalIntegral",
   commonArticle: "/v1.0/social/cfmotoserversocial/commonArticle",
   mineArticleInfo: "/v1.0/social/cfmotoserversocial/community/mineArticleInfo",
@@ -137,16 +138,17 @@ const API = {
   batteryInfo: (vinNo) => `/v1.0/app/cfmotoserverapp/batteryInfo/${encodeURIComponent(vinNo)}`,
   adjustByShare: "/v1.0/mine/cfmotoservermine/integral/adjustByShare",
 };
-const API_SIGNIN_V1 = "/cfmotoservermine/signin";
-const API_SIGNIN_INFO = "/cfmotoservermine/signin/info";
+const API_SIGNIN_V1 = "/cfmotoservermine/H5/signin";
+const API_SIGNIN_INFO = "/cfmotoservermine/H5/signin/info";
 
 const IMAGE_URL = "";
 
 // ============= 本地签名 =============
+// v1.3：H5 通道密钥轮换（服务端换发；旧 appId 一律 430 permit error）
 const APP_CONFIG = {
   h5: {
-    appId: "S7qPWPU1",
-    appSecret: "c5e0da7f4da28df805694ec3dd1fc6792e9df99d"
+    appId: "AiTXmBrm",
+    appSecret: "70c2c7458ab88ca9504ad0521f170075bc91f2f7"
   },
   app: {
     appId: "S7qPWPU1",
@@ -902,7 +904,7 @@ async function fetchSigninLottery({ token }) {
 }
 
 async function fetchSupplementPrize({ supplementDate, token }) {
-  const url = joinUrl(H5_BASE, "/cfmotoservermine/signin/supplementPrize");
+  const url = joinUrl(H5_BASE, "/cfmotoservermine/H5/signin/supplementPrize");
   return await safeRequest(requestWithSign, 'h5', "GET", url, { supplementDate }, null, token, "supplementPrize");
 }
 

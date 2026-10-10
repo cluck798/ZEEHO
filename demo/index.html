@@ -556,7 +556,7 @@ nav.tabbar{
 <script>
 "use strict";
 /* ================= 常量 ================= */
-const APP_VERSION = "v2.15.4";
+const APP_VERSION = "v2.15.6";
 const KEYS = { cfg:"zeeho_cfg", accounts:"zeeho_accounts", logs:"zeeho_logs" };
 
 /* ================= 工具函数 ================= */
@@ -1092,6 +1092,33 @@ async function clearLogsNow(){const ok=await Backend.clearLogs();if(ok){toast("�
 
 /* ================= 设置页 ================= */
 let cfgAccounts=[];
+/* ================= v2.15.6 软件版本检测 ================= */
+async function checkVersion(manual){
+  const btn=document.getElementById("verCheckBtn");
+  if(btn){btn.disabled=true;btn.textContent="检测中…"}
+  let d=null;
+  if(isDemo()){d={ok:true,demo:true,current:APP_VERSION.replace(/^v/,""),hasUpdate:false,latest:{script:APP_VERSION.replace(/^v/,"")}}}
+  else{d=await proxyFetch("/api/version-check"+(manual?"?fresh=1":""));}
+  STATE.ver=d||null;
+  if(btn){btn.disabled=false;btn.textContent="检查更新"}
+  const ex=document.getElementById("verExtra");if(ex)ex.innerHTML=verExtraHtml();
+  if(STATE.ver&&STATE.ver.ok&&STATE.ver.hasUpdate&&!STATE.ver.demo){
+    toast("发现新版本 v"+STATE.ver.latest.script+"（当前 v"+STATE.ver.current+"），可到「设置」查看更新方式");
+  }else if(manual){
+    toast(STATE.ver&&STATE.ver.ok?"已是最新版本 v"+STATE.ver.current:((STATE.ver&&STATE.ver.error)||"检测失败"),STATE.ver&&STATE.ver.ok?"ok":"err");
+  }
+}
+function verExtraHtml(){
+  const v=STATE.ver;
+  if(!v)return '点「检查更新」获取最新版本与各端推荐版本';
+  if(!v.ok)return '检测失败：'+esc(v.error||"未知错误");
+  const L=v.latest||{};
+  if(!v.hasUpdate)return '已是最新版本 · 脚本 v'+esc(v.current)+(v.cached?'（本地缓存）':'');
+  return '<span style="color:var(--warn);font-weight:600">发现新版本：脚本 v'+esc(L.script||"")+'（当前 v'+esc(v.current)+'）</span>'+
+  '<br>推荐版本：iOS App '+esc(L.ios||"-")+' · Windows '+esc(L.pc||"-")+' · Android '+esc(L.android||"-")+
+  (L.note?'<br>更新内容：'+esc(L.note):'')+
+  '<br><b style="color:var(--txt2)">更新方式</b>：Loon / Shadowrocket / Surge 更新模块订阅即可拉取最新脚本；iOS App（TrollStore）与 Windows / Android 端请重新下载对应安装包。';
+}
 function renderCfg(){
   if(isProxyMode()&&location.search.indexOf("demo")<0&&!STATE.panelLoaded){
     const el0=document.getElementById("pageCfg");
@@ -1156,7 +1183,8 @@ function renderCfg(){
   '<div style="height:1px;background:var(--line);margin:0 16px"></div>'+
   '<a href="https://github.com/cluck798/ZEEHO" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;text-decoration:none;color:var(--brand)"><span style="display:flex;align-items:center;gap:10px"><span style="font-size:16px">⭐</span><span style="font-size:14px;font-weight:600">GitHub 仓库</span></span><span style="font-size:13px;color:var(--txt3)">cluck798/ZEEHO</span></a>'+
   '<div style="height:1px;background:var(--line);margin:0 16px"></div>'+
-  '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px"><span style="display:flex;align-items:center;gap:10px"><span style="font-size:16px">📋</span><span style="font-size:14px;font-weight:600;color:var(--txt2)">版本</span></span><span style="font-size:13px;color:var(--txt3)">'+APP_VERSION+'</span></div>'+
+  '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px"><span style="display:flex;align-items:center;gap:10px"><span style="font-size:16px">📋</span><span style="font-size:14px;font-weight:600;color:var(--txt2)">版本 / 更新检测</span></span><span style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;color:var(--txt3)">'+APP_VERSION+'</span><button class="btn sm" id="verCheckBtn" onclick="checkVersion(true)">检查更新</button></span></div>'+
+  '<div id="verExtra" style="padding:0 16px 12px;font-size:12px;line-height:1.75;color:var(--txt3)">'+verExtraHtml()+'</div>'+
   '</div></div>'+
   '<div class="foot">极核 ZEEHO 面板 '+APP_VERSION+' · '+(isProxyMode()?'账号与密钥存储于脚本后端（本机持久化）':'数据存储于本机浏览器 localStorage')+'<br><a class="link" href="https://afdian.com/a/lucky798" target="_blank" rel="noopener">爱发电 · afdian.com/a/lucky798</a></div>';
   // 小组件车辆下拉初始化（回填已保存的选择）
@@ -1559,9 +1587,14 @@ function init(){
     renderHome();hideSplash();return;
   }
   startAutoRefresh();refreshAll(false);
+  // v2.15.6 版本检测：首屏渲染后静默检查一次（有新版本才提示）
+  if(!isDemo())setTimeout(()=>checkVersion(false),1500);
   // 兜底：极端情况下请求长时间无响应，闪屏也不能一直挡住界面
   setTimeout(hideSplash,12000);
 }
 init();
+// 演示便捷入口：?tab=home|points|vehicle|logs|cfg 直达对应标签页
+try{const _t=new URLSearchParams(location.search).get("tab");if(_t&&["home","points","vehicle","logs","cfg"].includes(_t)){switchTab(_t);}}catch(e){}
+
 </script>
 <!--__JS5__-->
