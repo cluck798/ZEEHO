@@ -8,3 +8,8 @@ export const mockLogs: LogItem[] = [
   { id: '5', time: '08:00:25', account: '极友_50a34ce6be', action: '分享动态', status: 'success', detail: '分享成功，积分 +5' },
   { id: '6', time: '08:00:28', account: '极友_b396846370', action: '分享动态', status: 'success', detail: '分享成功，积分 +5' },
 ]
+
+// H5 演示模式下 callFunction 的回退数据源
+export default function mockLogsFn(): LogItem[] {
+  return mockLogs
+}

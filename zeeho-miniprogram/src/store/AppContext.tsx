@@ -16,6 +16,7 @@ interface AppState {
   addAccount: (acc: Account) => Promise<void>
   updateAccount: (id: string, patch: Partial<Account>) => Promise<void>
   removeAccount: (id: string) => Promise<void>
+  reloadAccounts: () => Promise<void>
 }
 
 const defaultSettings: Settings = {
@@ -35,6 +36,7 @@ function mapRecord(r: any): Account {
     nickname: r.nickname || '',
     avatar: r.avatar || '',
     token: r.token || '',
+    userId: r.userId || '',
     status: r.status || 'normal',
     lastSignTime: r.lastSignTime || '—',
     todaySigned: !!r.todaySigned,
@@ -50,6 +52,7 @@ function toRecord(acc: Account) {
     nickname: acc.nickname,
     avatar: acc.avatar,
     token: acc.token,
+    userId: acc.userId || '',
     status: acc.status,
     lastSignTime: acc.lastSignTime,
     todaySigned: acc.todaySigned,
@@ -67,18 +70,24 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(isWeapp)
 
   // weapp 下从云数据库读取账号
-  useEffect(() => {
+  const loadAccounts = async () => {
     if (!isWeapp) return
-    const db = Taro.cloud.database()
-    db.collection('accounts')
-      .get()
-      .then(res => {
-        const list = (res.data || []).map(mapRecord)
-        setAccounts(list)
-        setCurrentAccountId(list[0]?.id || '')
-      })
-      .catch(err => console.error('[Cloud] 读取账号失败', err))
-      .finally(() => setLoading(false))
+    try {
+      const db = Taro.cloud.database()
+      const res = await db.collection('accounts').get()
+      const list = (res.data || []).map(mapRecord)
+      setAccounts(list)
+      setCurrentAccountId(prev => prev || list[0]?.id || '')
+    } catch (err) {
+      console.error('[Cloud] 读取账号失败', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadAccounts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const addAccount = async (acc: Account) => {
@@ -98,6 +107,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
       if ('nickname' in patch) data.nickname = patch.nickname
       if ('avatar' in patch) data.avatar = patch.avatar
       if ('token' in patch) data.token = patch.token
+      if (patch.userId !== undefined) data.userId = patch.userId
       if ('status' in patch) data.status = patch.status
       if ('lastSignTime' in patch) data.lastSignTime = patch.lastSignTime
       if ('todaySigned' in patch) data.todaySigned = patch.todaySigned
@@ -138,6 +148,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
         addAccount,
         updateAccount,
         removeAccount,
+        reloadAccounts: loadAccounts,
       }}
     >
       {children}

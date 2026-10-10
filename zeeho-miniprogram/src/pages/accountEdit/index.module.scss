@@ -80,6 +80,40 @@
   color: $color-text-disabled;
 }
 
+// 验证码行：输入框 + 获取验证码按钮
+.codeRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+}
+
+.codeInput {
+  flex: 1;
+}
+
+.codeBtn {
+  flex-shrink: 0;
+  height: 64rpx;
+  padding: 0 $spacing-md;
+  border-radius: $radius-button;
+  border: 1rpx solid $color-primary;
+  @include flex-center;
+
+  &:active {
+    opacity: 0.8;
+  }
+}
+
+.codeBtnDisabled {
+  border-color: $color-border;
+  opacity: 0.6;
+}
+
+.codeBtnText {
+  font-size: $font-size-sm;
+  color: $color-primary;
+}
+
 .saveBtn {
   margin-top: $spacing-xl;
   height: 96rpx;

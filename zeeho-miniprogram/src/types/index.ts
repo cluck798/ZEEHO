@@ -4,6 +4,7 @@ export interface Account {
   nickname: string
   avatar: string
   token: string
+  userId?: string
   status: 'normal' | 'expired'
   lastSignTime: string
   todaySigned: boolean

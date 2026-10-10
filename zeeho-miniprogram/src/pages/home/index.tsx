@@ -13,7 +13,7 @@ import { signAll, supplementSign, SignAllResult } from '@/services/api'
 import styles from './index.module.scss'
 
 const Home: React.FC = () => {
-  const { accounts } = useAppStore()
+  const { accounts, reloadAccounts } = useAppStore()
   const [signing, setSigning] = useState(false)
   const [result, setResult] = useState<SignAllResult | null>(null)
   const [supplementing, setSupplementing] = useState(false)
@@ -31,6 +31,7 @@ const Home: React.FC = () => {
     try {
       const res = await signAll()
       setResult(res)
+      await reloadAccounts()
       Taro.showToast({ title: `成功 ${res.success} · 失败 ${res.failed}`, icon: 'none' })
     } catch (e) {
       Taro.showToast({ title: '签到失败，请稍后重试', icon: 'none' })
@@ -46,6 +47,7 @@ const Home: React.FC = () => {
     try {
       const res = await supplementSign()
       setSuppResult(res)
+      await reloadAccounts()
       Taro.showToast({ title: `补签成功 ${res.success} · 失败 ${res.failed}`, icon: 'none' })
     } catch (e) {
       Taro.showToast({ title: '补签失败，请稍后重试', icon: 'none' })

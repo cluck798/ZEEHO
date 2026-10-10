@@ -1,15 +1,17 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import NavBar from '@/components/NavBar'
 import AccountCard from '@/components/AccountCard'
 import EmptyState from '@/components/EmptyState'
 import { useAppStore } from '@/store/AppContext'
+import { signOne } from '@/services/api'
 import { Account } from '@/types'
 import styles from './index.module.scss'
 
 const Accounts: React.FC = () => {
-  const { accounts, removeAccount, updateAccount } = useAppStore()
+  const { accounts, removeAccount, reloadAccounts } = useAppStore()
+  const [signingId, setSigningId] = useState('')
 
   const handleAdd = () => {
     Taro.navigateTo({ url: '/pages/accountEdit/index' })
@@ -19,13 +21,23 @@ const Accounts: React.FC = () => {
     Taro.navigateTo({ url: `/pages/accountEdit/index?id=${acc.id}` })
   }
 
-  const handleSign = (acc: Account) => {
+  const handleSign = async (acc: Account) => {
     if (acc.todaySigned) {
       Taro.showToast({ title: '今日已签到', icon: 'none' })
       return
     }
-    updateAccount(acc.id, { todaySigned: true, lastSignTime: '刚刚' })
-    Taro.showToast({ title: '签到成功（演示）', icon: 'success' })
+    if (signingId) return
+    setSigningId(acc.id)
+    try {
+      const res = await signOne(acc.id)
+      const one = res.results[0]
+      Taro.showToast({ title: one?.msg || (res.success ? '签到成功' : '签到失败'), icon: 'none' })
+      await reloadAccounts()
+    } catch (e: any) {
+      Taro.showToast({ title: e?.message || '签到失败，请稍后重试', icon: 'none' })
+    } finally {
+      setSigningId('')
+    }
   }
 
   const handleDelete = (acc: Account) => {
