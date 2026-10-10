@@ -80,7 +80,7 @@ const AccountEdit: React.FC = () => {
       await addAccount({
         id: `${Date.now()}`,
         nickname: data.nickname,
-        avatar: `https://picsum.photos/id/${Math.floor(Math.random() * 200)}/200/200`,
+        avatar: '',
         token: data.token,
         userId: data.userId || '',
         status: 'normal',

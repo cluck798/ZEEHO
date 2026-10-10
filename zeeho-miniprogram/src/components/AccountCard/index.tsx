@@ -3,6 +3,7 @@ import { View, Text, Image } from '@tarojs/components'
 import classnames from 'classnames'
 import { Account } from '@/types'
 import Tag from '@/components/Tag'
+import zeehoLogo from '@/assets/zeeho.png'
 import styles from './index.module.scss'
 
 interface AccountCardProps {
@@ -16,7 +17,7 @@ const AccountCard: React.FC<AccountCardProps> = ({ account, onSign, onEdit, onDe
   return (
     <View className={styles.accountCard}>
       <View className={styles.accountHeader}>
-        <Image className={styles.accountAvatar} src={account.avatar} mode="aspectFill" />
+        <Image className={styles.accountAvatar} src={zeehoLogo} mode="aspectFill" />
         <View className={styles.accountMeta}>
           <View className={styles.accountNameRow}>
             <Text className={styles.accountName}>{account.nickname}</Text>

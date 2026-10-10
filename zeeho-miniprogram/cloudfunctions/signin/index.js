@@ -375,6 +375,18 @@ async function applyPatch(db, id, r) {
   try { await db.collection('accounts').doc(id).update({ data: r.patch }) } catch (e) { /* 静默 */ }
 }
 
+// 发布动态任务（与签到一起执行）：调用 postMoment 云函数（发帖→点赞→评论→分享→删除），返回逐账号结果
+async function runPostMoment(accountIds) {
+  try {
+    const res = await cloud.callFunction({ name: 'postMoment', data: { content: 'lucky', accountIds } })
+    const r = res && res.result
+    if (r && r.code === 0 && r.data) return { ok: true, results: r.data.results || [] }
+    return { ok: false, msg: (r && r.message) || '发布动态失败' }
+  } catch (e) {
+    return { ok: false, msg: '发布动态调用失败：' + ((e && e.message) || e) }
+  }
+}
+
 // ============ 入口（小程序端通过 wx.cloud.callFunction 调用） ============
 exports.main = async (event = {}) => {
   const { action } = event
@@ -419,7 +431,15 @@ exports.main = async (event = {}) => {
     const r = await signinForAccount(acc)
     await applyPatch(db, accountId, r)
     await writeLog(db, { account: r.account, action: '签到', status: r.status, detail: r.msg })
-    return { code: 0, data: { success: r.status === 'success' ? 1 : 0, failed: r.status === 'success' ? 0 : 1, results: [{ account: r.account, status: r.status, msg: r.msg }] } }
+    const results = [{ account: r.account, status: r.status, msg: r.msg }]
+    // 发布动态任务：与签到一起执行
+    const post = await runPostMoment([accountId])
+    if (post.ok) {
+      for (const pr of post.results) results.push({ account: pr.account, status: pr.status, msg: `动态 ${pr.msg}` })
+    } else {
+      results.push({ account: '发布动态', status: 'failed', msg: post.msg })
+    }
+    return { code: 0, data: { success: r.status === 'success' ? 1 : 0, failed: r.status === 'success' ? 0 : 1, results } }
   }
 
   if (action === 'logs') {
@@ -439,7 +459,7 @@ exports.main = async (event = {}) => {
     return { code: 0, data: null }
   }
 
-  // 默认：全量签到（「一键签到」与定时触发器共用）
+  // 默认：全量签到（「一键签到」与定时触发器共用；签到完成后接着做发布动态任务）
   const { data: accounts } = await db.collection('accounts').where({ enabled: true }).get()
   const results = []
   for (const a of accounts) {
@@ -449,5 +469,13 @@ exports.main = async (event = {}) => {
     results.push({ account: r.account, status: r.status, msg: r.msg })
   }
   const success = results.filter(r => r.status === 'success').length
-  return { code: 0, data: { success, failed: results.length - success, results } }
+  const failed = results.length - success
+  // 发布动态任务：与自动签到一起执行（发帖→点赞→评论→分享→删除）
+  const post = await runPostMoment(accounts.map(a => a._id))
+  if (post.ok) {
+    for (const pr of post.results) results.push({ account: pr.account, status: pr.status, msg: `动态 ${pr.msg}` })
+  } else {
+    results.push({ account: '发布动态', status: 'failed', msg: post.msg })
+  }
+  return { code: 0, data: { success, failed, results } }
 }
