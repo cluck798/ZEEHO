@@ -22,6 +22,11 @@
 - 坐垫锁 / 整车锁 / 开关机 / 在线状态、GPS 定位 + 地图跳转、服务到期时间
 - 充电监控：充满/离线本地通知提醒（后台常驻保活）
 
+### 🏍️ 隐藏骑行数据（骑行页）
+- 还原官方 App 按车型能力位隐藏的统计：**极速、急加速、急刹、压弯**
+- 月度日汇总（`myRideInfo`）+ 轨迹扫描（`ridetrack_v2`）：急刹/压弯按原始轨迹重算（算法移植自 [Zeeho SpeedHunter](https://github.com/RyanYuFish/Zeeho-SpeedHunter)，AGPL-3.0）
+- 点击日期查看每趟行程明细（出发时间 / 里程 / 均速 / 极速 / 急刹 / 压弯）
+
 ### 🎛️ 远程车辆控制（4G 下发指令）
 > ⚠️ 会真实操作车辆，请在车辆附近谨慎操作，误触风险自负
 > 首次使用需同意「车控风险确认」弹窗
@@ -69,7 +74,7 @@
 
 > **在线演示（免安装、示例数据、不联网）**：https://cluck798.github.io/ZEEHO/
 >
-> 也可下载仓库内的 [`demo/index.html`](demo/index.html) 直接双击打开（单文件、无依赖），支持 `?tab=home|points|vehicle|logs|cfg` 直达标签页，例如 `demo/index.html?tab=vehicle`。
+> 也可下载仓库内的 [`demo/index.html`](demo/index.html) 直接双击打开（单文件、无依赖），支持 `?tab=home|points|vehicle|ride|logs|cfg` 直达标签页，例如 `demo/index.html?tab=vehicle`。
 
 | 首页 | 积分 |
 | :--: | :--: |
@@ -78,6 +83,10 @@
 | 车辆 | 设置 |
 | :--: | :--: |
 | <img src="screenshots/demo_vehicle.png" width="240" alt="车辆" /> | <img src="screenshots/demo_cfg.png" width="240" alt="设置" /> |
+
+| 骑行（隐藏骑行数据） | 骑行明细 |
+| :--: | :--: |
+| <img src="screenshots/demo_ride.png" width="240" alt="骑行" /> | <img src="screenshots/demo_ride_detail.png" width="240" alt="骑行明细" /> |
 
 ## ⚠️ 注意事项
 - `boxjs_store.json` 含 Token，已被 `.gitignore` 忽略，禁止提交

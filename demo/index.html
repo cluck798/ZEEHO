@@ -469,6 +469,25 @@ nav.tabbar{
 .mon-row:last-child{border-bottom:none}
 .mon-row .k{color:var(--txt3);font-weight:600}
 .mon-row .v{font-weight:700}
+/* ============ v2.16.0 骑行页组件 ============ */
+.rt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+.rt-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.rt-cell{background:var(--card3);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 11px}
+.rt-cell .lb{font-size:10.5px;color:var(--txt3);font-weight:600;margin-bottom:4px}
+.rt-cell .vl{font-size:19px;font-weight:800;line-height:1.1}
+.rt-cell .vl .u{font-size:10px;color:var(--txt3);font-weight:700;margin-left:2px}
+.rt-cell .vl.brand{color:var(--brand)}
+.rt-day{background:var(--card3);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px;margin-bottom:8px}
+.rt-day:last-child{margin-bottom:0}
+.rt-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.rt-date{font-size:13px;font-weight:800}
+.rt-date .wd{font-size:10px;color:var(--txt3);font-weight:600;margin-left:5px}
+.rt-km{font-size:11.5px;color:var(--txt2);font-weight:700}
+.rt-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.rt-chip{font-size:10.5px;font-weight:700;color:var(--txt2);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:3px 8px}
+.rt-chip b{color:var(--brand);font-weight:800;margin-left:2px}
+.rt-chip.cal b{color:var(--ok)}
+.rt-chip.link{cursor:pointer;color:var(--brand);border-color:var(--brandSoft)}
 /* ============ 入场闪屏：首帧即显示，数据就绪后淡出 ============ */
 #splash{position:fixed;inset:0;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(120% 60% at 50% 0%,rgba(14,143,178,.16),transparent 60%),var(--bg);transition:opacity .4s var(--ease),transform .4s var(--ease)}
 #splash.out{opacity:0;transform:scale(1.04);pointer-events:none}
@@ -513,6 +532,7 @@ nav.tabbar{
     </div>
     <div id="pagePoints" class="hidden"></div>
     <div id="pageVehicle" class="hidden"></div>
+    <div id="pageRide" class="hidden"></div>
     <div id="pageLogs" class="hidden"></div>
     <div id="pageCfg" class="hidden"></div>
   </main>
@@ -529,6 +549,10 @@ nav.tabbar{
     <button class="tab" data-tab="vehicle" onclick="switchTab('vehicle')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13l1.7-4.6A2 2 0 0 1 7.6 7h8.8a2 2 0 0 1 1.9 1.4L20 13"/><path d="M3.5 13h17a1 1 0 0 1 1 1v3.5h-2.6M2.5 17.5V14a1 1 0 0 1 1-1"/><path d="M5.1 17.5H2.5"/><circle cx="7.3" cy="17.3" r="1.9"/><circle cx="16.7" cy="17.3" r="1.9"/><path d="M9.2 17.3h5.6"/></svg>
       车辆<span class="t-ind"></span>
+    </button>
+    <button class="tab" data-tab="ride" onclick="switchTab('ride')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16.5c2.5 0 3.5-9 8-9s4.5 9 10 9"/><circle cx="12" cy="19" r="1.3" fill="currentColor"/></svg>
+      骑行<span class="t-ind"></span>
     </button>
     <button class="tab" data-tab="logs" onclick="switchTab('logs')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>
@@ -556,7 +580,7 @@ nav.tabbar{
 <script>
 "use strict";
 /* ================= 常量 ================= */
-const APP_VERSION = "v2.15.6";
+const APP_VERSION = "v2.16.0";
 const KEYS = { cfg:"zeeho_cfg", accounts:"zeeho_accounts", logs:"zeeho_logs" };
 
 /* ================= 工具函数 ================= */
@@ -608,6 +632,11 @@ function h5SignWithBody(body,cfg){const c=cfg||getCfg();const ac=c.h5||c.app;con
 // App 网关完整签名（发码与登录同网关，避免 H5 authCode 发码进 App 池而 H5 loginByPhone 查不到）
 function appGatewaySign(url,method,params={},body='',cfg){const c=cfg||getCfg();const ac=c.app||c.h5;const timestamp=new Date().getTime();const nonce=timestamp+getRandomChars();const param="appId="+ac.appId+"&nonce="+nonce+"&timestamp="+timestamp;const query=toQuery(params);let preSign="";if(String(method).toUpperCase()==="GET"){const u=new URL(url);preSign=u.origin+u.pathname+(query?"?"+query:"");}else{preSign=query+(body?(typeof body==="string"?body:JSON.stringify(body)):"");}const sign=md5(sha1(preSign+param+ac.appSecret),32).toString();return{'appId':ac.appId,'nonce':nonce,'timestamp':String(timestamp),'signature':sign,'Cfmoto-X-Param':param,'Cfmoto-X-Sign':sign,'Cfmoto-X-Sign-Type':'0'}}
 
+// v2.16.0 服务端已对「带 query 的 GET」收紧：带旧短格式 UA 时必须 query 入签（否则 430/30121 permit error），
+// 与社交写操作同一套签名（md5(sha1(query+param+secret))）。浏览器无法自定义 Cookie，但实测非必需。
+function appQuerySign(queryStr,cfg){const c=cfg||getCfg();const ac=c.app||c.h5;const timestamp=new Date().getTime();const nonce=timestamp+getRandomChars(16);const param="appId="+ac.appId+"&nonce="+nonce+"&timestamp="+timestamp;const sign=md5(sha1((queryStr||"")+param+ac.appSecret),32).toString();return{"cfmoto-x-param":param,"cfmoto-x-sign":sign,"cfmoto-x-sign-type":"0","timestamp":String(timestamp),"nonce":nonce,"signature":sign}}
+function appQueryHeaders(acc,queryStr,cfg){const c=cfg||getCfg();const ua="MOBILE|iOS|17.5.1|ZEEHO_APP|3.0.5|iPhone|iPhone 15 Pro|1179*2556|"+getRandomChars(32).toUpperCase()+"|WWAN|iOS";return{"Authorization":"Bearer "+cleanToken(acc.token),"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2","Accept":"*/*","Accept-Language":"zh-CN","appid":c.app.appId,"x-app-info":ua,...appQuerySign(queryStr,c)}}
+
 /* ================= HTTP（fetch 版） ================= */
 async function httpGet(url,headers,timeoutMs){const ctrl=timeoutMs?AbortSignal.timeout(timeoutMs):undefined;try{const r=await fetch(url,{method:"GET",headers:headers||{},signal:ctrl});const t=await r.text();try{return JSON.parse(t)}catch(e){return{error:"parse error",raw:t}}}catch(e){return{error:String((e&&e.message)||e)}}}
 async function httpPost(url,headers,body,timeoutMs){const ctrl=timeoutMs?AbortSignal.timeout(timeoutMs):undefined;try{const r=await fetch(url,{method:"POST",headers:headers||{},body:typeof body==="string"?body:JSON.stringify(body==null?{}:body),signal:ctrl});const t=await r.text();try{return JSON.parse(t)}catch(e){return{error:"parse error",raw:t}}}catch(e){return{error:String((e&&e.message)||e)}}}
@@ -624,11 +653,11 @@ async function fetchVehicleList(acc,cfg){try{const token=cleanToken(acc.token);c
 
 async function fetchVehicleWidgets(acc,cfg,vinNo){try{const token=cleanToken(acc.token);const signH=getSign("app",{},'',cfg);const res=await httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/vehicle/widgets/"+encodeURIComponent(vinNo),{"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2","user_id":acc.userId||"",...signH});if((res.code=="10000"||res.code===10000)&&res.data){const d=res.data;const soc=Number(d.bmssoc||d.batteryLevel||0);const range=Number(d.hmiRidableMile||d.vehicleRidableMile||d.ridableMileage||0);const voltage=Number(d.voltage||d.batteryVoltage||d.bmsVoltage||d.totalVoltage||d.batteryTotalVoltage||0);const lngStr=deepPick(d,["longitude","lng","lon","gpsX","longitudeValue","coordX","x"]);const latStr=deepPick(d,["latitude","lat","gpsY","latitudeValue","coordY","y"]);const longitude=Number(lngStr),latitude=Number(latStr);return{batteryPercent:Math.max(0,Math.min(100,isFinite(soc)?soc:0)),residualRangeKm:isFinite(range)?range:0,voltage:isFinite(voltage)&&voltage>0?voltage:0,address:String(d.address||"").trim(),locationTime:String(d.location?.locationTime||"").trim(),vehicleName:String(d.vehicleName||"").trim(),vehicleImageUrl:String(d.vehicleScalePicUrl||d.vehiclePicUrl||"").trim(),headLockState:String(d.headLockState||"").trim(),batteryPullOut:String(d.batteryPullOutFlag||"")==="1",online:String(d.onlineStatus||d.online||d.netStatus||d.tboxStatus||d.deviceOnline||"").trim(),cushionState:deepPick(d,["cushionState","cushionStatus","cushionLockState","seatState","seatStatus","seatLockState","saddleState","saddleStatus","saddleLockState"]),longitude:(isFinite(longitude)&&Math.abs(longitude)<=180&&longitude!==0)?longitude:"",latitude:(isFinite(latitude)&&Math.abs(latitude)<=90&&latitude!==0)?latitude:"",powerStatus:String(d.accStatus||d.powerStatus||d.vehicleStatus||d.ignitionStatus||d.powerMode||d.accState||d.powerState||d.vehicleState||d.engineStatus||d.isPowerOn||d.powerOn||"").trim(),lockState:String(d.headLockState||d.lockState||d.lockStatus||d.vehicleLockState||d.carLockState||d.doorLockState||d.lockFlag||d.isLocked||d.locked||d.centralLockingStatus||"").trim()}}return null}catch(e){return null}}
 
-async function fetchVehicleHomePage(acc,cfg,vinNo){try{const token=cleanToken(acc.token);const signH=getSign("app",{},'',cfg);const deviceId=getDeviceIdentify(acc);const headers={"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2","user_id":acc.userId||"",...signH};const url="https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/vehicleHomePageV2/"+encodeURIComponent(vinNo)+"?uniqueIdentify="+deviceId+"&phoneDeviceName=ios_"+deviceId;const res=await httpGet(url,headers);if(res&&(res.code=="10000"||res.code===10000)&&res.data){const d=res.data;const vehicleLock=pickIotProp(d,"VehicleLock_S");const headLockIot=pickIotProp(d,"HeadLockState");const topLock=String(d.headLockState||d.lockState||d.lockStatus||d.vehicleLockState||headLockIot||vehicleLock||"").trim();const lngStr=deepPick(d,["longitude","lng","lon","gpsX","longitudeValue","coordX","x"]);const latStr=deepPick(d,["latitude","lat","gpsY","latitudeValue","coordY","y"]);const longitude=Number(lngStr),latitude=Number(latStr);return{powerStatus:deepPick(d,["accStatus","powerStatus","vehicleStatus","ignitionStatus","powerMode","accState","powerState","vehicleState","engineStatus","isPowerOn","powerOn","acc"]).trim(),lockState:topLock,online:String(d.onlineStatus||d.rideState||d.online||d.netStatus||d.tboxStatus||"").trim(),rideState:String(d.rideState||"").trim(),cushionState:deepPick(d,["cushionState","cushionStatus","cushionLockState","seatState","seatStatus","seatLockState","saddleState","saddleStatus","saddleLockState"]),longitude:(isFinite(longitude)&&Math.abs(longitude)<=180&&longitude!==0)?longitude:"",latitude:(isFinite(latitude)&&Math.abs(latitude)<=90&&latitude!==0)?latitude:""}}return null}catch(e){return null}}
+async function fetchVehicleHomePage(acc,cfg,vinNo){try{const deviceId=getDeviceIdentify(acc);const query="uniqueIdentify="+deviceId+"&phoneDeviceName=ios_"+deviceId;const url="https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/vehicleHomePageV2/"+encodeURIComponent(vinNo)+"?"+query;const res=await httpGet(url,appQueryHeaders(acc,query,cfg));if(res&&(res.code=="10000"||res.code===10000)&&res.data){const d=res.data;const vehicleLock=pickIotProp(d,"VehicleLock_S");const headLockIot=pickIotProp(d,"HeadLockState");const topLock=String(d.headLockState||d.lockState||d.lockStatus||d.vehicleLockState||headLockIot||vehicleLock||"").trim();const lngStr=deepPick(d,["longitude","lng","lon","gpsX","longitudeValue","coordX","x"]);const latStr=deepPick(d,["latitude","lat","gpsY","latitudeValue","coordY","y"]);const longitude=Number(lngStr),latitude=Number(latStr);return{powerStatus:deepPick(d,["accStatus","powerStatus","vehicleStatus","ignitionStatus","powerMode","accState","powerState","vehicleState","engineStatus","isPowerOn","powerOn","acc"]).trim(),lockState:topLock,online:String(d.onlineStatus||d.rideState||d.online||d.netStatus||d.tboxStatus||"").trim(),rideState:String(d.rideState||"").trim(),cushionState:deepPick(d,["cushionState","cushionStatus","cushionLockState","seatState","seatStatus","seatLockState","saddleState","saddleStatus","saddleLockState"]),longitude:(isFinite(longitude)&&Math.abs(longitude)<=180&&longitude!==0)?longitude:"",latitude:(isFinite(latitude)&&Math.abs(latitude)<=90&&latitude!==0)?latitude:""}}return null}catch(e){return null}}
 
-async function fetchTirePressure(acc,cfg,vinNo){try{const token=cleanToken(acc.token);const signH=getSign("app",{},'',cfg);const res=await httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/app/vehicle/tire/monitoring?vinNo="+encodeURIComponent(vinNo)+"&timePeriodType=1",{"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2","user_id":acc.userId||"",...signH});if((res.code=="10000"||res.code===10000)&&res.data){const list=Array.isArray(res.data.realTimeData)?res.data.realTimeData:(Array.isArray(res.data)?res.data:[]);const byPos={};for(const it of list){const pos=Number(it?.sensorPosition);if(pos)byPos[pos]=it}const fmt=(it)=>{const warn=Number(it?.warningType??0);const v=String(it?.tirePressure??"").trim();const n=parseFloat(v);if(warn!==0||!v||!isFinite(n)||n<=0)return"未绑定";return v+"bar"};const fmtTemp=(it)=>{const warn=Number(it?.warningType??0);const v=it?.tireTemp;if(warn!==0||v==null)return"";const s=String(v).trim();const n=parseFloat(s);if(!s||s.toLowerCase()==="null"||!isFinite(n)||n<=0)return"";return s+"°C"};const front=byPos[1]||list[0];const rear=byPos[2]||list[1];return{frontPressure:front?fmt(front):"未绑定",rearPressure:rear?fmt(rear):"未绑定",frontTemp:front?fmtTemp(front):"",rearTemp:rear?fmtTemp(rear):""}}return null}catch(e){return null}}
+async function fetchTirePressure(acc,cfg,vinNo){try{const query="vinNo="+encodeURIComponent(vinNo)+"&timePeriodType=1";const res=await httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/app/vehicle/tire/monitoring?"+query,appQueryHeaders(acc,query,cfg));if((res.code=="10000"||res.code===10000)&&res.data){const list=Array.isArray(res.data.realTimeData)?res.data.realTimeData:(Array.isArray(res.data)?res.data:[]);const byPos={};for(const it of list){const pos=Number(it?.sensorPosition);if(pos)byPos[pos]=it}const fmt=(it)=>{const warn=Number(it?.warningType??0);const v=String(it?.tirePressure??"").trim();const n=parseFloat(v);if(warn!==0||!v||!isFinite(n)||n<=0)return"未绑定";return v+"bar"};const fmtTemp=(it)=>{const warn=Number(it?.warningType??0);const v=it?.tireTemp;if(warn!==0||v==null)return"";const s=String(v).trim();const n=parseFloat(s);if(!s||s.toLowerCase()==="null"||!isFinite(n)||n<=0)return"";return s+"°C"};const front=byPos[1]||list[0];const rear=byPos[2]||list[1];return{frontPressure:front?fmt(front):"未绑定",rearPressure:rear?fmt(rear):"未绑定",frontTemp:front?fmtTemp(front):"",rearTemp:rear?fmtTemp(rear):""}}return null}catch(e){return null}}
 
-async function fetchRideInfo(acc,cfg,vinNo){try{const token=cleanToken(acc.token);const signH=getSign("app",{},'',cfg);const month=new Date().getFullYear()+"."+String(new Date().getMonth()+1).padStart(2,"0");const [homeRes,myRes]=await Promise.all([httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/homeRideInfo?vinNo="+encodeURIComponent(vinNo),{"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2","user_id":acc.userId||"",...signH}),httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/myRideInfo?vinNo="+encodeURIComponent(vinNo)+"&month="+month,{"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2","user_id":acc.userId||"",...signH})]);const h=homeRes?.data||homeRes||{};const d=myRes?.data||myRes||{};const list=Array.isArray(d.rideRecordList)?d.rideRecordList:[];const todayKey=new Date().getFullYear()+"."+String(new Date().getMonth()+1).padStart(2,"0")+"."+String(new Date().getDate()).padStart(2,"0");const day=list.find(x=>String(x?.date||"")===todayKey)||list[list.length-1]||{};const yest=new Date(Date.now()-86400000);const yestKey=yest.getFullYear()+"."+String(yest.getMonth()+1).padStart(2,"0")+"."+String(yest.getDate()).padStart(2,"0");const yd=list.find(x=>String(x?.date||"")===yestKey)||{};return{todayDistance:Number(day.rideMileage??h.rideMileageDay??0),todayDuration:Number(day.ridingTimeDayUnitMinute??h.lastRidingTimeUnitMinute??0),todayMaxSpeed:Number(day.maxSpeed??0),totalMileage:Number(d.rideMileageTotal??0),yesterdayDistance:Number(yd.rideMileage??0),lastRideMileage:Number(h.lastRideMileage??0),lastRideDuration:Number(h.lastRidingTimeUnitMinute??0)}}catch(e){return null}}
+async function fetchRideInfo(acc,cfg,vinNo){try{const month=new Date().getFullYear()+"."+String(new Date().getMonth()+1).padStart(2,"0");const qHome="vinNo="+encodeURIComponent(vinNo);const qMy="vinNo="+encodeURIComponent(vinNo)+"&month="+month;const [homeRes,myRes]=await Promise.all([httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/homeRideInfo?"+qHome,appQueryHeaders(acc,qHome,cfg)),httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/myRideInfo?"+qMy,appQueryHeaders(acc,qMy,cfg))]);const h=homeRes?.data||homeRes||{};const d=myRes?.data||myRes||{};const list=Array.isArray(d.rideRecordList)?d.rideRecordList:[];const todayKey=new Date().getFullYear()+"."+String(new Date().getMonth()+1).padStart(2,"0")+"."+String(new Date().getDate()).padStart(2,"0");const day=list.find(x=>String(x?.date||"")===todayKey)||list[list.length-1]||{};const yest=new Date(Date.now()-86400000);const yestKey=yest.getFullYear()+"."+String(yest.getMonth()+1).padStart(2,"0")+"."+String(yest.getDate()).padStart(2,"0");const yd=list.find(x=>String(x?.date||"")===yestKey)||{};return{todayDistance:Number(day.rideMileage??h.rideMileageDay??0),todayDuration:Number(day.ridingTimeDayUnitMinute??h.lastRidingTimeUnitMinute??0),todayMaxSpeed:Number(day.maxSpeed??0),totalMileage:Number(d.rideMileageTotal??0),yesterdayDistance:Number(yd.rideMileage??0),lastRideMileage:Number(h.lastRideMileage??0),lastRideDuration:Number(h.lastRidingTimeUnitMinute??0)}}catch(e){return null}}
 
 async function fetchBatteryChargeState(acc,cfg,vinNo){try{const token=cleanToken(acc.token);const signH=getSign("app",{},'',cfg);const headers={"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2","appid":cfg.app.appId,"user_id":acc.userId||"",...signH};const res=await httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/batteryInfo/"+encodeURIComponent(vinNo),headers);if(res.code=="10000"&&res.data){const d=res.data;const voltage=Number(d.voltage||d.batteryVoltage||d.bmsVoltage||d.totalVoltage||d.batteryTotalVoltage||d.vol||d.batVoltage||d.batteryVol||0);const current=Number(d.current||d.batteryCurrent||d.bmsCurrent||d.cur||d.batteryCur||0);const batteryTemp=Number(d.batteryTemp||d.batTemp||d.temp||d.temperature||d.bmsTemp||d.batteryTemperature||0);const range=Number(d.hmiRidableMile||d.vehicleRidableMile||d.ridableMileage||d.residualRange||0);return{chargeState:String(d.chargeStateStr||d.chargeState||"未充电"),voltage:isFinite(voltage)&&voltage>0?voltage:0,current:isFinite(current)?current:0,batteryTemp:isFinite(batteryTemp)?batteryTemp:0,soc:Number(d.soc||d.batteryLevel||d.bmssoc||0),residualRangeKm:isFinite(range)?range:0}}return{chargeState:"未充电",voltage:0,current:0,batteryTemp:0,soc:0,residualRangeKm:0}}catch(e){return{chargeState:"未充电",voltage:0,current:0,batteryTemp:0,soc:0,residualRangeKm:0}}}
 
@@ -639,6 +668,226 @@ async function fetchVehicleInfo(acc,cfg){const result={hasVehicle:false,vehicleN
 async function checkToken(acc,cfg){try{const token=cleanToken(acc.token);const userId=acc.userId||"";if(!userId)return{valid:true,score:0,userName:acc.userName};const signH=getSign("app",{},'',cfg);const headers={"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2","user_id":userId,...signH};const res=await httpGet("https://tapi.zeehoev.com/v1.0/mine/cfmotoservermine/setting/"+userId,headers);if(res.code=="10000"&&res.data)return{valid:true,score:Number(res.data.score)||0,userName:res.data.nickName||acc.userName};if(res.code=="40001"||res.code==401)return{valid:false,reason:"token已过期"};return{valid:true,reason:res.message||"请求异常"}}catch(e){return{valid:true,reason:String(e)}}}
 
 async function getUseridByToken(token,cfg){const t=cleanToken(token);const baseHeaders={"Authorization":"Bearer "+t,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2"};let userId="",userName="",error=null;try{const signH0=getSign("h5",{server_name:"SMART"},'',cfg);const res0=await httpGet("https://h5.zeehoev.com/cfmotoservermine/baseInfo?server_name=SMART",{...baseHeaders,...signH0});if(res0&&String(res0.code)==="10000"&&res0.data){userId=String(res0.data.id||"");userName=String(res0.data.nickName||"")}}catch(e){}if(!userId){try{const signH=getSign("app",{},'',cfg);const res=await httpGet("https://tapi.zeehoev.com/v1.0/mine/cfmotoservermine/setting",{...baseHeaders,...signH});if(res.code=="10000"&&res.data){userId=String(res.data.id||res.data.userId||"");userName=String(res.data.nickName||"")}}catch(e){}}if(!userId){try{const signH=getSign("app",{},'',cfg);const res=await httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/vehicle/list",{...baseHeaders,...signH});const find=(obj,depth)=>{if(!obj||depth>5)return"";for(const key of Object.keys(obj)){const val=obj[key];if(/user.?id|uid|create.?by|owner.?id/i.test(key)&&val&&typeof val!=="object"){const s=String(val);if(s.length>=10&&/^\d+$/.test(s))return s}if(val&&typeof val==="object"){const f=find(val,depth+1);if(f)return f}}return""};const uid=find(res,0);if(uid){userId=uid;const findName=(obj,depth)=>{if(!obj||depth>4)return"";for(const key of Object.keys(obj)){if(/nick.?name|user.?name/i.test(key)&&obj[key]&&typeof obj[key]==="string")return obj[key];if(obj[key]&&typeof obj[key]==="object"){const n=findName(obj[key],depth+1);if(n)return n}}return""};userName=findName(res,0)}}catch(e){}}if(!userId)error="自动获取失败，请手动填写用户ID";return{ok:!!userId,userId,userName,error}}
+/* ================= v2.16.0 隐藏骑行数据（轨迹解析 + 急刹/压弯检测）================= */
+/* 官方 App 把「极速 / 急加速 / 急刹 / 压弯」藏了起来（服务端能力位 vehicleKinds / cyclingEventStatisticFlag 控制）。
+   本页从 ridetrack_v2 的原始轨迹重算这些指标；算法与阈值逐行移植自 ZEEHO SpeedHunter
+   （github.com/RyanYuFish/Zeeho-SpeedHunter，AGPL-3.0）的 RideConfig / TrackCalculator / BrakeDetector / BendDetector。
+   轨迹串格式：lon,lat,speed,ts[,dir]&...（ridetrack_v2 的 trajectory 字段原样） */
+/* __RIDE_ALGO_BEGIN__ */
+var RIDE_CFG={BEND_V_MIN:20,BEND_SEED:5,BEND_CUM_MIN:15,BEND_CUM_CAP:90,BEND_COEF:1.0,BEND_V_MAX:80,BEND_MIN_KM:1.0,BEND_STEP_MAX:45,BEND_RUN_MIN:1,BEND_MERGE_GAP:0,BEND_ALLOW_GAP:0,BEND_SEG_DIST_MIN:6,BEND_GAP_MS_MAX:25000,BRAKE_V_MIN:15,BRAKE_WIN_LARGE:5,BRAKE_WIN_SMALL:3,BRAKE_DV_LARGE:15,BRAKE_DV_SMALL:20,BRAKE_A_MIN:0.5,BRAKE_MERGE_GAP:5,BRAKE_MIN_DUR:1.5,BRAKE_CALIB:2.5,MOVING_V_MIN:5,MIN_POINTS:4,EARTH_R:6371000};
+function rideNum(v){const n=Number(v);return isFinite(n)?n:0}
+function rideParseTrack(str){
+  const pts=[];
+  if(!str)return pts;
+  const seg=String(str).split("&");
+  for(const s of seg){
+    if(!s)continue;
+    const p=s.split(",");
+    if(p.length<4)continue;
+    const lon=parseFloat(p[0]),lat=parseFloat(p[1]),v=parseFloat(p[2]),t=parseFloat(p[3]);
+    if(!isFinite(lon)||!isFinite(lat)||!isFinite(v)||!isFinite(t))continue;
+    pts.push({lon:lon,lat:lat,v:v,t:t});
+  }
+  return pts;
+}
+function rideHaversine(lon1,lat1,lon2,lat2){
+  const dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;
+  const a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+  return RIDE_CFG.EARTH_R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function rideBearing(lon1,lat1,lon2,lat2){
+  const y=Math.sin((lon2-lon1)*Math.PI/180)*Math.cos(lat2*Math.PI/180);
+  const x=Math.cos(lat1*Math.PI/180)*Math.sin(lat2*Math.PI/180)-Math.sin(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.cos((lon2-lon1)*Math.PI/180);
+  return Math.atan2(y,x)*180/Math.PI;
+}
+function rideAngDiff(a,b){let d=b-a;while(d>180)d-=360;while(d<-180)d+=360;return d}
+function rideMid(a,b){return a+rideAngDiff(a,b)/2}
+function rideCalcMetrics(pts){
+  if(!pts||pts.length<RIDE_CFG.MIN_POINTS)return null;
+  let meters=0,movingMs=0,maxSpeed=0;
+  for(let i=1;i<pts.length;i++){
+    const a=pts[i-1],b=pts[i];
+    meters+=rideHaversine(a.lon,a.lat,b.lon,b.lat);
+    const vIn=Math.max(a.v,b.v),dt=b.t-a.t;
+    if(vIn>RIDE_CFG.MOVING_V_MIN&&dt>0&&dt<60000)movingMs+=dt;
+    if(b.v>maxSpeed)maxSpeed=b.v;
+  }
+  const durationMin=Math.max(0,pts[pts.length-1].t-pts[0].t)/60000;
+  const movingMin=movingMs/60000;
+  const distanceKm=meters/1000;
+  return{points:pts.length,distanceKm:distanceKm,durationMin:durationMin,movingMin:movingMin,maxSpeed:maxSpeed<0?0:maxSpeed,avgSpeed:durationMin>0?distanceKm/durationMin:0,avgMovingSpeed:movingMin>0?distanceKm/movingMin:0};
+}
+function rideCountBrakes(pts){
+  const n=pts?pts.length:0;
+  if(n<4)return 0;
+  const cands=[];
+  const scan=(win,dvMin)=>{
+    for(let i=0;i<=n-win;i++){
+      if(pts[i].v<RIDE_CFG.BRAKE_V_MIN)continue;
+      let maxV=-Infinity,maxIdx=i,minV=Infinity,minIdx=i;
+      const upper=Math.min(i+win,n-1);
+      for(let j=i+1;j<=upper;j++){
+        const v=pts[j].v;
+        if(v>maxV){maxV=v;maxIdx=j}
+        if(v<minV){minV=v;minIdx=j}
+      }
+      const dv=maxV-minV;
+      if(dv<dvMin||minIdx<=maxIdx)continue;
+      const dt=(pts[minIdx].t-pts[maxIdx].t)/1000;
+      if(dt<RIDE_CFG.BRAKE_MIN_DUR||dv/3.6/dt<RIDE_CFG.BRAKE_A_MIN)continue;
+      cands.push({idx:maxIdx,dv:dv});
+    }
+  };
+  scan(RIDE_CFG.BRAKE_WIN_LARGE,RIDE_CFG.BRAKE_DV_LARGE);
+  scan(RIDE_CFG.BRAKE_WIN_SMALL,RIDE_CFG.BRAKE_DV_SMALL);
+  cands.sort((a,b)=>a.idx-b.idx);
+  const merged=[];
+  for(const c of cands){
+    if(!merged.length||c.idx-merged[merged.length-1].idx>=RIDE_CFG.BRAKE_MERGE_GAP)merged.push(c);
+    else if(c.dv>merged[merged.length-1].dv)merged[merged.length-1]=c;
+  }
+  const r=Math.round(merged.length*RIDE_CFG.BRAKE_CALIB);
+  return r<0?0:r;
+}
+function rideCountBends(pts){
+  const n=pts?pts.length:0;
+  if(n<4)return 0;
+  const hdg=new Array(n-1);
+  for(let i=0;i<n-1;i++){
+    const a=pts[i],b=pts[i+1];
+    const d=rideHaversine(a.lon,a.lat,b.lon,b.lat),tt=b.t-a.t;
+    hdg[i]=(d<RIDE_CFG.BEND_SEG_DIST_MIN||tt>RIDE_CFG.BEND_GAP_MS_MAX||tt<=0)?NaN:rideBearing(a.lon,a.lat,b.lon,b.lat);
+  }
+  const sh=new Array(n-1);
+  for(let i=0;i<n-1;i++){
+    if(isNaN(hdg[i])){sh[i]=NaN;continue}
+    const prev=(i>0&&!isNaN(hdg[i-1]))?hdg[i-1]:null;
+    const next=(i<n-2&&!isNaN(hdg[i+1]))?hdg[i+1]:null;
+    if(prev!==null&&next!==null)sh[i]=rideMid(rideMid(prev,hdg[i]),next);
+    else if(prev!==null)sh[i]=rideMid(prev,hdg[i]);
+    else if(next!==null)sh[i]=rideMid(hdg[i],next);
+    else sh[i]=hdg[i];
+  }
+  const turn=new Array(n).fill(false),dhdg=new Array(n).fill(0),sgn=new Array(n).fill(0);
+  for(let i=1;i<n-1;i++){
+    if(isNaN(sh[i-1])||isNaN(sh[i]))continue;
+    const d=rideAngDiff(sh[i-1],sh[i]);
+    dhdg[i]=d;
+    const vIn=Math.max(pts[i-1].v,pts[i].v);
+    if(vIn<RIDE_CFG.BEND_V_MIN||vIn>RIDE_CFG.BEND_V_MAX)continue;
+    if(Math.abs(d)>=RIDE_CFG.BEND_STEP_MAX)continue;
+    if(Math.abs(d)>=RIDE_CFG.BEND_SEED){turn[i]=true;sgn[i]=d>0?1:-1}
+  }
+  const runs=[];let cur=null,gap=0;
+  for(let i=1;i<n-1;i++){
+    if(turn[i]){
+      if(cur===null){cur={s:i,e:i,cum:Math.abs(dhdg[i]),sign:sgn[i]}}
+      else if(sgn[i]===cur.sign){cur.cum+=Math.abs(dhdg[i])}
+      else{runs.push(cur);cur={s:i,e:i,cum:Math.abs(dhdg[i]),sign:sgn[i]}}
+      cur.e=i;gap=0;
+    }else if(cur!==null&&gap<RIDE_CFG.BEND_ALLOW_GAP){gap++;cur.e=i}
+    else if(cur!==null){runs.push(cur);cur=null}
+  }
+  if(cur!==null)runs.push(cur);
+  let cnt=0,lastEnd=NaN,lastSign=0;
+  for(const r of runs){
+    if(r.cum<RIDE_CFG.BEND_CUM_MIN||r.cum>RIDE_CFG.BEND_CUM_CAP)continue;
+    if(r.e-r.s+1<RIDE_CFG.BEND_RUN_MIN)continue;
+    let maxV=0;
+    for(let j=r.s;j<=r.e&&j<n;j++){if(pts[j].v>maxV)maxV=pts[j].v}
+    if(maxV>RIDE_CFG.BEND_V_MAX)continue;
+    if(r.sign===lastSign&&!isNaN(lastEnd)&&r.s-lastEnd<=RIDE_CFG.BEND_MERGE_GAP){lastEnd=r.e;continue}
+    cnt++;lastEnd=r.e;lastSign=r.sign;
+  }
+  return Math.round(cnt*RIDE_CFG.BEND_COEF);
+}
+function rideNormDay(raw){
+  if(raw==null)return null;
+  let t=String(raw).trim();
+  if(!t)return null;
+  if(t.length===8&&/^\d{8}$/.test(t))return t.slice(0,4)+"."+t.slice(4,6)+"."+t.slice(6,8);
+  t=t.replace(/-/g,".").replace(/\//g,".");
+  const p=t.split(".");
+  if(p.length===3&&/^\d+$/.test(p[0])&&/^\d+$/.test(p[1])&&/^\d+$/.test(p[2]))
+    return p[0]+"."+String(parseInt(p[1],10)).padStart(2,"0")+"."+String(parseInt(p[2],10)).padStart(2,"0");
+  return null;
+}
+/* 一组 ridetrack_v2 天分组 → {dayKey:{km,dur,maxV,brakes,bends,rides:[...]}}
+   语义与 SpeedHunter RideFill 一致：急刹/压弯按轨迹重算（服务端这两个字段常年缺失）；
+   里程/极速服务端非 0 时以服务端为准，为 0 才补算。 */
+function rideDayScan(days){
+  const out={};
+  if(!Array.isArray(days))return out;
+  for(const day of days){
+    if(!day||typeof day!=="object")continue;
+    const list=Array.isArray(day.historyList)?day.historyList:[];
+    for(const r of list){
+      if(!r||typeof r!=="object")continue;
+      const traj=String(r.trajectory||"");
+      if(!traj)continue;
+      const pts=rideParseTrack(traj);
+      if(pts.length<RIDE_CFG.MIN_POINTS)continue;
+      const m=rideCalcMetrics(pts);
+      const brakes=rideCountBrakes(pts);
+      let bends=rideCountBends(pts);
+      if(m&&m.distanceKm<RIDE_CFG.BEND_MIN_KM)bends=0;   // 短行程整趟判0：<1km 的密度是长途的 8 倍（GPS 停车乱飘）
+      const dk=rideNormDay(r.dayTime||day.dayTime);
+      if(!dk)continue;
+      const g=out[dk]||(out[dk]={km:0,dur:0,maxV:0,brakes:0,bends:0,rides:[]});
+      const srvMax=rideNum(r.maxSpeed);
+      const maxV=srvMax>0?srvMax:(m?m.maxSpeed:0);
+      g.km+=m?m.distanceKm:0;g.dur+=m?m.durationMin:0;
+      if(maxV>g.maxV)g.maxV=maxV;
+      g.brakes+=brakes;g.bends+=bends;
+      g.rides.push({t0:pts[0].t,km:m?m.distanceKm:0,dur:m?m.durationMin:0,maxV:maxV,brakes:brakes,bends:bends,points:pts.length});
+    }
+  }
+  for(const k in out)if(out[k]&&out[k].rides)out[k].rides.sort((a,b)=>a.t0-b.t0);
+  return out;
+}
+/* __RIDE_ALGO_END__ */
+/* 直连模式（非代理）拉取：月度汇总 / 轨迹分页（走账号 Token + app 签名，与首页直连一致） */
+function rideAccLocal(userId){const accs=getAccounts();return accs.find(a=>String(a.userId)===String(userId))||accs[0]||null}
+async function fetchRideMonthDirect(acc,cfg,month,vin){
+  try{
+    if(!acc)return{ok:false,error:"未找到账号"};
+    const month2=month||(new Date().getFullYear()+"."+String(new Date().getMonth()+1).padStart(2,"0"));
+    let vinNo=String(vin||"").trim(),vehicleName="";
+    if(!vinNo){
+      const list=await fetchVehicleList(acc,cfg);
+      const vehicles=list.filter(x=>!/模拟/.test(String(x.name||"")+" "+String(x.vehicleType||"")));
+      if(!vehicles.length)return{ok:false,error:"账号未绑定车辆"};
+      vinNo=vehicles[0].vinNo;vehicleName=vehicles[0].name;
+    }
+    const query="vinNo="+encodeURIComponent(vinNo)+"&month="+encodeURIComponent(month2);
+    const res=await httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/myRideInfo?"+query,appQueryHeaders(acc,query,cfg));
+    if(res&&String(res.code)==="10000")return{ok:true,month:month2,vinNo:vinNo,vehicleName:vehicleName,data:res.data||{}};
+    return{ok:false,error:(res&&(res.message||res.code))||"接口无响应",vinNo:vinNo};
+  }catch(e){return{ok:false,error:String(e)}}
+}
+async function fetchRideTrackDirect(acc,cfg,vin,page,pageSize){
+  try{
+    if(!acc)return{ok:false,error:"未找到账号"};
+    let vinNo=String(vin||"").trim();
+    if(!vinNo){
+      const list=await fetchVehicleList(acc,cfg);
+      const vehicles=list.filter(x=>!/模拟/.test(String(x.name||"")+" "+String(x.vehicleType||"")));
+      if(!vehicles.length)return{ok:false,error:"账号未绑定车辆"};
+      vinNo=vehicles[0].vinNo;
+    }
+    const pg=Math.max(1,Number(page)||1),ps=Math.max(1,Math.min(200,Number(pageSize)||20));
+    const query="vinNo="+encodeURIComponent(vinNo)+"&page="+pg+"&pageSize="+ps;
+    const res=await httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/ridetrack_v2?"+query,appQueryHeaders(acc,query,cfg));
+    if(res&&String(res.code)==="10000"){
+      let days=[];
+      if(Array.isArray(res.data))days=res.data;
+      else if(res.data&&Array.isArray(res.data.list))days=res.data.list;
+      else if(res.data&&Array.isArray(res.data.dayList))days=res.data.dayList;
+      return{ok:true,page:pg,vinNo:vinNo,days:days};
+    }
+    return{ok:false,error:(res&&(res.message||res.code))||"接口无响应",page:pg,vinNo:vinNo};
+  }catch(e){return{ok:false,error:String(e)}}
+}
 /* ================= 账号数据拉取 ================= */
 async function fetchAccountData(acc,cfg,vinNo){const token=cleanToken(acc.token);let userId=acc.userId||"";const now=new Date();const today=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0");const result={userName:acc.userName||"未知用户",userId,score:0,signedToday:false,continueDays:0,todayScore:0,signCount:0,last7:[],error:null,vehicle:{hasVehicle:false}};
 if(!userId){try{const signH=getSign("app",{},'',cfg);const vehicleRes=await httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/vehicle/list",{"Authorization":"Bearer "+token,"Content-Type":"application/json;charset=UTF-8","interfaceversion":"2",...signH});if(vehicleRes.code=="10000"&&vehicleRes.data){const autoUid=String(vehicleRes.data.userId||vehicleRes.data.uid||vehicleRes.data.id||"");if(autoUid){userId=autoUid;result.userId=userId;const accounts=getAccounts();const idx=accounts.findIndex(a=>cleanToken(a.token)===token);if(idx>=0&&!accounts[idx].userId){accounts[idx].userId=userId;saveAccounts(accounts)}}}}catch(e){}}
@@ -783,6 +1032,17 @@ const Backend={
     if(isProxyMode()){let q="/api/info-center?userId="+encodeURIComponent(userId||"");if(vin)q+="&vin="+encodeURIComponent(vin);return await proxyFetch(q)}
     return{ok:false,error:"信息中心仅支持代理模式"}
   },
+  /* ---- v2.16.0 隐藏骑行数据 ---- */
+  async rideMonth(userId,month,vin){
+    if(isDemo())return demoRideMonth(month);
+    if(isProxyMode()){let q="/api/ride-month?userId="+encodeURIComponent(userId||"")+"&month="+encodeURIComponent(month||"");if(vin)q+="&vin="+encodeURIComponent(vin);return await proxyFetch(q)}
+    return await fetchRideMonthDirect(rideAccLocal(userId),getCfg(),month,vin);
+  },
+  async rideTrack(userId,vin,page,pageSize){
+    if(isDemo())return demoRideTrack(page);
+    if(isProxyMode()){let q="/api/ride-track?userId="+encodeURIComponent(userId||"")+"&page="+(page||1)+"&pageSize="+(pageSize||20);if(vin)q+="&vin="+encodeURIComponent(vin);return await proxyFetch(q)}
+    return await fetchRideTrackDirect(rideAccLocal(userId),getCfg(),vin,page,pageSize);
+  },
   async installInfo(){
     if(isProxyMode()){const d=await proxyFetch("/api/app-install-info");return d||null}
     return null
@@ -865,12 +1125,13 @@ function fmtTime(iso){try{const d=new Date(iso);const p=n=>String(n).padStart(2,
 /* ================= 页面切换 ================= */
 function switchTab(tab){
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.tab===tab));
-  const pages={home:"pageHome",points:"pagePoints",vehicle:"pageVehicle",logs:"pageLogs",cfg:"pageCfg"};
+  const pages={home:"pageHome",points:"pagePoints",vehicle:"pageVehicle",ride:"pageRide",logs:"pageLogs",cfg:"pageCfg"};
   Object.keys(pages).forEach(k=>{const el=document.getElementById(pages[k]);if(el)el.classList.toggle("hidden",k!==tab)});
   // 立即签到悬浮按钮仅首页显示
   const fab=document.getElementById("signinFab");if(fab)fab.style.display=(tab==="home"?"flex":"none");
   if(tab==="points")renderPoints();
   if(tab==="vehicle"){renderVehiclePage()}
+  if(tab==="ride"){renderRidePage()}
   if(tab==="logs")renderLogs();
   if(tab==="cfg")renderCfg();
 }
@@ -1358,6 +1619,56 @@ const DEMO_MONITOR={ok:true,snapshot:{vin:"LB7JM1C10NA000001",soc:76,range:63,vo
   vehicles:[{vehicleName:"ZEEHO AE4",vinNo:"LB7JM1C10NA000001",vehicleType:"AE4 MAX2+"},{vehicleName:"极核 AE6",vinNo:"LB7JM1C10NA000002",vehicleType:"AE6"}]};
 const DEMO_CTRL_OPTS={ok:true,chargePower:[{key:"400"},{key:"800"},{key:"1000"}],gears:["25","45","60"]};
 const DEMO_INFO={ok:true,unread:{total:3},prizeRecords:{records:[{prizesName:"积分 +6",createTime:"2026-09-28 07:00",integral:6},{prizesName:"补签卡 ×1",createTime:"2026-09-21 07:00"}]},coupons:{records:[{},{},{}]},ota:[]};
+/* v2.16.0 骑行演示数据：合成轨迹（确定性生成），月度记录与轨迹扫描结果保持一致 */
+function demoTrack(seed,steps,day){
+  let s=seed>>>0;
+  let lon=119.5509,lat=26.6654,hdg=45,out=[];
+  const d0=new Date();d0.setDate(day);d0.setHours(14,20,0,0);
+  const t0=d0.getTime()+(seed%13)*60000;
+  for(let i=0;i<steps;i++){
+    const ph=i/steps;
+    const target=45+50*Math.sin(ph*Math.PI*2.6)+14*Math.sin(ph*Math.PI*6.3+(seed%7));
+    hdg=hdg+(target-hdg)*0.32;
+    let v=34+13*Math.sin(ph*Math.PI*3.3+(seed%5))+1.5*Math.sin(ph*Math.PI*17);
+    if(i>Math.floor(steps*0.60)&&i<Math.floor(steps*0.64))v-=24;
+    v=Math.max(6,Math.min(64,v));
+    const rad=hdg*Math.PI/180;
+    const stepM=v*1000/3600*2;
+    lat+=stepM*Math.cos(rad)/111320;
+    lon+=stepM*Math.sin(rad)/(111320*Math.cos(lat*Math.PI/180));
+    out.push(lon.toFixed(6)+","+lat.toFixed(6)+","+v.toFixed(1)+","+(t0+i*2000));
+  }
+  return out.join("&");
+}
+function demoRideDays(){
+  const now=new Date();const cur=now.getFullYear()+"."+String(now.getMonth()+1).padStart(2,"0");const p=n=>String(n).padStart(2,"0");
+  return [{dayTime:cur+"."+p(10),rides:[{rideId:"DEMO-R1",trajectory:demoTrack(11,90,10)},{rideId:"DEMO-R2",trajectory:demoTrack(23,70,10)}]},
+          {dayTime:cur+"."+p(8),rides:[{rideId:"DEMO-R3",trajectory:demoTrack(7,110,8)}]}];
+}
+function demoRideTrack(page){
+  if(page&&page>1)return{ok:true,page:page,vinNo:"LB7JM1C10NA000001",days:[]};
+  return{ok:true,page:1,vinNo:"LB7JM1C10NA000001",days:demoRideDays().map(d=>({dayTime:d.dayTime,historyList:d.rides}))};
+}
+function demoRideMonth(month){
+  const now=new Date();const cur=now.getFullYear()+"."+String(now.getMonth()+1).padStart(2,"0");const p=n=>String(n).padStart(2,"0");
+  if(month&&month!==cur)return{ok:true,month:month,vinNo:"LB7JM1C10NA000001",vehicleName:"ZEEHO AE4",data:{rideMileageTotal:0,rideRecordList:[]}};
+  const scan=rideDayScan(demoRideTrack(1).days);
+  const mk=(d,extra)=>{
+    const c=scan[d]||null;
+    return Object.assign({date:d,
+      rideMileage:(c&&c.km>0)?c.km.toFixed(1):"0",
+      ridingTimeDayUnitMinute:(c&&c.dur>0)?String(Math.round(c.dur)):"0",
+      maxSpeed:(c&&c.maxV>0)?String(Math.round(c.maxV)):"0",
+      accelerationTimesDay:"0",brakesTimesDay:"0",bendingTimesDay:"0"},extra||{});
+  };
+  const records=[
+    {date:cur+"."+p(3),rideMileage:"12.4",ridingTimeDayUnitMinute:"46",maxSpeed:"58",accelerationTimesDay:"1",brakesTimesDay:"0",bendingTimesDay:"0"},
+    {date:cur+"."+p(5),rideMileage:"8.8",ridingTimeDayUnitMinute:"31",maxSpeed:"52",accelerationTimesDay:"0",brakesTimesDay:"1",bendingTimesDay:"4"},
+    mk(cur+"."+p(8)),
+    mk(cur+"."+p(10),{accelerationTimesDay:"1"})
+  ];
+  return{ok:true,month:cur,vinNo:"LB7JM1C10NA000001",vehicleName:"ZEEHO AE4",data:{rideMileageTotal:268.5,rideRecordList:records}};
+}
 const DEMO_DATA=[
 {userName:"阿泽",userId:"2025100912345678",score:12880,signedToday:true,continueDays:42,todayScore:12,signCount:36,tokenValid:true,last7:[{date:"09-04",signed:true,isToday:false},{date:"09-05",signed:true,isToday:false},{date:"09-06",signed:true,isToday:false},{date:"09-07",signed:true,isToday:false},{date:"09-08",signed:true,isToday:false},{date:"09-09",signed:true,isToday:false},{date:"09-10",signed:true,isToday:true}],vehicle:{hasVehicle:true,vehicleName:"ZEEHO AE4",vinNo:"LB7JM1C10NA000001",batteryPercent:76,residualRangeKm:63,rangeEstimated:false,chargeState:"未充电",voltage:84.5,current:0,batteryTemp:26,frontPressure:"2.35bar",rearPressure:"2.40bar",frontTemp:"31°C",rearTemp:"32°C",todayDistance:12.6,todayDuration:34,todayMaxSpeed:56,lastRideMileage:8.2,totalMileage:27105.2,yesterdayDistance:88.4,online:"1",powerStatus:"0",lockState:"1",cushionState:"0",address:"福建省宁德市蕉城区东侨开发区",locationTime:"08:12",longitude:119.5509,latitude:26.6654,serviceEndDate:"2027-03-18"}},
 {userName:"小满",userId:"2026010111223344",score:520,signedToday:false,continueDays:3,todayScore:0,signCount:9,tokenValid:false,last7:[{date:"09-04",signed:true,isToday:false},{date:"09-05",signed:false,isToday:false},{date:"09-06",signed:false,isToday:false},{date:"09-07",signed:true,isToday:false},{date:"09-08",signed:true,isToday:false},{date:"09-09",signed:true,isToday:false},{date:"09-10",signed:false,isToday:true}],vehicle:{hasVehicle:true,vehicleName:"极核 AE6",vinNo:"LB7JM1C10NA000002",batteryPercent:23,residualRangeKm:20,rangeEstimated:true,chargeState:"充电中",voltage:86.2,current:5.4,batteryTemp:31,totalMileage:0,yesterdayDistance:0,currentVin:"LB7JM1C10NA000002",vehicles:[{name:"极核 AE6",vinNo:"LB7JM1C10NA000002"},{name:"AE5iProMax",vinNo:"LB7JM1C10NA000003"}],frontPressure:"2.10bar",rearPressure:"",frontTemp:"",rearTemp:"",todayDistance:0,todayDuration:0,todayMaxSpeed:0,lastRideMileage:0,online:"0",powerStatus:"1",lockState:"0",cushionState:"1",address:"",locationTime:"",longitude:"",latitude:"",serviceEndDate:""}},
@@ -1388,9 +1699,10 @@ function ptAccounts(){return STATE.data&&STATE.data.length?STATE.data:(STATE.pan
 function accChipsHtml(prefix){
   const list=ptAccounts();
   if(!list.length)return"";
-  return '<div class="acc-chips">'+list.map((a,i)=>'<button class="acc-chip '+(i===(prefix==="pt"?PT.accIdx:VH.accIdx)?'on':'')+'" onclick="pickAcc(\''+prefix+'\','+i+')">'+esc(a.userName||("账号"+(i+1)))+'</button>').join("")+'</div>';
+  const cur=prefix==="pt"?PT.accIdx:(prefix==="rt"?RT.accIdx:VH.accIdx);
+  return '<div class="acc-chips">'+list.map((a,i)=>'<button class="acc-chip '+(i===cur?'on':'')+'" onclick="pickAcc(\''+prefix+'\','+i+')">'+esc(a.userName||("账号"+(i+1)))+'</button>').join("")+'</div>';
 }
-function pickAcc(prefix,i){if(prefix==="pt"){PT.accIdx=i;renderPoints()}else{VH.accIdx=i;VH.vin="";renderVehiclePage()}}
+function pickAcc(prefix,i){if(prefix==="pt"){PT.accIdx=i;renderPoints()}else if(prefix==="rt"){RT.accIdx=i;RT.tracks=null;RT.tracksAt="";RT.tracksRides=0;RT.tracksDays=0;RT.scanErr="";RT.vin="";renderRidePage()}else{VH.accIdx=i;VH.vin="";renderVehiclePage()}}
 async function renderPoints(){
   const el=document.getElementById("pagePoints");if(!el)return;
   const list=ptAccounts();
@@ -1488,6 +1800,155 @@ async function supGain(){
     if(d&&d.ok){toast("兑换成功","ok");renderPoints()}
     else toast("兑换失败："+((d&&(d.message||d.error))||"未知"),"err");
   },"确认兑换");
+}
+
+/* ================= v2.16.0 骑行页（隐藏骑行数据：极速/急加速/急刹/压弯） ================= */
+let RT={accIdx:0,month:"",monthSetDay:"",tracks:null,tracksAt:"",tracksRides:0,tracksDays:0,scanning:false,scanErr:"",vin:"",dayCache:[]};
+function rtCurMonth(){const n=new Date();return n.getFullYear()+"."+String(n.getMonth()+1).padStart(2,"0")}
+function rtMonthShift(dir){
+  const cur=RT.month||rtCurMonth();
+  const ym=cur.split(".");let y=Number(ym[0]),m=Number(ym[1])+dir;
+  if(m<1){m=12;y--}if(m>12){m=1;y++}
+  RT.month=y+"."+String(m).padStart(2,"0");
+  const d=new Date();RT.monthSetDay=d.getFullYear()+"."+String(d.getMonth()+1).padStart(2,"0")+"."+String(d.getDate()).padStart(2,"0");
+  renderRidePage();
+}
+function rtWeekday(dk){
+  try{const p=String(dk||"").split(".");const d=new Date(Number(p[0]),Number(p[1])-1,Number(p[2]));if(isNaN(d.getTime()))return"";return " 周"+["日","一","二","三","四","五","六"][d.getDay()]}catch(e){return""}
+}
+function rtDayHtml(d,i){
+  const md=String(d.dk||"").split(".");
+  const label=md.length===3?(md[1]+"."+md[2]):String(d.dk||"");
+  const kmTxt=d.km>0?(d.km>=100?d.km.toFixed(0):d.km.toFixed(1))+"km":"";
+  const durTxt=d.dur>0?(fmtMin(d.dur)||(Math.round(d.dur)+"min")):"";
+  const click=d.rides.length?' style="cursor:pointer" onclick="rtRideSheet('+i+')"':"";
+  return '<div class="rt-day"'+click+'>'
+    +'<div class="rt-top"><span class="rt-date">'+esc(label)+'<span class="wd">'+esc(rtWeekday(d.dk))+'</span></span><span class="rt-km num">'+esc([kmTxt,durTxt].filter(Boolean).join(" · ")||"--")+'</span></div>'
+    +'<div class="rt-chips">'
+    +'<span class="rt-chip">极速<b class="num">'+(d.maxV>0?Math.round(d.maxV):"--")+'</b></span>'
+    +'<span class="rt-chip">急加速<b class="num">'+d.accel+'</b></span>'
+    +'<span class="rt-chip'+(d.cal?' cal':'')+'">急刹<b class="num">'+d.brakes+'</b></span>'
+    +'<span class="rt-chip'+(d.cal?' cal':'')+'">压弯<b class="num">'+d.bends+'</b></span>'
+    +(d.rides.length?'<span class="rt-chip link">轨迹 '+d.rides.length+' 趟 ›</span>':"")
+    +'</div></div>';
+}
+function rtRideSheet(i){
+  const d=(RT.dayCache||[])[i];
+  if(!d||!d.rides||!d.rides.length)return;
+  const html=d.rides.map(r=>{
+    const start=r.t0?fmtTime(new Date(r.t0).toISOString()).slice(11,16):"--:--";
+    const avg=r.dur>0?(r.km/(r.dur/60)):0;
+    return '<div class="flow-item"><div><div class="nm">'+esc(start)+' 出发</div><div class="tm">'+esc(r.km.toFixed(1))+'km · '+esc(fmtMin(r.dur)||(Math.round(r.dur)+"min"))+' · 均速 '+Math.round(avg)+'km/h · '+r.points+'点</div></div><div style="text-align:right"><div class="sc num">极速 '+Math.round(r.maxV)+'</div><div class="tm">急刹 '+r.brakes+' · 压弯 '+r.bends+'</div></div></div>';
+  }).join("");
+  openSheet((d.dk||"")+" 骑行明细",I.map,html+'<div class="hint" style="margin-top:10px">里程/时长/极速按轨迹点计算，急刹/压弯为隐藏算法计数（双窗口合并后 ×2.5 标定）</div>');
+}
+async function rtScan(){
+  if(RT.scanning)return;
+  const list=ptAccounts();const acc=list[RT.accIdx]||{};
+  if(!acc.userId){toast("该账号缺少用户ID","err");return}
+  const cur=rtCurMonth();
+  if((RT.month||cur)!==cur){toast("轨迹接口只覆盖最近约 30 天，请切回本月再扫","err");return}
+  RT.scanning=true;RT.scanErr="";renderRidePage();
+  toast("正在拉取轨迹并计算隐藏数据…","info");
+  let allDays=[],rides=0,err="";
+  try{
+    for(let page=1;page<=15;page++){
+      const r=await Backend.rideTrack(acc.userId,RT.vin||"",page,20);
+      if(!r||!r.ok){err=(r&&(r.error||r.message))||"接口无响应";break}
+      if(r.vinNo&&!RT.vin)RT.vin=r.vinNo;
+      const days=Array.isArray(r.days)?r.days:[];
+      let cnt=0;
+      for(const dd of days)if(dd&&Array.isArray(dd.historyList))cnt+=dd.historyList.length;
+      allDays=allDays.concat(days);rides+=cnt;
+      if(cnt===0)break;
+    }
+  }catch(e){err=String(e)}
+  if(allDays.length){
+    RT.tracks=rideDayScan(allDays);
+    RT.tracksAt=fmtTime(new Date().toISOString());RT.tracksRides=rides;
+    let nDays=0;for(const k in RT.tracks)if(RT.tracks[k]&&RT.tracks[k].rides&&RT.tracks[k].rides.length)nDays++;
+    RT.tracksDays=nDays;
+    if(!nDays)RT.scanErr="接口已连通，但未返回轨迹数据（该车暂无历史轨迹记录）";
+  }else{
+    RT.scanErr=err||"未取到轨迹数据（该车可能没有历史轨迹记录）";
+  }
+  RT.scanning=false;
+  renderRidePage();
+  if(RT.scanErr)toast(RT.scanErr,"err");else toast("轨迹扫描完成："+rides+" 趟行程","ok");
+}
+async function renderRidePage(){
+  const el=document.getElementById("pageRide");if(!el)return;
+  const list=ptAccounts();
+  if(!list.length){el.innerHTML='<div class="empty"><h3>暂无账号</h3><p>请先在首页加载数据或在设置页添加账号</p></div>';return}
+  if(RT.accIdx>=list.length)RT.accIdx=0;
+  const acc=list[RT.accIdx];
+  if(!acc.userId){el.innerHTML=accChipsHtml("rt")+'<div class="empty"><h3>该账号缺少用户ID</h3><p>请到设置页补全用户ID</p></div>';return}
+  const _now=new Date();
+  const _curM=rtCurMonth();
+  const _tdy=_now.getFullYear()+"."+String(_now.getMonth()+1).padStart(2,"0")+"."+String(_now.getDate()).padStart(2,"0");
+  if(RT.month&&RT.monthSetDay&&RT.monthSetDay!==_tdy&&RT.month<_curM){RT.month="";RT.monthSetDay="";}
+  const month=RT.month||_curM;
+  el.innerHTML=accChipsHtml("rt")+'<div class="empty" style="padding:40px 20px"><p style="color:var(--txt3)">加载骑行数据中…</p></div>';
+  const res=await Backend.rideMonth(acc.userId,month,RT.vin||"");
+  if(res&&res.vinNo&&!RT.vin)RT.vin=res.vinNo;
+  let html=accChipsHtml("rt");
+  if(!res||!res.ok){
+    el.innerHTML=html+'<div class="empty"><h3>骑行数据加载失败</h3><p>'+esc((res&&res.error)||"网络异常，请稍后重试")+'</p><div class="btn-row" style="justify-content:center"><button class="btn primary" onclick="renderRidePage()">重试</button></div></div>';
+    return;
+  }
+  const records=(res.data&&Array.isArray(res.data.rideRecordList))?res.data.rideRecordList:[];
+  const isCur=(month===_curM);
+  // 合并轨迹计算结果：里程/极速服务端非0优先、为0补算；急刹/压弯按轨迹重算（服务端常年为0）
+  const days=[];
+  for(const rec of records){
+    if(!rec||typeof rec!=="object")continue;
+    const dk=rideNormDay(rec.date)||String(rec.date||"");
+    const comp=(RT.tracks&&dk&&RT.tracks[dk])||null;
+    const srvKm=rideNum(rec.rideMileage),srvDur=rideNum(rec.ridingTimeDayUnitMinute),srvMax=rideNum(rec.maxSpeed);
+    days.push({
+      dk:dk,
+      km:srvKm>0?srvKm:(comp?comp.km:0),
+      dur:srvDur>0?srvDur:(comp?comp.dur:0),
+      maxV:srvMax>0?srvMax:(comp?comp.maxV:0),
+      accel:rideNum(rec.accelerationTimesDay),
+      brakes:comp?comp.brakes:rideNum(rec.brakesTimesDay),
+      bends:comp?comp.bends:rideNum(rec.bendingTimesDay),
+      cal:!!comp,
+      rides:(comp&&comp.rides)||[]
+    });
+  }
+  days.sort((a,b)=>String(b.dk).localeCompare(String(a.dk),"zh"));
+  const visible=days.filter(d=>d.km>0||d.dur>0||d.maxV>0||d.accel>0||d.brakes>0||d.bends>0);
+  RT.dayCache=visible;
+  let sumKm=0,sumDur=0,maxV=0,sumA=0,sumB=0,sumD=0;
+  for(const d of visible){sumKm+=d.km;sumDur+=d.dur;if(d.maxV>maxV)maxV=d.maxV;sumA+=d.accel;sumB+=d.brakes;sumD+=d.bends}
+  const durTxt=sumDur>=60?(Math.floor(sumDur/60)+"h"+String(Math.round(sumDur%60)).padStart(2,"0")+"m"):(sumDur>0?(Math.round(sumDur)+"min"):"0");
+  html+='<div class="panel-card"><div class="pc-head"><h4>'+I.map+'隐藏骑行数据 · '+esc(month)+'</h4><span style="display:flex;gap:6px"><button class="btn sm" onclick="rtMonthShift(-1)">上月</button><button class="btn sm" onclick="rtMonthShift(1)">下月</button></span></div>'
+    +'<div class="rt-grid">'
+    +'<div class="rt-cell"><div class="lb">里程</div><div class="vl num">'+esc(sumKm>0?sumKm.toFixed(1):"0")+'<span class="u">km</span></div></div>'
+    +'<div class="rt-cell"><div class="lb">时长</div><div class="vl num">'+esc(durTxt)+'</div></div>'
+    +'<div class="rt-cell"><div class="lb">极速</div><div class="vl num">'+esc(maxV>0?String(Math.round(maxV)):"--")+'<span class="u">km/h</span></div></div>'
+    +'</div>'
+    +'<div class="rt-grid3">'
+    +'<div class="rt-cell"><div class="lb">急加速</div><div class="vl num brand">'+sumA+'</div></div>'
+    +'<div class="rt-cell"><div class="lb">急刹</div><div class="vl num brand">'+sumB+'</div></div>'
+    +'<div class="rt-cell"><div class="lb">压弯</div><div class="vl num brand">'+sumD+'</div></div>'
+    +'</div>'
+    +'<div class="hint">官方 App 把这些字段藏了起来（车型能力位控制）。急加速来自服务端；急刹/压弯可点「扫描轨迹」按骑行轨迹重算。</div></div>';
+  html+='<div class="panel-card"><div class="pc-head"><h4>'+I.scooter+'每日记录</h4><span style="display:flex;gap:6px">'
+    +(RT.scanning?'<button class="btn sm" style="opacity:.6">扫描中…</button>':'<button class="btn sm primary" onclick="rtScan()">扫描轨迹</button>')
+    +'</span></div>';
+  if(visible.length){
+    html+=visible.map((d,i)=>rtDayHtml(d,i)).join("");
+  }else{
+    html+='<div style="color:var(--txt3);font-size:12px;padding:8px 0">该月暂无骑行记录（换个月份或确认账号已绑定车辆）</div>';
+  }
+  html+='<div class="hint">'+(isCur?'轨迹接口覆盖最近约 30 天，按每次 20 趟自动翻页（最多 15 页）':'轨迹扫描仅支持当前月，请切回本月')+'</div>';
+  if(RT.tracksAt)html+='<div class="hint">上次扫描：'+esc(RT.tracksAt)+' · '+Number(RT.tracksRides||0)+' 趟 / '+Number(RT.tracksDays||0)+' 天</div>';
+  if(RT.scanErr)html+='<div class="hint" style="color:var(--err)">'+esc(RT.scanErr)+'</div>';
+  html+='</div>';
+  html+='<div class="foot">数据来源：极核 myRideInfo / ridetrack_v2 · 压弯/急刹算法移植自 Zeeho SpeedHunter（AGPL-3.0），仅供学习研究</div>';
+  el.innerHTML=html;
 }
 
 /* ================= v2.14.9 车辆页（监控 + 车控扩展 + 信息中心） ================= */
@@ -1593,8 +2054,8 @@ function init(){
   setTimeout(hideSplash,12000);
 }
 init();
-// 演示便捷入口：?tab=home|points|vehicle|logs|cfg 直达对应标签页
-try{const _t=new URLSearchParams(location.search).get("tab");if(_t&&["home","points","vehicle","logs","cfg"].includes(_t)){switchTab(_t);}}catch(e){}
+// 演示便捷入口：?tab=home|points|vehicle|ride|logs|cfg 直达对应标签页
+try{const _t=new URLSearchParams(location.search).get("tab");if(_t&&["home","points","vehicle","ride","logs","cfg"].includes(_t)){switchTab(_t);}}catch(e){}
 
 </script>
 <!--__JS5__-->
