@@ -580,7 +580,7 @@ nav.tabbar{
 <script>
 "use strict";
 /* ================= 常量 ================= */
-const APP_VERSION = "v2.16.0";
+const APP_VERSION = "v2.16.1";
 const KEYS = { cfg:"zeeho_cfg", accounts:"zeeho_accounts", logs:"zeeho_logs" };
 
 /* ================= 工具函数 ================= */
@@ -839,7 +839,16 @@ function rideDayScan(days){
       g.km+=m?m.distanceKm:0;g.dur+=m?m.durationMin:0;
       if(maxV>g.maxV)g.maxV=maxV;
       g.brakes+=brakes;g.bends+=bends;
-      g.rides.push({t0:pts[0].t,km:m?m.distanceKm:0,dur:m?m.durationMin:0,maxV:maxV,brakes:brakes,bends:bends,points:pts.length});
+      let addr="";
+      try{
+        const sa=JSON.parse(r.startAddr||"{}"),ea=JSON.parse(r.endAddr||"{}");
+        const s1=String(sa.name||sa.address||"").trim(),e1=String(ea.name||ea.address||"").trim();
+        if(s1||e1)addr=(s1||"")+" → "+(e1||"");
+      }catch(e){}
+      g.rides.push({t0:pts[0].t,km:m?m.distanceKm:0,dur:m?m.durationMin:0,maxV:maxV,brakes:brakes,bends:bends,points:pts.length,
+        t0str:String(r.startTime||""),t1str:String(r.endTime||""),addr:addr,
+        srvKm:rideNum(r.rideMileage),srvDur:rideNum(r.ridingTimeUnitMinute),srvAccel:rideNum(r.accelerationTimes),
+        thumb:String(r.trackThumbnails||"")});
     }
   }
   for(const k in out)if(out[k]&&out[k].rides)out[k].rides.sort((a,b)=>a.t0-b.t0);
@@ -865,7 +874,7 @@ async function fetchRideMonthDirect(acc,cfg,month,vin){
     return{ok:false,error:(res&&(res.message||res.code))||"接口无响应",vinNo:vinNo};
   }catch(e){return{ok:false,error:String(e)}}
 }
-async function fetchRideTrackDirect(acc,cfg,vin,page,pageSize){
+async function fetchRideTrackDirect(acc,cfg,vin,page,pageSize,month){
   try{
     if(!acc)return{ok:false,error:"未找到账号"};
     let vinNo=String(vin||"").trim();
@@ -876,7 +885,8 @@ async function fetchRideTrackDirect(acc,cfg,vin,page,pageSize){
       vinNo=vehicles[0].vinNo;
     }
     const pg=Math.max(1,Number(page)||1),ps=Math.max(1,Math.min(200,Number(pageSize)||20));
-    const query="vinNo="+encodeURIComponent(vinNo)+"&page="+pg+"&pageSize="+ps;
+    const st=String(month||"").replace(".","-")||(new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0"));
+    const query="vinNo="+encodeURIComponent(vinNo)+"&page="+pg+"&pageSize="+ps+"&startTime="+encodeURIComponent(st);
     const res=await httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/ridetrack_v2?"+query,appQueryHeaders(acc,query,cfg));
     if(res&&String(res.code)==="10000"){
       let days=[];
@@ -1038,10 +1048,10 @@ const Backend={
     if(isProxyMode()){let q="/api/ride-month?userId="+encodeURIComponent(userId||"")+"&month="+encodeURIComponent(month||"");if(vin)q+="&vin="+encodeURIComponent(vin);return await proxyFetch(q)}
     return await fetchRideMonthDirect(rideAccLocal(userId),getCfg(),month,vin);
   },
-  async rideTrack(userId,vin,page,pageSize){
+  async rideTrack(userId,vin,page,pageSize,month){
     if(isDemo())return demoRideTrack(page);
-    if(isProxyMode()){let q="/api/ride-track?userId="+encodeURIComponent(userId||"")+"&page="+(page||1)+"&pageSize="+(pageSize||20);if(vin)q+="&vin="+encodeURIComponent(vin);return await proxyFetch(q)}
-    return await fetchRideTrackDirect(rideAccLocal(userId),getCfg(),vin,page,pageSize);
+    if(isProxyMode()){let q="/api/ride-track?userId="+encodeURIComponent(userId||"")+"&page="+(page||1)+"&pageSize="+(pageSize||20);if(vin)q+="&vin="+encodeURIComponent(vin);if(month)q+="&month="+encodeURIComponent(month);return await proxyFetch(q)}
+    return await fetchRideTrackDirect(rideAccLocal(userId),getCfg(),vin,page,pageSize,month);
   },
   async installInfo(){
     if(isProxyMode()){const d=await proxyFetch("/api/app-install-info");return d||null}
@@ -1836,24 +1846,31 @@ function rtRideSheet(i){
   const d=(RT.dayCache||[])[i];
   if(!d||!d.rides||!d.rides.length)return;
   const html=d.rides.map(r=>{
-    const start=r.t0?fmtTime(new Date(r.t0).toISOString()).slice(11,16):"--:--";
-    const avg=r.dur>0?(r.km/(r.dur/60)):0;
-    return '<div class="flow-item"><div><div class="nm">'+esc(start)+' 出发</div><div class="tm">'+esc(r.km.toFixed(1))+'km · '+esc(fmtMin(r.dur)||(Math.round(r.dur)+"min"))+' · 均速 '+Math.round(avg)+'km/h · '+r.points+'点</div></div><div style="text-align:right"><div class="sc num">极速 '+Math.round(r.maxV)+'</div><div class="tm">急刹 '+r.brakes+' · 压弯 '+r.bends+'</div></div></div>';
+    const start=r.t0str?r.t0str.slice(11,16):(r.t0?fmtTime(new Date(r.t0).toISOString()).slice(11,16):"--:--");
+    const end=r.t1str?r.t1str.slice(11,16):"";
+    const km=r.srvKm>0?r.srvKm:r.km;
+    const dur=r.srvDur>0?r.srvDur:r.dur;
+    const avg=dur>0?(km/(dur/60)):0;
+    return '<div class="flow-item"><div style="flex:1;min-width:0"><div class="nm">'+esc(start)+(end?(' → '+esc(end)):"")+' 骑行</div>'
+      +(r.addr?'<div class="tm" style="white-space:normal">'+esc(r.addr)+'</div>':"")
+      +'<div class="tm">'+esc(km.toFixed(1))+'km · '+esc(fmtMin(dur)||(Math.round(dur)+"min"))+' · 均速 '+Math.round(avg)+'km/h · 极速 '+Math.round(r.maxV)+'</div>'
+      +'<div class="tm">急加速 '+r.srvAccel+' · 急刹 '+r.brakes+' · 压弯 '+r.bends+'（隐藏算法）</div></div>'
+      +(r.thumb?'<img src="'+esc(r.thumb)+'" style="width:52px;height:52px;border-radius:10px;object-fit:cover;margin-left:8px;flex-shrink:0" onerror="this.remove()">':"")
+      +'</div>';
   }).join("");
-  openSheet((d.dk||"")+" 骑行明细",I.map,html+'<div class="hint" style="margin-top:10px">里程/时长/极速按轨迹点计算，急刹/压弯为隐藏算法计数（双窗口合并后 ×2.5 标定）</div>');
+  openSheet((d.dk||"")+" 骑行明细",I.map,html+'<div class="hint" style="margin-top:10px">里程/时长/极速/急加速为服务端真值（急加速=服务端计次）；急刹/压弯为隐藏算法计数（移植 SpeedHunter，双窗口合并后 ×2.5 标定）</div>');
 }
 async function rtScan(){
   if(RT.scanning)return;
   const list=ptAccounts();const acc=list[RT.accIdx]||{};
   if(!acc.userId){toast("该账号缺少用户ID","err");return}
-  const cur=rtCurMonth();
-  if((RT.month||cur)!==cur){toast("轨迹接口只覆盖最近约 30 天，请切回本月再扫","err");return}
+  const month=RT.month||rtCurMonth();
   RT.scanning=true;RT.scanErr="";renderRidePage();
-  toast("正在拉取轨迹并计算隐藏数据…","info");
+  toast("正在拉取 "+month+" 轨迹并计算隐藏数据…","info");
   let allDays=[],rides=0,err="";
   try{
     for(let page=1;page<=15;page++){
-      const r=await Backend.rideTrack(acc.userId,RT.vin||"",page,20);
+      const r=await Backend.rideTrack(acc.userId,RT.vin||"",page,20,month);
       if(!r||!r.ok){err=(r&&(r.error||r.message))||"接口无响应";break}
       if(r.vinNo&&!RT.vin)RT.vin=r.vinNo;
       const days=Array.isArray(r.days)?r.days:[];
@@ -1943,7 +1960,7 @@ async function renderRidePage(){
   }else{
     html+='<div style="color:var(--txt3);font-size:12px;padding:8px 0">该月暂无骑行记录（换个月份或确认账号已绑定车辆）</div>';
   }
-  html+='<div class="hint">'+(isCur?'轨迹接口覆盖最近约 30 天，按每次 20 趟自动翻页（最多 15 页）':'轨迹扫描仅支持当前月，请切回本月')+'</div>';
+  html+='<div class="hint">轨迹按所选月份查询（每次 20 趟自动翻页，最多 15 页）</div>';
   if(RT.tracksAt)html+='<div class="hint">上次扫描：'+esc(RT.tracksAt)+' · '+Number(RT.tracksRides||0)+' 趟 / '+Number(RT.tracksDays||0)+' 天</div>';
   if(RT.scanErr)html+='<div class="hint" style="color:var(--err)">'+esc(RT.scanErr)+'</div>';
   html+='</div>';
