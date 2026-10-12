@@ -68,6 +68,10 @@ jobs:
           zip -qry ../ZeehoSignPanel.ipa Payload
           ls -la ../ZeehoSignPanel.ipa
 
+      - name: Compute build time (Beijing)
+        id: bt
+        run: echo "BJ=$(TZ=Asia/Shanghai date +'%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
+
       - name: Publish IPA to release
         uses: softprops/action-gh-release@v2
         with:
@@ -75,8 +79,9 @@ jobs:
           name: 极核签到面板 iOS IPA（巨魔/TrollStore）
           body: |
             TrollStore（巨魔）专用未签名 IPA。
-            - 内核：构建时自动同步 repo/zeeho_box_enhanced.js（当前 v2.16.4）
+            - 内核：构建时自动同步 repo/zeeho_box_enhanced.js（当前 v2.16.5）
             - 安装：TrollStore 中点击 + 选择本 IPA 即可，永久签名不掉签
+            - 更新时间：${{ steps.bt.outputs.BJ }}（北京时间）
             - 构建提交：${{ github.sha }}
           files: ZeehoSignPanel.ipa
           overwrite_files: true

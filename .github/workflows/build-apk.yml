@@ -98,6 +98,10 @@ jobs:
           mv "$ALIGNED" "$FINAL"
           ls -la "$FINAL"
 
+      - name: Compute build time (Beijing)
+        id: bt
+        run: echo "BJ=$(TZ=Asia/Shanghai date +'%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
+
       - name: Publish APK to release
         uses: softprops/action-gh-release@v2
         with:
@@ -108,6 +112,7 @@ jobs:
             - minSdk 24 / targetSdk 34
             - 内核：构建时自动同步 repo/zeeho_box_enhanced.js
             - 签名：仓库固定 keystore 签名，新版本可直接覆盖安装（无需卸载旧版）
+            - 更新时间：${{ steps.bt.outputs.BJ }}（北京时间）
             - 构建提交：${{ github.sha }}
           files: android/ZeehoSignPanel.apk
           overwrite: true

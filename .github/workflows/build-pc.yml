@@ -44,6 +44,10 @@ jobs:
         shell: pwsh
         run: Get-ChildItem dist | Format-Table Name,Length
 
+      - name: Compute build time (Beijing)
+        id: bt
+        run: echo "BJ=$((Get-Date).ToUniversalTime().AddHours(8).ToString('yyyy-MM-dd HH:mm'))" >> $env:GITHUB_OUTPUT
+
       - name: Publish to release
         uses: softprops/action-gh-release@v2
         with:
@@ -54,6 +58,7 @@ jobs:
             - Setup 安装版（NSIS，x64）
             - Portable 便携版（x64）
             - 内核：构建时打包 repo/zeeho_box_enhanced.js
+            - 更新时间：${{ steps.bt.outputs.BJ }}（北京时间）
             - 构建提交：${{ github.sha }}
           files: |
             desktop/dist/*Setup*.exe

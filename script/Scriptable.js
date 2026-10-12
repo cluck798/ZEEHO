@@ -1,6 +1,7 @@
-// ============= 极核 ZEEHO · Scriptable（单账号版 v1.4） =============
+// ============= 极核 ZEEHO · Scriptable（单账号版 v1.5） =============
 // 单账号：只维护一个账号，菜单内可随时「手机号登录 / 粘贴 Token」重设
 // 功能全集：自动签到 / 盲盒 / 补签 / 发布动态 · 车辆控制 · 充电监控 · 小组件（小 / 中 / 大 + 锁屏圆形 / 长方形）
+// v1.5：⏱充电剩余时间——充电中且已设电池容量时，按 容量×(100−电量%)/100÷充电电流 估算（未设置不显示）
 // v1.4：⚡电压模拟电量——车辆不上报百分比时按「空电/满电电压」估算，开启后停用充满提醒、低电提醒按估算%生效
 // v1.3：① H5 通道密钥轮换（appId=AiTXmBrm）② 签到/盲盒/补签接口迁到 /H5/ 前缀（服务端 2026-10 调整）
 // v1.2：① 单账号化改造（功能保留）② 发布内容 lucky ③ 随机设备指纹 ④ 服务端当日记录判签 ⑤ 中尺寸显示电压
@@ -1627,6 +1628,20 @@ function adaptWidgets(raw) {
   };
 }
 
+// ⏱充电剩余时间（v1.5）：充电中且已设容量时估算；未设置/未充电返回 null（不显示）
+function estimateChargeRemainMin(b, cfg) {
+  const ah = Number(cfg?.batteryAh || 0);
+  const soc = Number(b?.soc || 0);
+  const cur = Number(b?.current || 0);
+  if (!(ah > 0) || !(cur > 0.5) || !(soc > 0) || !(soc < 100)) return null;
+  const charging = !!b && !!b.chargeStateStr && b.chargeStateStr !== "未充电";
+  if (!charging) return null;
+  return Math.max(1, Math.round(ah * (100 - soc) / 100 / cur * 60));
+}
+function fmtRemainMin(min) {
+  const hh = Math.floor(min / 60), mm = min % 60;
+  return (hh > 0 ? hh + " 时 " : "") + mm + " 分";
+}
 // ========== 通知辅助（简单本地通知） ==========
 async function notifySimple(title, body) {
   try {
@@ -1686,6 +1701,7 @@ function runChargeNotifyCheck(acc, b, vehName = "") {
     st.lastSoc = soc;
     st.lastSocEstimated = !!b?.socEstimated;
     st.lastVoltage = volt;
+    st.lastRemainMin = estimateChargeRemainMin(b, cfg);
     return res;
   } catch (e) {
     logDebug("充电监控异常", String(e?.message || e));
@@ -3618,7 +3634,7 @@ async function menuMonitor() {
   const st = acc.state || {};
   const a = new Alert();
   a.title = "🔋 充电监控";
-  a.message = `当前：${st.lastSoc != null ? st.lastSoc + "%" + (st.lastSocEstimated ? "（估）" : "") : "—"}${st.lastVoltage ? " · " + Number(st.lastVoltage).toFixed(1) + "V" : ""}\n方案A：组件刷新/运行脚本时自动检测（已启用）\n方案B：前台驻留监控（脚本保持打开）`;
+  a.message = `当前：${st.lastSoc != null ? st.lastSoc + "%" + (st.lastSocEstimated ? "（估）" : "") : "—"}${st.lastVoltage ? " · " + Number(st.lastVoltage).toFixed(1) + "V" : ""}${st.lastRemainMin ? "\n⏱ 充电剩余约 " + fmtRemainMin(st.lastRemainMin) : ""}\n方案A：组件刷新/运行脚本时自动检测（已启用）\n方案B：前台驻留监控（脚本保持打开）`;
   a.addAction("立即检测一次");
   a.addAction(`驻留监控（每${cfg.monitorIntervalMin}分×${cfg.monitorDurationMin}分）`);
   a.addAction(`⚡ 电压模拟电量：${cfg.voltageSim ? "✅开" : "❌关"}${cfg.voltageSim && Number(cfg.vEmpty) > 0 && Number(cfg.vFull) > Number(cfg.vEmpty) ? `（${cfg.vEmpty}V~${cfg.vFull}V${Number(cfg.batteryAh) > 0 ? " · " + cfg.batteryAh + "Ah" : ""}）` : ""}`);
@@ -3637,7 +3653,8 @@ async function menuMonitor() {
       if (r.result.full) hits.push("已达满电条件");
       if (r.result.low) hits.push("低电量");
       const tail = hits.length ? `触发：${hits.join("、")}${(r.result.notifiedFull || r.result.notifiedLow) ? "（已通知）" : "（本次未通知）"}` : "未触发通知条件";
-      await simpleAlert("🔋 检测完成", `${dispName(acc)}\n${b.chargeStateStr} · ${Number(b.soc || 0)}%${b.socEstimated ? "（估算）" : ""} · ${b.voltage ? b.voltage.toFixed(1) + "V" : "无电压数据"}\n${tail}`);
+      const remain = estimateChargeRemainMin(b, getStore().cfg);
+      await simpleAlert("🔋 检测完成", `${dispName(acc)}\n${b.chargeStateStr} · ${Number(b.soc || 0)}%${b.socEstimated ? "（估算）" : ""} · ${b.voltage ? b.voltage.toFixed(1) + "V" : "无电压数据"}${remain != null ? `\n⏱ 充电剩余约 ${fmtRemainMin(remain)}（${Number(b.current).toFixed(1)}A）` : ""}\n${tail}`);
     } catch (e) { await simpleAlert("❌ 检测失败", friendlyErr(e)); }
   } else if (idx === 1) {
     const pa = new Alert();
@@ -4004,7 +4021,8 @@ async function runDirectAction(action) {
     try {
       const r = await monitorOnce(acc);
       const b = r.battery;
-      const line = `${dispName(acc)}｜${b.chargeStateStr} · ${Number(b.soc || 0)}%${b.socEstimated ? "（估算）" : ""}${b.voltage ? " · " + b.voltage.toFixed(1) + "V" : ""}`;
+      const remain = estimateChargeRemainMin(b, getStore().cfg);
+      const line = `${dispName(acc)}｜${b.chargeStateStr} · ${Number(b.soc || 0)}%${b.socEstimated ? "（估算）" : ""}${b.voltage ? " · " + b.voltage.toFixed(1) + "V" : ""}${remain != null ? " · ⏱剩余约 " + fmtRemainMin(remain) : ""}`;
       logStep("充电监控", "ok", line);
       if (r.result && (r.result.notifiedFull || r.result.notifiedLow)) { /* 已在检测中通知 */ }
       if (!silent) await simpleAlert("🔋 监控结果", line);

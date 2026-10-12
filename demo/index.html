@@ -580,7 +580,7 @@ nav.tabbar{
 <script>
 "use strict";
 /* ================= 常量 ================= */
-const APP_VERSION = "v2.16.4";
+const APP_VERSION = "v2.16.5";
 const KEYS = { cfg:"zeeho_cfg", accounts:"zeeho_accounts", logs:"zeeho_logs" };
 
 /* ================= 工具函数 ================= */
@@ -874,6 +874,16 @@ async function fetchRideMonthDirect(acc,cfg,month,vin){
     return{ok:false,error:(res&&(res.message||res.code))||"接口无响应",vinNo:vinNo};
   }catch(e){return{ok:false,error:String(e)}}
 }
+async function fetchBatteryStateDirect(acc,cfg,vin){
+  try{
+    if(!acc)return{ok:false,error:"未找到账号"};
+    let vinNo=String(vin||"").trim();
+    if(!vinNo){const list=await fetchVehicleList(acc,cfg);const vs=list.filter(x=>!/模拟/.test(String(x.name||"")+" "+String(x.vehicleType||"")));if(!vs.length)return{ok:false,error:"账号未绑定车辆"};vinNo=vs[0].vinNo;}
+    const res=await httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/batteryInfo/"+encodeURIComponent(vinNo),baseHeaders(acc));
+    if(res&&res.code=="10000"&&res.data){const d=res.data;return{ok:true,vinNo:vinNo,charging:/充电/.test(String(d.chargeStateStr||d.chargeState||"")),current:Number(d.current||d.batteryCurrent||d.bmsCurrent||0),soc:Number(d.soc||d.batteryLevel||d.bmssoc||0),voltage:Number(d.voltage||d.batteryVoltage||d.bmsVoltage||0),chargeState:String(d.chargeStateStr||d.chargeState||"未充电"),fullChargeTime:Number(d.fullChargeTime||0),fullChargeTimeSecond:Number(d.fullChargeTimeSecond||0)};}
+    return{ok:false,error:(res&&(res.message||res.msg))||"接口无响应"};
+  }catch(e){return{ok:false,error:String(e)}}
+}
 async function fetchRideTrackDirect(acc,cfg,vin,page,pageSize,month){
   try{
     if(!acc)return{ok:false,error:"未找到账号"};
@@ -1036,6 +1046,11 @@ const Backend={
     if(isDemo())return (body&&body.action==="options")?DEMO_CTRL_OPTS:{ok:true,message:"演示模式：指令未真实下发"};
     if(isProxyMode()){return await proxyPost("/api/vehicle-control-ext",body)}
     return{ok:false,message:"车控扩展仅支持代理模式"}
+  },
+  async batteryState(userId,vin){
+    if(isDemo())return{ok:true,vinNo:"DEMO",charging:false,current:0,soc:70,voltage:80.5,chargeState:"未充电",fullChargeTime:0,fullChargeTimeSecond:0};
+    if(isProxyMode())return await proxyFetch("/api/battery-state?userId="+encodeURIComponent(userId||"")+(vin?"&vin="+encodeURIComponent(vin):""));
+    return await fetchBatteryStateDirect(rideAccLocal(userId),getCfg(),vin);
   },
   async infoCenter(userId,vin){
     if(isDemo())return DEMO_INFO;
@@ -1969,7 +1984,15 @@ async function renderRidePage(){
 }
 
 /* ================= v2.14.9 车辆页（监控 + 车控扩展 + 信息中心） ================= */
-let VH={accIdx:0,vin:"",cp:"",lockType:"1"};
+let VH={accIdx:0,vin:"",cp:"",lockType:"1",bs:null};
+function rideBattCfg(){try{return JSON.parse(localStorage.getItem("zh_batt_cfg")||"{}")||{}}catch(e){return{}}}
+function saveBattCfg(){
+  const ah=Number((document.getElementById("vh_batt_ah")||{}).value||0);
+  const vFull=Number((document.getElementById("vh_batt_vfull")||{}).value||0);
+  const cur=rideBattCfg();
+  localStorage.setItem("zh_batt_cfg",JSON.stringify({ah:ah>0?ah:0,vFull:vFull>0?vFull:0,vEmpty:cur.vEmpty||0}));
+  toast("电池设置已保存","ok");renderVehiclePage();
+}
 async function renderVehiclePage(){
   const el=document.getElementById("pageVehicle");if(!el)return;
   const list=ptAccounts();
@@ -1984,10 +2007,12 @@ async function renderVehiclePage(){
     const mon2=await Backend.vehicleMonitor(acc.userId,VH.vin);
     if(mon2&&mon2.ok){mon2.vehicles=vehList;mon=mon2}
   }
-  const [opts,info]=await Promise.all([
+  const [opts,info,bs]=await Promise.all([
     Backend.vehicleControlExt({action:"options",userId:acc.userId,vin:VH.vin||""}),
-    Backend.infoCenter(acc.userId,VH.vin||"")
+    Backend.infoCenter(acc.userId,VH.vin||""),
+    Backend.batteryState(acc.userId,VH.vin||"")
   ]);
+  VH.bs=(bs&&bs.ok)?bs:null;
   let html=accChipsHtml("vh");
   // 车辆选择（多车）
   if(vehList.length>1){
@@ -2022,9 +2047,23 @@ async function renderVehiclePage(){
   const cps=(opts&&Array.isArray(opts.chargePower))?opts.chargePower:[];
   if(cps.length){
     html+='<div style="font-size:12px;font-weight:700;color:var(--txt2);margin-bottom:4px">充电功率（W）</div><div class="opt-row">'
-      +cps.map(o=>'<button class="opt-chip '+(VH.cp===o.key?'on':'')+'" onclick="VH.cp=\''+esc(o.key)+'\';renderVehiclePage()">'+esc(o.key)+'</button>').join("")
+      +cps.map(o=>'<button class="opt-chip '+(VH.cp===o.key?'on':'')+'" onclick="VH.cp=\''+esc(o.key)+'\';renderVehiclePage()">'+(o.key==="1200"?"无限制":esc(o.key))+'</button>').join("")
       +'<button class="btn sm primary" onclick="extSet(\'chargePower\')">设置</button></div>';
   }
+  // v2.16.5 充电剩余时间（充电中且已设容量才显示）+ 电池设置
+  const bc=rideBattCfg();
+  if(VH.bs&&VH.bs.charging&&Number(bc.ah)>0&&VH.bs.soc>0&&VH.bs.soc<100&&VH.bs.current>0.5){
+    const remainMin=Math.max(1,Math.round(Number(bc.ah)*(100-VH.bs.soc)/100/VH.bs.current*60));
+    const hh=Math.floor(remainMin/60),mm=remainMin%60;
+    const offTxt=(VH.bs.fullChargeTimeSecond>0)?(" · 官方约 "+Math.round(VH.bs.fullChargeTimeSecond/60)+" 分"):"";
+    html+='<div class="mon-row"><span class="k">⏱ 充电剩余</span><span class="v num" style="color:var(--brand)">约 '+((hh>0?hh+" 时 ":"")+mm+" 分")+'</span></div>'
+      +'<div class="hint" style="margin-top:2px">估算 '+VH.bs.current.toFixed(1)+'A · '+VH.bs.soc+'% → '+(bc.vFull>0?bc.vFull+"V":"充满")+offTxt+'</div>';
+  }
+  html+='<div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap"><span style="font-size:12px;color:var(--txt2)">电池设置</span>'
+    +'<input id="vh_batt_ah" type="number" inputmode="decimal" placeholder="容量 Ah" value="'+(bc.ah||"")+'" style="width:86px;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:6px 8px;font-size:12px">'
+    +'<input id="vh_batt_vfull" type="number" inputmode="decimal" placeholder="满电 V" value="'+(bc.vFull||"")+'" style="width:86px;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:6px 8px;font-size:12px">'
+    +'<button class="btn sm" onclick="saveBattCfg()">保存</button></div>'
+    +'<div class="hint" style="margin-top:4px">设置容量后，充电中自动估算「充电剩余」（容量×(100−电量%)/100÷充电电流）；未设置不显示</div>';
   // v2.14.21 删除限速档位设置
   html+='</div>';
   // 信息中心卡
@@ -2071,8 +2110,8 @@ function init(){
   setTimeout(hideSplash,12000);
 }
 init();
+
 // 演示便捷入口：?tab=home|points|vehicle|ride|logs|cfg 直达对应标签页
 try{const _t=new URLSearchParams(location.search).get("tab");if(_t&&["home","points","vehicle","ride","logs","cfg"].includes(_t)){switchTab(_t);}}catch(e){}
-
 </script>
 <!--__JS5__-->
