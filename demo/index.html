@@ -580,7 +580,7 @@ nav.tabbar{
 <script>
 "use strict";
 /* ================= 常量 ================= */
-const APP_VERSION = "v2.16.2";
+const APP_VERSION = "v2.16.3";
 const KEYS = { cfg:"zeeho_cfg", accounts:"zeeho_accounts", logs:"zeeho_logs" };
 
 /* ================= 工具函数 ================= */
@@ -1397,7 +1397,7 @@ function renderCfg(){
     ensurePanelData().then(()=>renderCfg());
     return;
   }
-  const cfg=getCfg();cfgAccounts=(isProxyMode()&&STATE.panelAccounts?STATE.panelAccounts:getAccounts()).map(a=>({userName:a.userName||"",userId:a.userId||"",token:a.token||"",barkKey:a.barkKey||""}));
+  const cfg=getCfg();cfgAccounts=(isProxyMode()&&STATE.panelAccounts?STATE.panelAccounts:getAccounts()).map(a=>({userName:a.userName||"",userId:a.userId||"",token:cleanToken(a.token||""),barkKey:a.barkKey||""}));
   const el=document.getElementById("pageCfg");
   const accRows=cfgAccounts.map((a,idx)=>'<div class="acc-edit" data-i="'+idx+'"><div class="acc-edit-head"><span class="acc-edit-title"><span class="n">'+String(idx+1)+'</span>账号 '+String(idx+1)+'</span><span class="acts"><button class="btn sm" id="uidBtn_'+idx+'" onclick="fetchUserIdUI('+idx+')">获取ID</button><button class="btn sm danger" onclick="deleteAccountUI('+idx+')">删除</button></span></div>'+
   '<div class="form-grid"><div class="f-item"><label>昵称</label><input type="text" id="acc_name_'+idx+'" value="'+esc(a.userName)+'" placeholder="如 lucky798"></div><div class="f-item"><label>用户ID</label><input type="text" id="acc_uid_'+idx+'" value="'+esc(a.userId)+'" placeholder="留空可点「获取ID」" style="font-family:ui-monospace,Menlo,monospace;font-size:13px"></div></div>'+

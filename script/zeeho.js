@@ -2,7 +2,7 @@
 #!name=极核 每日签到 积分任务
 #!desc=极核打开我的插件自动捕获 user_id/Authorization/Cookie/User-Agent/app_secret，无需手动抓包；每日定时自动签到。仅供个人学习使用，请勿用于违规用途。
 #!author=lucky
-#!version=2.5.0
+#!version=2.5.2
 #!icon=https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/script/ZEEHO.png
 
 [Script]
@@ -627,11 +627,13 @@ function getPostId(data) {
   }
   return null;
 }
+// v2.5.2 抓取修复：①Token 剥离 "Bearer " 前缀后入库（请求侧 UserInfo 会统一补 Bearer）；
+// ②同一用户ID（或同一Token）视为同一账号 → 在原条目上更新，绝不新增；更新时保留面板配置的 barkKey。
 async function getCookie() {
   if ($request && $request.method === 'OPTIONS') return;
 
   const header = ObjectKeys2LowerCase($request.headers);
-  const token = header['authorization'];
+  const token = cleanCaptureToken(header['authorization']);
   const userAgent = header['user-agent'];
   const body = $.toObj($response.body);
   if (!(body?.data)) {
@@ -640,20 +642,34 @@ async function getCookie() {
   }
 
   const { id, nickName } = body?.data;
-  const newData = {
-    "userId": id,
-    "token": token,
-    "userName": nickName,
-    "userAgent": userAgent
+  const userId = String(id || "").trim();
+
+  let list = [];
+  try { const raw = $.getdata(ckName); list = raw ? JSON.parse(raw) : []; } catch(e) { list = []; }
+  if (!Array.isArray(list)) list = [];
+
+  // 先按用户ID匹配，再退化为按 Token 匹配（同一账号只更新、不新增）
+  let index = list.findIndex(e => e && userId && String(e.userId || "").trim() === userId);
+  if (index < 0 && token) index = list.findIndex(e => e && cleanCaptureToken(e.token) === token);
+
+  if (index >= 0) {
+    const old = list[index] || {};
+    list[index] = Object.assign({}, old, {
+      userId: userId || String(old.userId || "").trim(),
+      token: token || cleanCaptureToken(old.token),
+      userName: nickName || old.userName || "",
+      userAgent: userAgent || old.userAgent || ""
+    });
+  } else {
+    list.push({ userId: userId, token: token, userName: nickName, userAgent: userAgent });
   }
 
-  userCookie = userCookie ? JSON.parse(userCookie) : [];
-  const index = userCookie.findIndex(e => e.userId == newData.userId);
-
-  userCookie[index] ? userCookie[index] = newData : userCookie.push(newData);
-
-  $.setjson(userCookie, ckName);
-  $.msg($.name, `🎉${newData.userName}更新token成功!`, ``);
+  $.setjson(list, ckName);
+  $.msg($.name, `🎉${nickName}更新token成功!`, ``);
+}
+// 抓到的 Authorization 头原样带 "Bearer "，入库前统一剥离
+function cleanCaptureToken(t) {
+  return String(t || "").trim().replace(/^[bB]earer\s+/i, "").replace(/[\s"'`]+/g, "");
 }
 function getSign(type, params = {}, body = '') {
   const appConfig = {
