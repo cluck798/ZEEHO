@@ -1,6 +1,7 @@
-// ============= 极核 ZEEHO · Scriptable（单账号版 v1.3） =============
+// ============= 极核 ZEEHO · Scriptable（单账号版 v1.4） =============
 // 单账号：只维护一个账号，菜单内可随时「手机号登录 / 粘贴 Token」重设
 // 功能全集：自动签到 / 盲盒 / 补签 / 发布动态 · 车辆控制 · 充电监控 · 小组件（小 / 中 / 大 + 锁屏圆形 / 长方形）
+// v1.4：⚡电压模拟电量——车辆不上报百分比时按「空电/满电电压」估算，开启后停用充满提醒、低电提醒按估算%生效
 // v1.3：① H5 通道密钥轮换（appId=AiTXmBrm）② 签到/盲盒/补签接口迁到 /H5/ 前缀（服务端 2026-10 调整）
 // v1.2：① 单账号化改造（功能保留）② 发布内容 lucky ③ 随机设备指纹 ④ 服务端当日记录判签 ⑤ 中尺寸显示电压
 // ============= 配置与常量 =========
@@ -92,6 +93,10 @@ const DEFAULT_CFG = {
   notifyFull: true,          // 充满通知（电量100% 或 电压≥阈值）
   notifyLow: true,           // 低电量通知
   lowThreshold: 20,          // 低电量阈值（%）
+  voltageSim: false,         // ⚡电压模拟电量（v1.4）：车辆不上报百分比时按电压估算（开启后停用满电判断/充满提醒）
+  vEmpty: 0,                 // 空电电压（V）：如 63（需先设置才能开启电压模拟）
+  vFull: 0,                  // 满电电压（V）：如 84
+  batteryAh: 0,              // 电池容量（Ah）：如 28（用于估算剩余可用电量）
   monitorIntervalMin: 2,     // 前台驻留监控检测间隔（分钟）
   monitorDurationMin: 30,    // 前台驻留监控持续时长（分钟）
   aesKey: "ce2cd7cb57124c1349dd8543bf6fd31d", // 云端控车 AES-256 密钥（可修改）
@@ -909,6 +914,14 @@ async function fetchSupplementPrize({ supplementDate, token }) {
 }
 
 // ========== 获取电池信息（充电状态 + 电压/电流/温度 + 耗电统计） ==========
+// ⚡电压模拟电量（v1.4）：车辆不上报 soc 时按 (电压−空电电压)/(满电电压−空电电压) 线性估算
+function estimateSocByVoltage(voltage, cfg) {
+  const vFull = Number(cfg?.vFull || 0);
+  const vEmpty = Number(cfg?.vEmpty || 0);
+  if (!cfg?.voltageSim || !(vFull > vEmpty) || !(Number(voltage) > 0)) return { soc: 0, estimated: false };
+  const ratio = (Number(voltage) - vEmpty) / (vFull - vEmpty);
+  return { soc: Math.max(0, Math.min(100, Math.round(ratio * 100))), estimated: true };
+}
 async function fetchBatteryInfo({ vinNo, token }) {
   const url = joinUrl(BASE, API.batteryInfo(vinNo));
   const result = await safeRequest(requestWithSign, 'app', "GET", url, {}, "", token, "batteryInfo");
@@ -917,13 +930,19 @@ async function fetchBatteryInfo({ vinNo, token }) {
   const voltage = num(d.voltage || d.batteryVoltage || d.bmsVoltage || d.totalVoltage || d.batteryTotalVoltage || d.batVoltage || d.batteryVol);
   const current = num(d.current || d.batteryCurrent || d.bmsCurrent || d.batteryCur);
   const temp = num(d.batteryTemp || d.batTemp || d.bmsTemp || d.batteryTemperature || d.temperature);
-  const soc = num(d.soc || d.batteryLevel || d.bmssoc);
+  let soc = num(d.soc || d.batteryLevel || d.bmssoc);
+  let socEstimated = false;
+  if (soc <= 0) {
+    const est = estimateSocByVoltage(voltage, getStore().cfg);
+    if (est.estimated) { soc = est.soc; socEstimated = true; }
+  }
   return {
     chargeStateStr: String(d.chargeStateStr || d.chargeState || "未充电"),
     voltage: voltage > 0 ? voltage : 0,
     current: current,
     batteryTemp: temp,
     soc: soc,
+    socEstimated: socEstimated,
     residualRangeKm: num(d.hmiRidableMile || d.vehicleRidableMile || d.ridableMileage || d.residualRange),
     powerUseToday: num(d.powerUseToday),
     powerUseMonth: num(d.powerUseMonth),
@@ -1584,8 +1603,16 @@ function adaptWidgets(raw) {
   const pulledOut = String(d.batteryPullOutFlag ?? "") === "1";
   let statusText = address || "位置未知";
   if (pulledOut) statusText = "电池已拔出";
+  // ⚡电压模拟电量（v1.4）：车辆不上报百分比时按电压估算（组件显示"（估）"）
+  let batteryPercent = Math.max(0, Math.min(100, isFinite(soc) ? soc : 0));
+  let batteryPercentEstimated = false;
+  if (batteryPercent <= 0) {
+    const est = estimateSocByVoltage(isFinite(voltage) ? voltage : 0, getStore().cfg);
+    if (est.estimated) { batteryPercent = est.soc; batteryPercentEstimated = true; }
+  }
   return {
-    batteryPercent: Math.max(0, Math.min(100, isFinite(soc) ? soc : 0)),
+    batteryPercent,
+    batteryPercentEstimated,
     residualRangeKm: isFinite(range) ? range : 0,
     voltage: isFinite(voltage) && voltage > 0 ? voltage : 0,
     address,
@@ -1629,7 +1656,8 @@ function runChargeNotifyCheck(acc, b, vehName = "") {
 
     const voltThr = Number(cfg.voltageThreshold || 0);
     const voltMode = voltThr > 0; // 设置了电压 → 只看电压；未设置 → 只看电量100%（互斥）
-    const isFull = voltMode ? (volt > 0 && volt >= voltThr) : soc >= 100;
+    // ⚡电压模拟开启：电压估算的"充满"不可靠 → 停用充满判断/通知（低电提醒保留，按估算%生效）
+    const isFull = !cfg.voltageSim && (voltMode ? (volt > 0 && volt >= voltThr) : soc >= 100);
     if (isFull) {
       res.full = true;
       const lastAt = Number(st.lastFullNotifyAt || 0);
@@ -1647,7 +1675,7 @@ function runChargeNotifyCheck(acc, b, vehName = "") {
     if (cfg.notifyLow && !charging && soc > 0 && soc <= Number(cfg.lowThreshold || 20)) {
       res.low = true;
       if (st.lastLowNotifyDate !== today) {
-        notifySimple("⚠️ 电量偏低", `${name} 当前${soc}%，续航 ${b.residualRangeKm || 0}km，记得充电`);
+        notifySimple("⚠️ 电量偏低", `${name} 当前${soc}%${b.socEstimated ? "（估算）" : ""}，续航 ${b.residualRangeKm || 0}km，记得充电`);
         st.lastLowNotifyDate = today;
         res.notifiedLow = true;
         saveStore(getStore());
@@ -1656,6 +1684,7 @@ function runChargeNotifyCheck(acc, b, vehName = "") {
 
     st.lastMonitorAt = now;
     st.lastSoc = soc;
+    st.lastSocEstimated = !!b?.socEstimated;
     st.lastVoltage = volt;
     return res;
   } catch (e) {
@@ -2468,7 +2497,7 @@ const C_DIVIDER = new Color("#475569");   // 分隔符 · - 石板灰
   pctRow.spacing = 3;
 
   // 电量百分比数字 - 使用独立的颜色 C_BATT（深灰蓝）
-  const pctTxt = pctRow.addText(`${percent}%`);
+  const pctTxt = pctRow.addText(`${percent}%${data.batteryPercentEstimated ? "（估）" : ""}`);
   pctTxt.font = Font.heavySystemFont(22);
   pctTxt.textColor = C_BATT;
   pctTxt.lineLimit = 1;
@@ -2730,7 +2759,7 @@ function buildSmallWidget(data, batteryInfo = {}) {
   const pctRow = w.addStack();
   pctRow.layoutHorizontally();
   pctRow.centerAlignContent();
-  const pctTxt = pctRow.addText(`${pct}%`);
+  const pctTxt = pctRow.addText(`${pct}%${data.batteryPercentEstimated ? "（估）" : ""}`);
   pctTxt.font = Font.heavySystemFont(24);
   pctTxt.textColor = C_BATT;
   if (charging) {
@@ -2820,7 +2849,7 @@ async function buildLargeWidget(data, batteryInfo = {}, chargeStateStr = "未充
   const rowBatt = w.addStack();
   rowBatt.layoutHorizontally();
   rowBatt.centerAlignContent();
-  const pctTxt = rowBatt.addText(`${pct}%`);
+  const pctTxt = rowBatt.addText(`${pct}%${data.batteryPercentEstimated ? "（估）" : ""}`);
   pctTxt.font = Font.heavySystemFont(30);
   pctTxt.textColor = C_BATT;
   if (charging) {
@@ -2988,7 +3017,7 @@ function buildAccessoryCircular(data) {
   } catch (e) {
     logDebug("圆形组件绘制失败，降级为纯文字", String(e?.message || e));
   }
-  const t = w.addText(`${pct}%`);
+  const t = w.addText(`${pct}%${data.batteryPercentEstimated ? "（估）" : ""}`);
   t.font = Font.semiboldSystemFont(9);
   t.centerAlignText();
   return w;
@@ -3008,7 +3037,7 @@ function buildAccessoryRectangular(data) {
   const row2 = w.addStack();
   row2.layoutHorizontally();
   row2.centerAlignContent();
-  const pctT = row2.addText(`${Math.round(Number(data.batteryPercent || 0))}%`);
+  const pctT = row2.addText(`${Math.round(Number(data.batteryPercent || 0))}%${data.batteryPercentEstimated ? "（估）" : ""}`);
   pctT.font = Font.systemFont(12);
   row2.addSpacer(4);
   const rangeT = row2.addText(`${data.residualRangeKm}km`);
@@ -3021,7 +3050,7 @@ function buildAccessoryRectangular(data) {
 
 function buildAccessoryInline(data) {
   const w = new ListWidget();
-  const t = w.addText(`${Math.round(Number(data.batteryPercent || 0))}% · ${data.residualRangeKm}km · ${data.signedToday ? "已签" : "未签"}`);
+  const t = w.addText(`${Math.round(Number(data.batteryPercent || 0))}%${data.batteryPercentEstimated ? "（估）" : ""} · ${data.residualRangeKm}km · ${data.signedToday ? "已签" : "未签"}`);
   t.font = Font.systemFont(12);
   return w;
 }
@@ -3294,6 +3323,7 @@ async function runSinglePipeline(acc, vinNo, opts = {}) {
   const data = {
     signedToday: alreadySignedToday,
     batteryPercent: widgets.batteryPercent,
+    batteryPercentEstimated: !!widgets.batteryPercentEstimated,
     residualRangeKm: widgets.residualRangeKm,
     voltage: widgets.voltage || Number(batteryInfo.voltage || 0),
     address: widgets.address,
@@ -3588,13 +3618,14 @@ async function menuMonitor() {
   const st = acc.state || {};
   const a = new Alert();
   a.title = "🔋 充电监控";
-  a.message = `当前：${st.lastSoc != null ? st.lastSoc + "%" : "—"}${st.lastVoltage ? " · " + Number(st.lastVoltage).toFixed(1) + "V" : ""}\n方案A：组件刷新/运行脚本时自动检测（已启用）\n方案B：前台驻留监控（脚本保持打开）`;
-  a.addAction("1️⃣ 立即检测一次");
-  a.addAction(`2️⃣ 驻留监控（每${cfg.monitorIntervalMin}分×${cfg.monitorDurationMin}分）`);
-  a.addAction(`3️⃣ 满电判断：${Number(cfg.voltageThreshold || 0) > 0 ? `电压≥${cfg.voltageThreshold}V` : "电量100%"}`);
-  a.addAction(`4️⃣ 充满通知：${cfg.notifyFull ? "✅开" : "❌关"}`);
-  a.addAction(`5️⃣ 低电量通知：${cfg.notifyLow ? "✅开" : "❌关"}（≤${cfg.lowThreshold}%）`);
-  a.addAction("6️⃣ 后台定时教程（快捷指令）");
+  a.message = `当前：${st.lastSoc != null ? st.lastSoc + "%" + (st.lastSocEstimated ? "（估）" : "") : "—"}${st.lastVoltage ? " · " + Number(st.lastVoltage).toFixed(1) + "V" : ""}\n方案A：组件刷新/运行脚本时自动检测（已启用）\n方案B：前台驻留监控（脚本保持打开）`;
+  a.addAction("立即检测一次");
+  a.addAction(`驻留监控（每${cfg.monitorIntervalMin}分×${cfg.monitorDurationMin}分）`);
+  a.addAction(`⚡ 电压模拟电量：${cfg.voltageSim ? "✅开" : "❌关"}${cfg.voltageSim && Number(cfg.vEmpty) > 0 && Number(cfg.vFull) > Number(cfg.vEmpty) ? `（${cfg.vEmpty}V~${cfg.vFull}V${Number(cfg.batteryAh) > 0 ? " · " + cfg.batteryAh + "Ah" : ""}）` : ""}`);
+  a.addAction(`低电量提醒：${cfg.notifyLow ? "✅开" : "❌关"}（≤${cfg.lowThreshold}%）`);
+  a.addAction(`充满提醒：${cfg.voltageSim ? "已自动停用（电压模拟）" : (cfg.notifyFull ? "✅开" : "❌关")}`);
+  a.addAction(`满电判断：${cfg.voltageSim ? "已停用（电压模拟）" : (Number(cfg.voltageThreshold || 0) > 0 ? `电压≥${cfg.voltageThreshold}V` : "电量100%")}`);
+  a.addAction("后台定时教程（快捷指令）");
   a.addCancelAction("返回");
   const idx = await a.present();
   if (idx === -1) return;
@@ -3606,7 +3637,7 @@ async function menuMonitor() {
       if (r.result.full) hits.push("已达满电条件");
       if (r.result.low) hits.push("低电量");
       const tail = hits.length ? `触发：${hits.join("、")}${(r.result.notifiedFull || r.result.notifiedLow) ? "（已通知）" : "（本次未通知）"}` : "未触发通知条件";
-      await simpleAlert("🔋 检测完成", `${dispName(acc)}\n${b.chargeStateStr} · ${Number(b.soc || 0)}% · ${b.voltage ? b.voltage.toFixed(1) + "V" : "无电压数据"}\n${tail}`);
+      await simpleAlert("🔋 检测完成", `${dispName(acc)}\n${b.chargeStateStr} · ${Number(b.soc || 0)}%${b.socEstimated ? "（估算）" : ""} · ${b.voltage ? b.voltage.toFixed(1) + "V" : "无电压数据"}\n${tail}`);
     } catch (e) { await simpleAlert("❌ 检测失败", friendlyErr(e)); }
   } else if (idx === 1) {
     const pa = new Alert();
@@ -3623,9 +3654,66 @@ async function menuMonitor() {
     cfg.monitorDurationMin = dur;
     saveStore(getStore());
     const res = await runForegroundMonitor(acc, { intervalMin: iv, durationMin: dur });
-    const last = res.last ? `${res.last.battery.chargeStateStr} · ${Number(res.last.battery.soc || 0)}%` : "无数据";
+    const last = res.last ? `${res.last.battery.chargeStateStr} · ${Number(res.last.battery.soc || 0)}%${res.last.battery.socEstimated ? "（估算）" : ""}` : "无数据";
     await simpleAlert("✅ 驻留监控结束", `共检测 ${res.ticks} 次 · 触发通知 ${res.notified} 次\n最后状态：${last}`);
   } else if (idx === 2) {
+    const sim = !!cfg.voltageSim;
+    const va = new Alert();
+    va.title = "⚡ 电压模拟电量";
+    va.message = [
+      `当前：${sim ? "✅开启" : "❌关闭"}`,
+      `空电电压：${Number(cfg.vEmpty) > 0 ? cfg.vEmpty + " V" : "未设置"} · 满电电压：${Number(cfg.vFull) > 0 ? cfg.vFull + " V" : "未设置"} · 电池容量：${Number(cfg.batteryAh) > 0 ? cfg.batteryAh + " Ah" : "未设置"}`,
+      "",
+      "车辆不上报电量百分比时，按 (当前电压−空电电压)/(满电电压−空电电压) 自动估算百分比；容量用于估算剩余电量。",
+      "开启后将停用「满电判断 / 充满提醒」（电压估算充满不可靠）；低电提醒按估算百分比照常生效。",
+    ].join("\n");
+    va.addAction(sim ? "关闭该功能" : "开启该功能");
+    va.addAction("设置空电电压…");
+    va.addAction("设置满电电压…");
+    va.addAction("设置电池容量(Ah)…");
+    va.addCancelAction("返回");
+    const vi = await va.present();
+    if (vi === -1) return;
+    const promptNum = async (title, message, curV, defV, unit) => {
+      const pa = new Alert();
+      pa.title = title;
+      pa.message = message;
+      pa.addTextField(unit, String(curV > 0 ? curV : defV));
+      pa.addAction("保存");
+      pa.addCancelAction("取消");
+      if ((await pa.present()) === -1) return null;
+      const v = Number(pa.textFieldValue(0));
+      if (!isFinite(v) || v <= 0) { await simpleAlert("❌ 无效数值", "请输入大于0的数字"); return null; }
+      return v;
+    };
+    if (vi === 0) {
+      const c = getStore().cfg;
+      if (!c.voltageSim) {
+        if (!(Number(c.vEmpty) > 0) || !(Number(c.vFull) > Number(c.vEmpty))) {
+          await simpleAlert("⚠️ 请先设置电压", "开启前请先设置「空电电压」与「满电电压」（示例：空电 63V / 满电 84V）");
+          return;
+        }
+        c.voltageSim = true;
+        c.notifyFull = false; // 电压模拟模式下停用充满提醒
+        saveStore(getStore());
+        await simpleAlert("✅ 已开启", `电压模拟电量：开（${c.vEmpty}V ~ ${c.vFull}V）\n已自动停用充满提醒，低电提醒按估算%生效`);
+      } else {
+        c.voltageSim = false;
+        saveStore(getStore());
+        await simpleAlert("✅ 已关闭", "电压模拟电量：关（恢复读取车辆原始电量数据）");
+      }
+    } else if (vi === 1) {
+      const v = await promptNum("设置空电电压", "车辆电量耗尽时的电压（示例 63V；不同车型/电池可能不同）", Number(cfg.vEmpty), 63, "空电电压(V)");
+      if (v != null) { getStore().cfg.vEmpty = v; saveStore(getStore()); await simpleAlert("✅ 已保存", `空电电压：${v} V`); }
+    } else if (vi === 2) {
+      const v = await promptNum("设置满电电压", "充满时的电压（示例 84V；不同车型/电池可能不同）", Number(cfg.vFull), 84, "满电电压(V)");
+      if (v != null) { getStore().cfg.vFull = v; saveStore(getStore()); await simpleAlert("✅ 已保存", `满电电压：${v} V`); }
+    } else if (vi === 3) {
+      const v = await promptNum("设置电池容量", "用于估算剩余可用电量（示例 28Ah；可查车辆铭牌或 BMS 参数）", Number(cfg.batteryAh), 28, "电池容量(Ah)");
+      if (v != null) { getStore().cfg.batteryAh = v; saveStore(getStore()); await simpleAlert("✅ 已保存", `电池容量：${v} Ah`); }
+    }
+  } else if (idx === 5) {
+    if (cfg.voltageSim) { await simpleAlert("⚡ 已停用", "电压模拟电量开启时不再用电压判断「充满」（估算不可靠）。\n如确需按电压阈值通知充满，请先关闭电压模拟。"); return; }
     const cur = Number(cfg.voltageThreshold || 0);
     const ma = new Alert();
     ma.title = "满电判断方式";
@@ -3652,14 +3740,15 @@ async function menuMonitor() {
       saveStore(getStore());
       await simpleAlert("✅ 已保存", `满电通知：电压 ≥ ${v}V 时提醒`);
     }
-  } else if (idx === 3) {
+  } else if (idx === 4) {
+    if (cfg.voltageSim) { await simpleAlert("⚡ 已停用", "电压模拟电量开启时「充满提醒」自动停用（电压估算充满不可靠）。\n如需按电压判断充满，请先关闭电压模拟。"); return; }
     getStore().cfg.notifyFull = !getStore().cfg.notifyFull;
     saveStore(getStore());
     await simpleAlert("✅ 已更新", `充满通知：${getStore().cfg.notifyFull ? "开" : "关"}`);
-  } else if (idx === 4) {
+  } else if (idx === 3) {
     const pa = new Alert();
-    pa.title = "低电量通知";
-    pa.message = `当前：${cfg.notifyLow ? "开" : "关"} · 阈值 ≤${cfg.lowThreshold}%\n修改阈值后自动开启；输入 0 表示关闭`;
+    pa.title = "低电量提醒";
+    pa.message = `当前：${cfg.notifyLow ? "开" : "关"} · 阈值 ≤${cfg.lowThreshold}%\n修改阈值后自动开启；输入 0 表示关闭\n（电压模拟开启时，按估算百分比判断）`;
     pa.addTextField("低电量阈值(%)", String(cfg.lowThreshold));
     pa.addAction("保存");
     pa.addCancelAction("取消");
@@ -3670,7 +3759,7 @@ async function menuMonitor() {
     else { getStore().cfg.notifyLow = true; getStore().cfg.lowThreshold = v; }
     saveStore(getStore());
     await simpleAlert("✅ 已保存", `低电量通知：${getStore().cfg.notifyLow ? "开（≤" + v + "%）" : "关"}`);
-  } else if (idx === 5) {
+  } else if (idx === 6) {
     await simpleAlert("🕒 后台定时（快捷指令）", [
       "iOS 不允许脚本自行后台运行，用「快捷指令」自动化最接近后台定时：",
       "",
@@ -3915,7 +4004,7 @@ async function runDirectAction(action) {
     try {
       const r = await monitorOnce(acc);
       const b = r.battery;
-      const line = `${dispName(acc)}｜${b.chargeStateStr} · ${Number(b.soc || 0)}%${b.voltage ? " · " + b.voltage.toFixed(1) + "V" : ""}`;
+      const line = `${dispName(acc)}｜${b.chargeStateStr} · ${Number(b.soc || 0)}%${b.socEstimated ? "（估算）" : ""}${b.voltage ? " · " + b.voltage.toFixed(1) + "V" : ""}`;
       logStep("充电监控", "ok", line);
       if (r.result && (r.result.notifiedFull || r.result.notifiedLow)) { /* 已在检测中通知 */ }
       if (!silent) await simpleAlert("🔋 监控结果", line);
