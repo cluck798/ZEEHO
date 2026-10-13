@@ -24,7 +24,7 @@
 
 ### 🏍️ 隐藏骑行数据（骑行页）
 - 还原官方 App 按车型能力位隐藏的统计：**极速、急加速、急刹、压弯**
-- 月度日汇总（`myRideInfo`）+ 轨迹扫描（`ridetrack_v2`）：急刹/压弯按原始轨迹重算（算法移植自 [Zeeho SpeedHunter](https://github.com/RyanYuFish/Zeeho-SpeedHunter)，AGPL-3.0）
+- 月度日汇总（`myRideInfo`）+ 轨迹扫描（`ridetrack_v2`）：急刹/压弯按原始轨迹重算
 - 点击日期查看每趟行程明细（出发时间 / 里程 / 均速 / 极速 / 急刹 / 压弯）
 
 ### 🎛️ 远程车辆控制（4G 下发指令）
