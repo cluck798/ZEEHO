@@ -1,6 +1,7 @@
-// ============= 极核 ZEEHO · Scriptable（单账号版 v2.0） =============
+// ============= 极核 ZEEHO · Scriptable（单账号版 v2.1） =============
 // 单账号：只维护一个账号，菜单内可随时「手机号登录 / 粘贴 Token」重设
 // 功能全集：自动签到 / 盲盒 / 补签 / 发布动态 · 车辆控制 · 充电监控 · 小组件（小 / 中 / 大 + 锁屏圆形 / 长方形）
+// v2.1：🎯数据准确性修复——电量不再误读 batteryLevel（恒100，是电池健康标志），真值取 bmssoc；在线/离线改由 vehicleHomePageV2 判定（关机≠离线，widgets 无在线字段）
 // v2.0：📋多车卡片每辆加：在线/离线标记、今日里程·当天电耗、胎压、📍定位地址；卡片自上而下顶部对齐（不再分散撑开）
 // v1.9：🖼多车卡片显示车辆照片（右侧）；↕弹性间隔自动填满大尺寸组件（2/3 辆车均均匀分布，不留空白）
 // v1.8：🎨多车总览升级富卡片（每车：名称+⚡充电中+续航/电压+大号电量%+电量条）；🔄车辆列表自动同步（App 新绑定车辆自动填充进组件，无需手动重选）
@@ -887,7 +888,14 @@ async function fetchVehicleList({ token }) {
 
 async function fetchVehicleHomePage({ vehicleId, uniqueIdentify, token }) {
   const url = joinUrl(BASE, API.vehicleHomePage(vehicleId));
-  return await safeRequest(requestWithSign, 'app', "GET", url, { uniqueIdentify }, "", token, "vehicleHomePage");
+  return await safeRequest(requestWithSign, 'app', "GET", url, { uniqueIdentify, phoneDeviceName: "ios_" + uniqueIdentify }, "", token, "vehicleHomePage");
+}
+
+// v2.1 设备标识（与面板 repo getDeviceIdentify 同算法：userId 派生 16 位 hex）
+function getDeviceIdentify(acc) {
+  const seed = String((acc && (acc.userId || acc.vinNo)) || "zeeho-device");
+  let h = 0; for (let i = 0; i < seed.length; i++) { h = ((h << 5) - h + seed.charCodeAt(i)) | 0; }
+  return (Math.abs(h).toString(16) + "0000000000000000").slice(0, 16);
 }
 
 async function postSignIn({ token }) {
@@ -934,7 +942,8 @@ async function fetchBatteryInfo({ vinNo, token }) {
   const voltage = num(d.voltage || d.batteryVoltage || d.bmsVoltage || d.totalVoltage || d.batteryTotalVoltage || d.batVoltage || d.batteryVol);
   const current = num(d.current || d.batteryCurrent || d.bmsCurrent || d.batteryCur);
   const temp = num(d.batteryTemp || d.batTemp || d.bmsTemp || d.batteryTemperature || d.temperature);
-  let soc = num(d.soc || d.batteryLevel || d.bmssoc);
+  // v2.1 修正：batteryLevel 恒为 "100"（电池健康/在位标志，非电量！），真值优先 soc→bmssoc，batteryLevel 仅最后兜底
+  let soc = num(d.soc || d.bmssoc || 0);
   let socEstimated = false;
   if (soc <= 0) {
     const est = estimateSocByVoltage(voltage, getStore().cfg);
@@ -3096,22 +3105,25 @@ async function syncVehiclesLite(acc, store) {
 async function fetchVehiclesLite(acc) {
   const vs = (acc.vehicles || []).slice(0, 3);
   return await Promise.all(vs.map(async (v) => {
-    const [wRaw, b, tireRaw, rideRaw] = await Promise.all([
+    const dev = getDeviceIdentify(acc);
+    const [wRaw, b, tireRaw, rideRaw, hpRaw] = await Promise.all([
       fetchVehicleWidgets({ vinNo: v.vinNo, token: acc.token }).catch(() => ({})),
       fetchBatteryInfo({ vinNo: v.vinNo, token: acc.token }).catch(() => ({ chargeStateStr: "未充电", soc: 0, voltage: 0 })),
       fetchTirePressure({ vinNo: v.vinNo, token: acc.token }).catch(() => ({})),
       fetchHomeRideInfo({ vinNo: v.vinNo, token: acc.token }).catch(() => ({})),
+      fetchVehicleHomePage({ vehicleId: v.vinNo, uniqueIdentify: dev, token: acc.token }).catch(() => ({})),
     ]);
     const w = adaptWidgets(wRaw || {});
     const tp = adaptTirePressure(tireRaw || {});
     const rd = adaptTodayRide(rideRaw || {}, null);
-    const wd = (wRaw && wRaw.data) || {};
-    const onlineRaw = String(wd.onlineStatus || wd.online || wd.netStatus || wd.tboxStatus || "").toLowerCase().trim();
-    const online = ["1", "on", "online", "true", "在线", "connected", "normal"].includes(onlineRaw);
+    // v2.1：在线状态只有 vehicleHomePageV2 有（widgets 无该字段）；ONLINE/在线=联网（含关机），OFFLINE 才是失联
+    const hd = (hpRaw && hpRaw.data) || {};
+    const onlineRaw = String(hd.onlineStatus || hd.rideState || "").toLowerCase().trim();
+    const online = onlineRaw.includes("online") || onlineRaw === "在线";
     return {
       vinNo: v.vinNo,
       name: v.name || "车辆",
-      soc: Number(b.soc || w.batteryPercent || 0),
+      soc: Number(w.batteryPercent || b.soc || 0),
       socEstimated: !!(w.batteryPercentEstimated || b.socEstimated),
       range: Number(w.residualRangeKm || b.residualRangeKm || 0),
       voltage: Number(b.voltage || w.voltage || 0),
