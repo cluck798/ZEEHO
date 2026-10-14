@@ -1,6 +1,7 @@
-// ============= 极核 ZEEHO · Scriptable（单账号版 v1.9） =============
+// ============= 极核 ZEEHO · Scriptable（单账号版 v2.0） =============
 // 单账号：只维护一个账号，菜单内可随时「手机号登录 / 粘贴 Token」重设
 // 功能全集：自动签到 / 盲盒 / 补签 / 发布动态 · 车辆控制 · 充电监控 · 小组件（小 / 中 / 大 + 锁屏圆形 / 长方形）
+// v2.0：📋多车卡片每辆加：在线/离线标记、今日里程·当天电耗、胎压、📍定位地址；卡片自上而下顶部对齐（不再分散撑开）
 // v1.9：🖼多车卡片显示车辆照片（右侧）；↕弹性间隔自动填满大尺寸组件（2/3 辆车均均匀分布，不留空白）
 // v1.8：🎨多车总览升级富卡片（每车：名称+⚡充电中+续航/电压+大号电量%+电量条）；🔄车辆列表自动同步（App 新绑定车辆自动填充进组件，无需手动重选）
 // v1.7：🚗大尺寸组件支持一账号多车总览（每车一行：电量/续航/电压/充电⚡，★=默认车；单辆车时保持原布局）
@@ -3093,13 +3094,20 @@ async function syncVehiclesLite(acc, store) {
 }
 
 async function fetchVehiclesLite(acc) {
-  const vs = (acc.vehicles || []).slice(0, 4);
+  const vs = (acc.vehicles || []).slice(0, 3);
   return await Promise.all(vs.map(async (v) => {
-    const [wRaw, b] = await Promise.all([
+    const [wRaw, b, tireRaw, rideRaw] = await Promise.all([
       fetchVehicleWidgets({ vinNo: v.vinNo, token: acc.token }).catch(() => ({})),
       fetchBatteryInfo({ vinNo: v.vinNo, token: acc.token }).catch(() => ({ chargeStateStr: "未充电", soc: 0, voltage: 0 })),
+      fetchTirePressure({ vinNo: v.vinNo, token: acc.token }).catch(() => ({})),
+      fetchHomeRideInfo({ vinNo: v.vinNo, token: acc.token }).catch(() => ({})),
     ]);
     const w = adaptWidgets(wRaw || {});
+    const tp = adaptTirePressure(tireRaw || {});
+    const rd = adaptTodayRide(rideRaw || {}, null);
+    const wd = (wRaw && wRaw.data) || {};
+    const onlineRaw = String(wd.onlineStatus || wd.online || wd.netStatus || wd.tboxStatus || "").toLowerCase().trim();
+    const online = ["1", "on", "online", "true", "在线", "connected", "normal"].includes(onlineRaw);
     return {
       vinNo: v.vinNo,
       name: v.name || "车辆",
@@ -3108,7 +3116,13 @@ async function fetchVehiclesLite(acc) {
       range: Number(w.residualRangeKm || b.residualRangeKm || 0),
       voltage: Number(b.voltage || w.voltage || 0),
       charging: !!b.chargeStateStr && b.chargeStateStr !== "未充电",
-      pic: String(v.pic || ""),
+      pic: String(v.pic || w.vehicleImageUrl || ""),
+      online,
+      address: w.address || "",
+      todayKm: Number(rd.distanceKm || 0),
+      powerToday: Number(b.powerUseToday || 0),
+      tireF: String(tp.frontPressure || ""),
+      tireR: String(tp.rearPressure || ""),
       isCurrent: v.vinNo === acc.activeVin,
     };
   }));
@@ -3153,18 +3167,19 @@ async function buildLargeWidgetMulti(data) {
   const timeTxt = rowTop.addText(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
   timeTxt.font = Font.systemFont(9);
   timeTxt.textColor = C_TEXT;
-  // 每车一张富卡片：左列（名称/⚡/大号%+续航电压/电量条）+ 右侧车辆照片；卡片间弹性 spacer 自动填满不留空白
+  // 每车一张富信息卡片，自上而下顶部对齐；照片在右；末尾弹性 spacer 把积分行压到底部
   const show = rows.slice(0, 3);
-  const imgH = show.length >= 3 ? 46 : 70;
+  const tight = show.length >= 3;
+  const imgH = tight ? 40 : 64;
   const imgW = Math.round(imgH * 1.55);
   const barW = Math.max(120, 300 - imgW - 12);
-  w.addSpacer();
   for (let vi = 0; vi < show.length; vi++) {
     const v = show[vi];
+    if (vi > 0) w.addSpacer(tight ? 3 : 6);
     const pct = Math.round(Number(v.soc || 0));
     const card = w.addStack();
     card.layoutHorizontally();
-    card.centerAlignContent();
+    card.topAlignContent();
     card.spacing = 6;
     const left = card.addStack();
     left.layoutVertically();
@@ -3174,25 +3189,47 @@ async function buildLargeWidgetMulti(data) {
     r1.centerAlignContent();
     r1.spacing = 4;
     const nm = r1.addText((v.isCurrent ? "★" : "") + String(v.name || "车辆"));
-    nm.font = Font.semiboldSystemFont(13);
+    nm.font = Font.semiboldSystemFont(tight ? 11 : 12);
     nm.textColor = v.isCurrent ? C_NAME : C_BATT;
     nm.lineLimit = 1;
-    if (v.charging) { const ch = r1.addText(" ⚡"); ch.font = Font.systemFont(11); ch.textColor = C_OK; }
-    if (v.socEstimated) { const est = r1.addText("（估）"); est.font = Font.systemFont(9); est.textColor = C_WARN; }
+    if (v.charging) { const ch = r1.addText(" ⚡"); ch.font = Font.systemFont(10); ch.textColor = C_OK; }
+    if (v.socEstimated) { const est = r1.addText("（估）"); est.font = Font.systemFont(8); est.textColor = C_WARN; }
+    r1.addSpacer(3);
+    const onl = r1.addText(v.online ? "在线" : "离线");
+    onl.font = Font.systemFont(8);
+    onl.textColor = v.online ? C_OK : new Color("#94a3b8");
     const r2 = left.addStack();
     r2.layoutHorizontally();
     r2.centerAlignContent();
     r2.spacing = 6;
     const big = r2.addText(`${pct}%`);
-    big.font = Font.heavySystemFont(22);
+    big.font = Font.heavySystemFont(tight ? 18 : 21);
     big.textColor = v.charging ? C_OK : (pct <= 20 ? C_DANGER : pct <= 50 ? C_WARN : C_BATT);
     const volt = Number(v.voltage || 0);
     const vr = r2.addText(`${Number(v.range || 0)}km${volt > 0 ? " · " + volt.toFixed(1) + "V" : ""}`);
-    vr.font = Font.systemFont(11);
+    vr.font = Font.systemFont(10);
     vr.textColor = C_TEXT;
     const barFill = v.charging ? new Color("#10b981") : pct <= 20 ? new Color("#ef4444") : pct <= 50 ? new Color("#f59e0b") : new Color("#005782");
-    const bar = left.addImage(drawProgressBar(pct, barW, 6, barFill, new Color("#DBEAFE")));
-    bar.imageSize = new Size(barW, 6);
+    const bar = left.addImage(drawProgressBar(pct, barW, 5, barFill, new Color("#DBEAFE")));
+    bar.imageSize = new Size(barW, 5);
+    const r3 = left.addStack();
+    r3.layoutHorizontally();
+    const ride = r3.addText(`今日 ${Number(v.todayKm || 0).toFixed(1)}km · 电耗 ${Number(v.powerToday || 0).toFixed(2)}kWh`);
+    ride.font = Font.systemFont(tight ? 8 : 9);
+    ride.textColor = C_TEXT;
+    const r4 = left.addStack();
+    r4.layoutHorizontally();
+    const hasTire = (v.tireF && v.tireF !== "未绑定") || (v.tireR && v.tireR !== "未绑定");
+    const tire = r4.addText(hasTire ? `胎压 前 ${v.tireF || "—"} · 后 ${v.tireR || "—"}` : "胎压 未绑定");
+    tire.font = Font.systemFont(tight ? 8 : 9);
+    tire.textColor = C_TEXT;
+    if (v.address) {
+      const r5 = left.addStack();
+      const addr = r5.addText(`📍 ${v.address}`);
+      addr.font = Font.systemFont(tight ? 7 : 8);
+      addr.textColor = C_TEXT;
+      addr.lineLimit = 1;
+    }
     card.addSpacer();
     const imgUrl = String(v.pic || "") || (v.isCurrent ? String(data.vehicleImageUrl || "") : "");
     if (imgUrl.trim() !== "") {
@@ -3201,9 +3238,9 @@ async function buildLargeWidgetMulti(data) {
         if (img) { const im = card.addImage(img); im.imageSize = new Size(imgW, imgH); im.applyFillingContentMode(); im.rightAlignImage(); }
       } catch (e) { }
     }
-    w.addSpacer();
   }
-  if (rows.length > 3) { const more = w.addText(`共 ${rows.length} 辆车（显示前 3 辆）`); more.font = Font.systemFont(9); more.textColor = C_TEXT; w.addSpacer(); }
+  if (rows.length > 3) { const more = w.addText(`共 ${rows.length} 辆车（显示前 3 辆）`); more.font = Font.systemFont(8); more.textColor = C_TEXT; }
+  w.addSpacer();
   w.addSpacer(2);
   // 积分行
   const rowPts = w.addStack();
