@@ -1,6 +1,7 @@
-// ============= 极核 ZEEHO · Scriptable（单账号版 v1.5） =============
+// ============= 极核 ZEEHO · Scriptable（单账号版 v1.6） =============
 // 单账号：只维护一个账号，菜单内可随时「手机号登录 / 粘贴 Token」重设
 // 功能全集：自动签到 / 盲盒 / 补签 / 发布动态 · 车辆控制 · 充电监控 · 小组件（小 / 中 / 大 + 锁屏圆形 / 长方形）
+// v1.6：🎁盲盒对齐官方 H5——POST /H5/signin/lottery?dateTime=<开盒日>（旧 GET boxType 形态服务端已不识别）
 // v1.5：⏱充电剩余时间——充电中且已设电池容量时，按 容量×(100−电量%)/100÷充电电流 估算（未设置不显示）
 // v1.4：⚡电压模拟电量——车辆不上报百分比时按「空电/满电电压」估算，开启后停用充满提醒、低电提醒按估算%生效
 // v1.3：① H5 通道密钥轮换（appId=AiTXmBrm）② 签到/盲盒/补签接口迁到 /H5/ 前缀（服务端 2026-10 调整）
@@ -900,13 +901,11 @@ async function fetchSigninStatus({ token }) {
   return await safeRequest(requestWithSign, 'h5', "GET", url, params, null, token, "signin(GET status)");
 }
 
-async function fetchSigninLottery({ token }) {
+// v1.6 对齐官方 H5：POST /H5/signin/lottery?dateTime=<开盒日>（query 入签、空 body）
+async function fetchSigninLottery({ token, dateTime }) {
   const url = joinUrl(H5_BASE, API.signinLottery);
-  const params = { 
-    boxType: 0,
-    server_name: SERVER_NAME 
-  };
-  return await safeRequest(requestWithSign, 'h5', "GET", url, params, null, token, "signinLottery");
+  const params = dateTime ? { dateTime } : {};
+  return await safeRequest(requestWithSign, 'h5', "POST", url, params, null, token, "signinLottery");
 }
 
 async function fetchSupplementPrize({ supplementDate, token }) {
@@ -1751,14 +1750,14 @@ async function tryBlindBox({ token, state, cont, isBlindDay, today, persist }) {
   if (String(state.lastBlindBoxDate || "") === today) return { skipped: true, reason: "今日已抽" };
   logStep("盲盒", "start");
   try {
-    let res = await fetchSigninLottery({ token }).catch(() => null);
+    let res = await fetchSigninLottery({ token, dateTime: today }).catch(() => null);
     if (!res || (String(res?.code) !== "10000" && !res?.success)) {
       res = await fetchSupplementPrize({ supplementDate: state.lastSignDate || today, token }).catch(() => null);
     }
     const code = String(res?.code || "");
     const ok = code === "10000" || res?.success === true;
     if (ok) {
-      const d = res?.data || {};
+      const d = (res?.data && res.data.signPrizesVO) || res?.data || {};
       const prizeName = String(d.prizesName || d.prizeName || "").trim();
       const integral = String(d.integral ?? d.score ?? "").trim();
       state.lastBlindBoxDate = today;
