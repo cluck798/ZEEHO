@@ -1,6 +1,6 @@
 // main.js — 极核签到面板桌面版主进程
 // 架构：本地 HTTP 服务 + vm 引擎原样运行代理脚本；托盘常驻；定时自动签到
-const { app, BrowserWindow, Tray, Menu, Notification, shell, nativeImage, dialog } = require("electron");
+const { app, BrowserWindow, Tray, Menu, Notification, shell, nativeImage, dialog, ipcMain } = require("electron");
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
@@ -33,15 +33,38 @@ function iconPath() {
 
 // ---------- 桌面端设置（与脚本的 $persistentStore 分离） ----------
 const settingsFile = () => path.join(app.getPath("userData"), "desktop-settings.json");
-const DEFAULT_SETTINGS = { autoSignin: true, signinTime: "08:30", launchAtStartup: false, lastSigninDate: "" };
+const PANEL_HTML_PATH = path.join(__dirname, "panel.html");
+const DEFAULT_SETTINGS = {
+  autoSignin: true, signinTime: "08:30", launchAtStartup: false, lastSigninDate: "",
+  ui: { seed: "#B7E830", themeMode: "system" },
+  battery: {} // 电池参数按 VIN 隔离：{ "<vin>": { ah, vFull } }，桌面 UI 经 /desktop-settings 读写
+};
 function loadSettings() {
-  try { return Object.assign({}, DEFAULT_SETTINGS, JSON.parse(fs.readFileSync(settingsFile(), "utf8"))); }
-  catch (e) { return Object.assign({}, DEFAULT_SETTINGS); }
+  let s;
+  try { s = Object.assign({}, DEFAULT_SETTINGS, JSON.parse(fs.readFileSync(settingsFile(), "utf8"))); }
+  catch (e) { s = Object.assign({}, DEFAULT_SETTINGS); }
+  // ui 子对象浅合并兜底（旧文件无 ui 或字段不全时）
+  s.ui = Object.assign({}, DEFAULT_SETTINGS.ui, (s.ui && typeof s.ui === "object") ? s.ui : {});
+  return s;
 }
 function saveSettings(s) {
   try { fs.writeFileSync(settingsFile(), JSON.stringify(s, null, 2), "utf8"); } catch (e) {}
 }
 let settings = {}; // app ready 后初始化
+
+// 统一应用桌面设置变更（托盘菜单与 /desktop-settings HTTP 路由共用）
+function applyDesktopSettings(patch) {
+  if (patch.ui) patch = Object.assign({}, patch, { ui: Object.assign({}, settings.ui || {}, patch.ui) });
+  Object.assign(settings, patch);
+  saveSettings(settings);
+  if ("autoSignin" in patch || "signinTime" in patch) scheduleNext();
+  if ("launchAtStartup" in patch) {
+    try { app.setLoginItemSettings({ openAtLogin: !!settings.launchAtStartup, path: process.execPath, args: [] }); }
+    catch (e) { logLine("设置开机自启失败: " + e.message); }
+  }
+  refreshTrayMenu();
+  return settings;
+}
 
 // ---------- 全局对象 ----------
 let engine = null;
@@ -63,6 +86,38 @@ const logLine = (msg) => console.log(`[${new Date().toLocaleTimeString("zh-CN", 
 function startServer() {
   return new Promise((resolve, reject) => {
     server = http.createServer((req, res) => {
+      const urlPath = (req.url || "/").split("?")[0];
+      // ---- 桌面新 UI（FlClash/M3 风格）：拦截 / 与 /index.html，其余仍走 engine ----
+      if ((urlPath === "/" || urlPath === "/index.html") && req.method === "GET") {
+        fs.readFile(PANEL_HTML_PATH, (err, buf) => {
+          if (err) { res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" }); res.end("panel.html missing: " + err.message); return; }
+          res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
+          res.end(buf);
+        });
+        return;
+      }
+      // ---- 桌面设置本地路由（不进 engine；UI 偏好必须走这里持久化，随机端口下 localStorage 不可靠）----
+      if (urlPath === "/desktop-settings") {
+        if (req.method === "GET") {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: true, settings }));
+          return;
+        }
+        if (req.method === "POST") {
+          let raw = "";
+          req.on("data", (c) => raw += c);
+          req.on("end", () => {
+            let patch = null;
+            try { patch = JSON.parse(raw || "{}"); } catch (e) {}
+            if (!patch || typeof patch !== "object") { res.writeHead(400, { "Content-Type": "application/json" }); res.end('{"ok":false}'); return; }
+            const safe = {}; // 白名单，防注入任意键
+            for (const k of ["autoSignin", "signinTime", "launchAtStartup", "ui", "battery"]) if (k in patch) safe[k] = patch[k];
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ ok: true, settings: applyDesktopSettings(safe) }));
+          });
+          return;
+        }
+      }
       const chunks = [];
       req.on("data", (c) => chunks.push(c));
       req.on("end", async () => {
@@ -170,16 +225,26 @@ function scheduleNext() {
 // ---------- 窗口 ----------
 function createWindow() {
   win = new BrowserWindow({
-    width: 480,
-    height: 860,
-    minWidth: 380,
-    minHeight: 600,
+    width: 1120,
+    height: 760,
+    minWidth: 760,
+    minHeight: 560,
     title: "极核签到面板",
     icon: iconPath() || undefined,
+    frame: false, // 无边框 + panel.html 自绘标题栏
+    backgroundColor: "#faf9f6",
     autoHideMenuBar: true,
-    webPreferences: { contextIsolation: true, nodeIntegration: false }
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, "preload.js")
+    }
   });
   win.loadURL(`http://127.0.0.1:${serverPort}/`);
+  const pushWinState = () => { try { win.webContents.send("win:state", { maximized: win.isMaximized() }); } catch (e) {} };
+  win.webContents.on("did-finish-load", pushWinState);
+  win.on("maximize", pushWinState);
+  win.on("unmaximize", pushWinState);
   // 外部链接交给系统浏览器
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//i.test(url)) shell.openExternal(url);
@@ -204,7 +269,12 @@ function showWindow() {
   }
 }
 
-// ---------- 托盘 ----------
+// ---------- 窗口控制 IPC（自绘标题栏用） ----------
+ipcMain.on("win:minimize", () => { if (win) win.minimize(); });
+ipcMain.on("win:toggle-maximize", () => { if (!win) return; win.isMaximized() ? win.unmaximize() : win.maximize(); });
+ipcMain.on("win:close", () => { if (win) win.close(); });
+
+  // ---------- 托盘 ----------
 function buildTrayMenu() {
   const timeOptions = ["07:00", "08:30", "09:00", "12:00", "18:00", "21:00"];
   return Menu.buildFromTemplate([
@@ -215,11 +285,7 @@ function buildTrayMenu() {
       label: "定时自动签到",
       type: "checkbox",
       checked: !!settings.autoSignin,
-      click: (item) => {
-        settings.autoSignin = item.checked;
-        saveSettings(settings);
-        scheduleNext();
-      }
+      click: (item) => { applyDesktopSettings({ autoSignin: item.checked }); }
     },
     {
       label: "签到时间",
@@ -227,28 +293,14 @@ function buildTrayMenu() {
         label: t,
         type: "radio",
         checked: settings.signinTime === t,
-        click: () => {
-          settings.signinTime = t;
-          saveSettings(settings);
-          scheduleNext();
-        }
+        click: () => { applyDesktopSettings({ signinTime: t }); }
       }))
     },
     {
       label: "开机自启动",
       type: "checkbox",
       checked: !!settings.launchAtStartup,
-      click: (item) => {
-        settings.launchAtStartup = item.checked;
-        saveSettings(settings);
-        try {
-          app.setLoginItemSettings({
-            openAtLogin: item.checked,
-            path: process.execPath,
-            args: []
-          });
-        } catch (e) { logLine("设置开机自启失败: " + e.message); }
-      }
+      click: (item) => { applyDesktopSettings({ launchAtStartup: item.checked }); }
     },
     { type: "separator" },
     {

@@ -49,6 +49,17 @@ class Engine {
   }
 
   // ---------- HTTP shim 底层 ----------
+  // 优先 Electron net.fetch：走 Chromium 网络栈、自动遵循系统代理。
+  // 修复 Clash fake-ip 模式（DNS 返回 198.18.x 假 IP）下 Node 原生 fetch 直连假 IP 超时的问题。
+  _netfn() {
+    if (this._nf !== undefined) return this._nf;
+    this._nf = globalThis.fetch;
+    try {
+      const { net } = require("electron");
+      if (net && typeof net.fetch === "function") this._nf = net.fetch.bind(net);
+    } catch (e) {}
+    return this._nf;
+  }
   async _fetch(method, opts) {
     if (typeof opts === "string") opts = { url: opts };
     const timeoutSec = Number(opts.timeout) > 0 ? Number(opts.timeout) : 60;
@@ -62,7 +73,7 @@ class Engine {
         signal: ctrl.signal
       };
       if (method !== "GET" && method !== "HEAD" && opts.body != null) init.body = opts.body;
-      const res = await fetch(opts.url, init);
+      const res = await this._netfn()(opts.url, init);
       const body = await res.text();
       const headers = {};
       res.headers.forEach((v, k) => { headers[k] = v; });
