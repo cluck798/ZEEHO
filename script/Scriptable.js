@@ -1,6 +1,7 @@
-// ============= 极核 ZEEHO · Scriptable（单账号版 v1.7） =============
+// ============= 极核 ZEEHO · Scriptable（单账号版 v1.8） =============
 // 单账号：只维护一个账号，菜单内可随时「手机号登录 / 粘贴 Token」重设
 // 功能全集：自动签到 / 盲盒 / 补签 / 发布动态 · 车辆控制 · 充电监控 · 小组件（小 / 中 / 大 + 锁屏圆形 / 长方形）
+// v1.8：🎨多车总览升级富卡片（每车：名称+⚡充电中+续航/电压+大号电量%+电量条）；🔄车辆列表自动同步（App 新绑定车辆自动填充进组件，无需手动重选）
 // v1.7：🚗大尺寸组件支持一账号多车总览（每车一行：电量/续航/电压/充电⚡，★=默认车；单辆车时保持原布局）
 // v1.6：🎁盲盒对齐官方 H5——POST /H5/signin/lottery?dateTime=<开盒日>（旧 GET boxType 形态服务端已不识别）
 // v1.5：⏱充电剩余时间——充电中且已设电池容量时，按 容量×(100−电量%)/100÷充电电流 估算（未设置不显示）
@@ -3072,6 +3073,22 @@ function buildAccessoryInline(data) {
 }
 
 // ============== v1.7 多车轻量状态（大尺寸组件用） ==============
+// v1.8 自动同步车辆列表：App 新绑定的车辆自动并入账号（组件多车自动填充，静默失败不影响渲染）
+async function syncVehiclesLite(acc, store) {
+  try {
+    const res = await fetchVehicleList({ token: acc.token });
+    const items = mapVehicleList(res).filter((v) => v.vinNo);
+    if (!items.length) return;
+    const known = new Set((acc.vehicles || []).map((v) => v.vinNo));
+    let changed = false;
+    for (const v of items) if (!known.has(v.vinNo)) { (acc.vehicles = acc.vehicles || []).push(v); changed = true; }
+    if (changed) {
+      if (!acc.activeVin && acc.vehicles[0]) acc.activeVin = acc.vehicles[0].vinNo;
+      if (store) saveStore(store);
+    }
+  } catch (e) { }
+}
+
 async function fetchVehiclesLite(acc) {
   const vs = (acc.vehicles || []).slice(0, 4);
   return await Promise.all(vs.map(async (v) => {
@@ -3132,33 +3149,37 @@ function buildLargeWidgetMulti(data) {
   const timeTxt = rowTop.addText(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
   timeTxt.font = Font.systemFont(9);
   timeTxt.textColor = C_TEXT;
-  // 每车一行：名称 ★ + 电量% + ⚡ + 续航 + 电压 + （估）
-  for (const v of rows) {
-    const r = w.addStack();
-    r.layoutHorizontally();
-    r.centerAlignContent();
-    r.spacing = 5;
-    const nm = r.addText((v.isCurrent ? "★" : "") + String(v.name || "车辆"));
-    nm.font = Font.semiboldSystemFont(12);
+  // 每车一张富卡片：名称行（⚡充电中/（估）/续航·电压）+ 大号电量% + 电量条
+  const show = rows.slice(0, 3);
+  for (const v of show) {
+    const pct = Math.round(Number(v.soc || 0));
+    const r1 = w.addStack();
+    r1.layoutHorizontally();
+    r1.centerAlignContent();
+    r1.spacing = 4;
+    const nm = r1.addText((v.isCurrent ? "★" : "") + String(v.name || "车辆"));
+    nm.font = Font.semiboldSystemFont(13);
     nm.textColor = v.isCurrent ? C_NAME : C_BATT;
     nm.lineLimit = 1;
-    r.addSpacer();
-    const pct = Math.round(Number(v.soc || 0));
-    const col = v.charging ? C_OK : (pct <= 20 ? C_DANGER : pct <= 50 ? C_WARN : C_BATT);
-    const st = r.addText(`${pct}%`);
-    st.font = Font.boldSystemFont(16);
-    st.textColor = col;
-    if (v.charging) { const bolt = r.addText("⚡"); bolt.font = Font.systemFont(10); bolt.textColor = C_OK; }
-    r.addSpacer(4);
-    const rg = r.addText(`${Number(v.range || 0)}km`);
-    rg.font = Font.systemFont(11);
-    rg.textColor = C_TEXT;
-    r.addSpacer(4);
-    const vt = r.addText(v.voltage > 0 ? `${Number(v.voltage).toFixed(1)}V` : "—");
-    vt.font = Font.systemFont(11);
-    vt.textColor = C_TEXT;
-    if (v.socEstimated) { const est = r.addText("（估）"); est.font = Font.systemFont(9); est.textColor = C_WARN; }
+    if (v.charging) { const ch = r1.addText(" ⚡充电中"); ch.font = Font.systemFont(10); ch.textColor = C_OK; }
+    if (v.socEstimated) { const est = r1.addText("（估）"); est.font = Font.systemFont(9); est.textColor = C_WARN; }
+    r1.addSpacer();
+    const volt = Number(v.voltage || 0);
+    const vr = r1.addText(`${Number(v.range || 0)}km${volt > 0 ? " · " + volt.toFixed(1) + "V" : ""}`);
+    vr.font = Font.systemFont(11);
+    vr.textColor = C_TEXT;
+    const r2 = w.addStack();
+    r2.layoutHorizontally();
+    r2.centerAlignContent();
+    const big = r2.addText(`${pct}%`);
+    big.font = Font.heavySystemFont(22);
+    big.textColor = v.charging ? C_OK : (pct <= 20 ? C_DANGER : pct <= 50 ? C_WARN : C_BATT);
+    r2.addSpacer();
+    const barFill = v.charging ? new Color("#10b981") : pct <= 20 ? new Color("#ef4444") : pct <= 50 ? new Color("#f59e0b") : new Color("#005782");
+    const bar = w.addImage(drawProgressBar(pct, 300, 6, barFill, new Color("#DBEAFE")));
+    bar.imageSize = new Size(300, 6);
   }
+  if (rows.length > 3) { const more = w.addText(`共 ${rows.length} 辆车（显示前 3 辆）`); more.font = Font.systemFont(9); more.textColor = C_TEXT; }
   w.addSpacer(2);
   // 积分行
   const rowPts = w.addStack();
@@ -3980,6 +4001,7 @@ async function previewWidget(family) {
   setCurrentAcc(acc);
   const dash = await runSinglePipeline(acc, vin, { isWidget: false });
   if (!dash) return;
+  try { await syncVehiclesLite(acc, store); } catch (e) { }
   if (family === "large" && acc.vehicles && acc.vehicles.length > 1) {
     try { dash.data.vehList = await fetchVehiclesLite(acc); dash.data.accountName = dispName(acc); } catch (e) { }
   }
@@ -4246,7 +4268,8 @@ async function main() {
     try {
       const dash = await runSinglePipeline(acc, vinNo, { isWidget: true });
       if (!dash) { Script.setWidget(buildFallbackWidget()); Script.complete(); return; }
-      // v1.7 大尺寸多车总览
+      // v1.8 大尺寸多车总览（先自动同步车辆列表，App 新绑定车辆自动填充）
+      try { await syncVehiclesLite(acc, store); } catch (e) { }
       if ((config.widgetFamily || "medium") === "large" && acc.vehicles && acc.vehicles.length > 1) {
         try { dash.data.vehList = await fetchVehiclesLite(acc); dash.data.accountName = dispName(acc); } catch (e) { logDebug("多车状态获取失败", String(e?.message || e)); }
       }
