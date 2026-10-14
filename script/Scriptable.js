@@ -1,6 +1,7 @@
-// ============= 极核 ZEEHO · Scriptable（单账号版 v1.6） =============
+// ============= 极核 ZEEHO · Scriptable（单账号版 v1.7） =============
 // 单账号：只维护一个账号，菜单内可随时「手机号登录 / 粘贴 Token」重设
 // 功能全集：自动签到 / 盲盒 / 补签 / 发布动态 · 车辆控制 · 充电监控 · 小组件（小 / 中 / 大 + 锁屏圆形 / 长方形）
+// v1.7：🚗大尺寸组件支持一账号多车总览（每车一行：电量/续航/电压/充电⚡，★=默认车；单辆车时保持原布局）
 // v1.6：🎁盲盒对齐官方 H5——POST /H5/signin/lottery?dateTime=<开盒日>（旧 GET boxType 形态服务端已不识别）
 // v1.5：⏱充电剩余时间——充电中且已设电池容量时，按 容量×(100−电量%)/100÷充电电流 估算（未设置不显示）
 // v1.4：⚡电压模拟电量——车辆不上报百分比时按「空电/满电电压」估算，开启后停用充满提醒、低电提醒按估算%生效
@@ -3070,11 +3071,115 @@ function buildAccessoryInline(data) {
   return w;
 }
 
+// ============== v1.7 多车轻量状态（大尺寸组件用） ==============
+async function fetchVehiclesLite(acc) {
+  const vs = (acc.vehicles || []).slice(0, 4);
+  return await Promise.all(vs.map(async (v) => {
+    const [wRaw, b] = await Promise.all([
+      fetchVehicleWidgets({ vinNo: v.vinNo, token: acc.token }).catch(() => ({})),
+      fetchBatteryInfo({ vinNo: v.vinNo, token: acc.token }).catch(() => ({ chargeStateStr: "未充电", soc: 0, voltage: 0 })),
+    ]);
+    const w = adaptWidgets(wRaw || {});
+    return {
+      vinNo: v.vinNo,
+      name: v.name || "车辆",
+      soc: Number(b.soc || w.batteryPercent || 0),
+      socEstimated: !!(w.batteryPercentEstimated || b.socEstimated),
+      range: Number(w.residualRangeKm || b.residualRangeKm || 0),
+      voltage: Number(b.voltage || w.voltage || 0),
+      charging: !!b.chargeStateStr && b.chargeStateStr !== "未充电",
+      isCurrent: v.vinNo === acc.activeVin,
+    };
+  }));
+}
+
+function buildLargeWidgetMulti(data) {
+  const C_BG = new Color("#ECF5FF");
+  const C_NAME = new Color("#1d4ed8");
+  const C_BATT = new Color("#0f172a");
+  const C_TEXT = new Color("#475569");
+  const C_OK = new Color("#059669");
+  const C_WARN = new Color("#d97706");
+  const C_DANGER = new Color("#dc2626");
+  const rows = Array.isArray(data.vehList) ? data.vehList.slice(0, 4) : [];
+  const signed = !!data.signedToday;
+  const cdays = Number(data.points && data.points.continueDays || 0);
+  const untilBox = Number(data.points && data.points.daysUntilLottery || 0);
+  const w = new ListWidget();
+  w.backgroundColor = C_BG;
+  w.setPadding(14, 16, 14, 16);
+  w.spacing = 4;
+  try { const runUrl = URLScheme.forRunningScript(); if (runUrl) w.url = runUrl; } catch (_) { }
+  // 头部：账号名 + 签到徽章 + 盲盒 + 时间
+  const rowTop = w.addStack();
+  rowTop.layoutHorizontally();
+  rowTop.centerAlignContent();
+  rowTop.spacing = 5;
+  const nameTxt = rowTop.addText(String(data.accountName || data.vehicleDisplayName || "ZEEHO"));
+  nameTxt.font = Font.boldSystemFont(15);
+  nameTxt.textColor = C_NAME;
+  nameTxt.lineLimit = 1;
+  rowTop.addSpacer();
+  const badge = rowTop.addText(signed ? "●已签" : "○未签");
+  badge.font = Font.systemFont(9);
+  badge.textColor = signed ? C_OK : C_DANGER;
+  rowTop.addSpacer(4);
+  const boxTxt = rowTop.addText(data.points && data.points.isBlindDay ? "🎁盲盒日" : `盲盒${untilBox}天`);
+  boxTxt.font = Font.systemFont(9);
+  boxTxt.textColor = C_WARN;
+  rowTop.addSpacer(4);
+  const now = new Date();
+  const timeTxt = rowTop.addText(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
+  timeTxt.font = Font.systemFont(9);
+  timeTxt.textColor = C_TEXT;
+  // 每车一行：名称 ★ + 电量% + ⚡ + 续航 + 电压 + （估）
+  for (const v of rows) {
+    const r = w.addStack();
+    r.layoutHorizontally();
+    r.centerAlignContent();
+    r.spacing = 5;
+    const nm = r.addText((v.isCurrent ? "★" : "") + String(v.name || "车辆"));
+    nm.font = Font.semiboldSystemFont(12);
+    nm.textColor = v.isCurrent ? C_NAME : C_BATT;
+    nm.lineLimit = 1;
+    r.addSpacer();
+    const pct = Math.round(Number(v.soc || 0));
+    const col = v.charging ? C_OK : (pct <= 20 ? C_DANGER : pct <= 50 ? C_WARN : C_BATT);
+    const st = r.addText(`${pct}%`);
+    st.font = Font.boldSystemFont(16);
+    st.textColor = col;
+    if (v.charging) { const bolt = r.addText("⚡"); bolt.font = Font.systemFont(10); bolt.textColor = C_OK; }
+    r.addSpacer(4);
+    const rg = r.addText(`${Number(v.range || 0)}km`);
+    rg.font = Font.systemFont(11);
+    rg.textColor = C_TEXT;
+    r.addSpacer(4);
+    const vt = r.addText(v.voltage > 0 ? `${Number(v.voltage).toFixed(1)}V` : "—");
+    vt.font = Font.systemFont(11);
+    vt.textColor = C_TEXT;
+    if (v.socEstimated) { const est = r.addText("（估）"); est.font = Font.systemFont(9); est.textColor = C_WARN; }
+  }
+  w.addSpacer(2);
+  // 积分行
+  const rowPts = w.addStack();
+  rowPts.layoutHorizontally();
+  rowPts.centerAlignContent();
+  rowPts.spacing = 5;
+  const ptsL = rowPts.addText("积分");
+  ptsL.font = Font.systemFont(10);
+  ptsL.textColor = C_TEXT;
+  const ptsV = rowPts.addText(`${Number(data.points && data.points.total || 0)} +${Number(data.points && data.points.today || 0)} · 连签${cdays}天`);
+  ptsV.font = Font.semiboldSystemFont(11);
+  ptsV.textColor = new Color("#15609e");
+  return w;
+}
+
+// ============== 组件分发（按尺寸） ==============
 // 按组件尺寸选择构建器
 async function buildWidgetForFamily(data, batteryInfo, chargeStateStr, family) {
   switch (String(family || "medium")) {
     case "small": return buildSmallWidget(data, batteryInfo);
-    case "large": return await buildLargeWidget(data, batteryInfo, chargeStateStr);
+    case "large": return (Array.isArray(data.vehList) && data.vehList.length > 1) ? buildLargeWidgetMulti(data) : await buildLargeWidget(data, batteryInfo, chargeStateStr);
     case "accessoryCircular": return buildAccessoryCircular(data);
     case "accessoryRectangular": return buildAccessoryRectangular(data);
     case "accessoryInline": return buildAccessoryInline(data);
@@ -3875,6 +3980,9 @@ async function previewWidget(family) {
   setCurrentAcc(acc);
   const dash = await runSinglePipeline(acc, vin, { isWidget: false });
   if (!dash) return;
+  if (family === "large" && acc.vehicles && acc.vehicles.length > 1) {
+    try { dash.data.vehList = await fetchVehiclesLite(acc); dash.data.accountName = dispName(acc); } catch (e) { }
+  }
   const w = await buildWidgetForFamily(dash.data, dash.batteryInfo, dash.chargeStateStr, family);
   try {
     if (family === "small") await w.presentSmall();
@@ -4138,6 +4246,10 @@ async function main() {
     try {
       const dash = await runSinglePipeline(acc, vinNo, { isWidget: true });
       if (!dash) { Script.setWidget(buildFallbackWidget()); Script.complete(); return; }
+      // v1.7 大尺寸多车总览
+      if ((config.widgetFamily || "medium") === "large" && acc.vehicles && acc.vehicles.length > 1) {
+        try { dash.data.vehList = await fetchVehiclesLite(acc); dash.data.accountName = dispName(acc); } catch (e) { logDebug("多车状态获取失败", String(e?.message || e)); }
+      }
       const widget = await buildWidgetForFamily(dash.data, dash.batteryInfo, dash.chargeStateStr, config.widgetFamily || "medium");
       try {
         const refreshMin = Number(getStore().cfg.refreshMin || 15);
