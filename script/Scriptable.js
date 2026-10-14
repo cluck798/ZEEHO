@@ -1,6 +1,7 @@
-// ============= 极核 ZEEHO · Scriptable（单账号版 v1.8） =============
+// ============= 极核 ZEEHO · Scriptable（单账号版 v1.9） =============
 // 单账号：只维护一个账号，菜单内可随时「手机号登录 / 粘贴 Token」重设
 // 功能全集：自动签到 / 盲盒 / 补签 / 发布动态 · 车辆控制 · 充电监控 · 小组件（小 / 中 / 大 + 锁屏圆形 / 长方形）
+// v1.9：🖼多车卡片显示车辆照片（右侧）；↕弹性间隔自动填满大尺寸组件（2/3 辆车均均匀分布，不留空白）
 // v1.8：🎨多车总览升级富卡片（每车：名称+⚡充电中+续航/电压+大号电量%+电量条）；🔄车辆列表自动同步（App 新绑定车辆自动填充进组件，无需手动重选）
 // v1.7：🚗大尺寸组件支持一账号多车总览（每车一行：电量/续航/电压/充电⚡，★=默认车；单辆车时保持原布局）
 // v1.6：🎁盲盒对齐官方 H5——POST /H5/signin/lottery?dateTime=<开盒日>（旧 GET boxType 形态服务端已不识别）
@@ -2355,8 +2356,10 @@ function drawProgressBar(percent = 0, width = 120, height = 6, barColor = new Co
 async function loadVehicleImage(url) {
   if (!url || url.trim() === "") return null;
   const dir = FM.cacheDirectory?.() || FM.documentsDirectory();
-  const cachePath = FM.joinPath(dir, "zeeho_vehicle_cache.jpg");
-  const metaPath = FM.joinPath(dir, "zeeho_vehicle_cache.url");
+  // v1.9 按 URL 分文件缓存（多车组件不再互相挤掉缓存导致每次刷新重复下载）
+  const _ck = String(url).replace(/[^a-zA-Z0-9]/g, "").slice(-40) || "default";
+  const cachePath = FM.joinPath(dir, "zeeho_vehicle_" + _ck + ".jpg");
+  const metaPath = FM.joinPath(dir, "zeeho_vehicle_" + _ck + ".url");
   try {
     if (FM.fileExists(cachePath) && FM.fileExists(metaPath)) {
       const cachedUrl = String(FM.readString(metaPath) || "");
@@ -3105,12 +3108,13 @@ async function fetchVehiclesLite(acc) {
       range: Number(w.residualRangeKm || b.residualRangeKm || 0),
       voltage: Number(b.voltage || w.voltage || 0),
       charging: !!b.chargeStateStr && b.chargeStateStr !== "未充电",
+      pic: String(v.pic || ""),
       isCurrent: v.vinNo === acc.activeVin,
     };
   }));
 }
 
-function buildLargeWidgetMulti(data) {
+async function buildLargeWidgetMulti(data) {
   const C_BG = new Color("#ECF5FF");
   const C_NAME = new Color("#1d4ed8");
   const C_BATT = new Color("#0f172a");
@@ -3149,11 +3153,23 @@ function buildLargeWidgetMulti(data) {
   const timeTxt = rowTop.addText(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
   timeTxt.font = Font.systemFont(9);
   timeTxt.textColor = C_TEXT;
-  // 每车一张富卡片：名称行（⚡充电中/（估）/续航·电压）+ 大号电量% + 电量条
+  // 每车一张富卡片：左列（名称/⚡/大号%+续航电压/电量条）+ 右侧车辆照片；卡片间弹性 spacer 自动填满不留空白
   const show = rows.slice(0, 3);
-  for (const v of show) {
+  const imgH = show.length >= 3 ? 46 : 70;
+  const imgW = Math.round(imgH * 1.55);
+  const barW = Math.max(120, 300 - imgW - 12);
+  w.addSpacer();
+  for (let vi = 0; vi < show.length; vi++) {
+    const v = show[vi];
     const pct = Math.round(Number(v.soc || 0));
-    const r1 = w.addStack();
+    const card = w.addStack();
+    card.layoutHorizontally();
+    card.centerAlignContent();
+    card.spacing = 6;
+    const left = card.addStack();
+    left.layoutVertically();
+    left.size = new Size(barW, 0);
+    const r1 = left.addStack();
     r1.layoutHorizontally();
     r1.centerAlignContent();
     r1.spacing = 4;
@@ -3161,25 +3177,33 @@ function buildLargeWidgetMulti(data) {
     nm.font = Font.semiboldSystemFont(13);
     nm.textColor = v.isCurrent ? C_NAME : C_BATT;
     nm.lineLimit = 1;
-    if (v.charging) { const ch = r1.addText(" ⚡充电中"); ch.font = Font.systemFont(10); ch.textColor = C_OK; }
+    if (v.charging) { const ch = r1.addText(" ⚡"); ch.font = Font.systemFont(11); ch.textColor = C_OK; }
     if (v.socEstimated) { const est = r1.addText("（估）"); est.font = Font.systemFont(9); est.textColor = C_WARN; }
-    r1.addSpacer();
-    const volt = Number(v.voltage || 0);
-    const vr = r1.addText(`${Number(v.range || 0)}km${volt > 0 ? " · " + volt.toFixed(1) + "V" : ""}`);
-    vr.font = Font.systemFont(11);
-    vr.textColor = C_TEXT;
-    const r2 = w.addStack();
+    const r2 = left.addStack();
     r2.layoutHorizontally();
     r2.centerAlignContent();
+    r2.spacing = 6;
     const big = r2.addText(`${pct}%`);
     big.font = Font.heavySystemFont(22);
     big.textColor = v.charging ? C_OK : (pct <= 20 ? C_DANGER : pct <= 50 ? C_WARN : C_BATT);
-    r2.addSpacer();
+    const volt = Number(v.voltage || 0);
+    const vr = r2.addText(`${Number(v.range || 0)}km${volt > 0 ? " · " + volt.toFixed(1) + "V" : ""}`);
+    vr.font = Font.systemFont(11);
+    vr.textColor = C_TEXT;
     const barFill = v.charging ? new Color("#10b981") : pct <= 20 ? new Color("#ef4444") : pct <= 50 ? new Color("#f59e0b") : new Color("#005782");
-    const bar = w.addImage(drawProgressBar(pct, 300, 6, barFill, new Color("#DBEAFE")));
-    bar.imageSize = new Size(300, 6);
+    const bar = left.addImage(drawProgressBar(pct, barW, 6, barFill, new Color("#DBEAFE")));
+    bar.imageSize = new Size(barW, 6);
+    card.addSpacer();
+    const imgUrl = String(v.pic || "") || (v.isCurrent ? String(data.vehicleImageUrl || "") : "");
+    if (imgUrl.trim() !== "") {
+      try {
+        const img = await loadVehicleImage(imgUrl);
+        if (img) { const im = card.addImage(img); im.imageSize = new Size(imgW, imgH); im.applyFillingContentMode(); im.rightAlignImage(); }
+      } catch (e) { }
+    }
+    w.addSpacer();
   }
-  if (rows.length > 3) { const more = w.addText(`共 ${rows.length} 辆车（显示前 3 辆）`); more.font = Font.systemFont(9); more.textColor = C_TEXT; }
+  if (rows.length > 3) { const more = w.addText(`共 ${rows.length} 辆车（显示前 3 辆）`); more.font = Font.systemFont(9); more.textColor = C_TEXT; w.addSpacer(); }
   w.addSpacer(2);
   // 积分行
   const rowPts = w.addStack();
@@ -3200,7 +3224,7 @@ function buildLargeWidgetMulti(data) {
 async function buildWidgetForFamily(data, batteryInfo, chargeStateStr, family) {
   switch (String(family || "medium")) {
     case "small": return buildSmallWidget(data, batteryInfo);
-    case "large": return (Array.isArray(data.vehList) && data.vehList.length > 1) ? buildLargeWidgetMulti(data) : await buildLargeWidget(data, batteryInfo, chargeStateStr);
+    case "large": return (Array.isArray(data.vehList) && data.vehList.length > 1) ? await buildLargeWidgetMulti(data) : await buildLargeWidget(data, batteryInfo, chargeStateStr);
     case "accessoryCircular": return buildAccessoryCircular(data);
     case "accessoryRectangular": return buildAccessoryRectangular(data);
     case "accessoryInline": return buildAccessoryInline(data);
