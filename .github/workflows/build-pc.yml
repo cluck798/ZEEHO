@@ -65,3 +65,18 @@ jobs:
             desktop/dist/*Portable*.exe
           overwrite: true
           make_latest: true
+
+      # 只保留最新版本：资产文件名带版本号，publish 后删除不含当前版本的全部旧资产
+      - name: Prune old assets (keep only current version)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VER=$(node -p "require('./desktop/package.json').version")
+          echo "keep version: $VER"
+          REL_ID=$(curl -s -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/pc-latest" | jq -r .id)
+          curl -s -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/$REL_ID/assets?per_page=100" \
+            | jq -r --arg v "$VER" '.[] | select(.name | contains($v) | not) | .id' \
+            | while read -r id; do
+                [ -n "$id" ] && curl -s -X DELETE -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/assets/$id" > /dev/null && echo "pruned asset $id"
+              done
