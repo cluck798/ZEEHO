@@ -580,7 +580,7 @@ nav.tabbar{
 <script>
 "use strict";
 /* ================= 常量 ================= */
-const APP_VERSION = "v2.16.8";
+const APP_VERSION = "v2.16.9";
 const KEYS = { cfg:"zeeho_cfg", accounts:"zeeho_accounts", logs:"zeeho_logs" };
 
 /* ================= 工具函数 ================= */
@@ -614,7 +614,7 @@ function aes256EcbEncryptBase64(plaintext,keyStr){const key=aesUtf8Bytes(keyStr)
 /* ================= 存储 ================= */
 function loadJSON(k,fallback){try{const raw=localStorage.getItem(k);if(!raw)return fallback;const v=JSON.parse(raw);return v===undefined||v===null?fallback:v}catch(e){return fallback}}
 function saveJSON(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
-const DEFAULT_CFG={app:{appId:"S7qPWPU1",appSecret:"c5e0da7f4da28df805694ec3dd1fc6792e9df99d"},h5:{appId:"Sw5F9uJi",appSecret:"46870a8f678a09109468f5b0168818b91c292845"},community:{enablePost:true,enableLike:true,enableComment:true,enableShare:true,enableDelete:true},vehicleAesKey:"ce2cd7cb57124c1349dd8543bf6fd31d",vehicleControlRisk:"",autoRefreshSec:60,serverBase:"",autoSignin:false,autoSigninTime:"07:00",vehicleMonitor:false,widgetVehicle:"",customBg:""};
+const DEFAULT_CFG={app:{appId:"S7qPWPU1",appSecret:"c5e0da7f4da28df805694ec3dd1fc6792e9df99d"},h5:{appId:"Sw5F9uJi",appSecret:"46870a8f678a09109468f5b0168818b91c292845"},community:{enablePost:true,enableLike:true,enableComment:true,enableShare:true,enableDelete:true},vehicleAesKey:"ce2cd7cb57124c1349dd8543bf6fd31d",vehicleControlRisk:"",autoRefreshSec:60,serverBase:"",autoSignin:false,autoSigninTime:"07:00",vehicleMonitor:false,widgetVehicle:"",customBg:"",pics:{}};
 function getCfg(){const c=loadJSON(KEYS.cfg,null);if(!c)return JSON.parse(JSON.stringify(DEFAULT_CFG));return{app:{appId:c.app?.appId||DEFAULT_CFG.app.appId,appSecret:c.app?.appSecret||DEFAULT_CFG.app.appSecret},h5:{appId:c.h5?.appId||DEFAULT_CFG.h5.appId,appSecret:c.h5?.appSecret||DEFAULT_CFG.h5.appSecret},community:{enablePost:c.community?.enablePost!==false,enableLike:c.community?.enableLike!==false,enableComment:c.community?.enableComment!==false,enableShare:c.community?.enableShare!==false,enableDelete:c.community?.enableDelete!==false},vehicleAesKey:((typeof c.vehicleAesKey==="string"?c.vehicleAesKey:"").trim()||DEFAULT_CFG.vehicleAesKey),vehicleControlRisk:(typeof c.vehicleControlRisk==="string"?c.vehicleControlRisk:"").trim(),autoRefreshSec:normalizeRefreshSec(c.autoRefreshSec),serverBase:String(c.serverBase||"").trim(),autoSignin:c.autoSignin===true,autoSigninTime:(typeof c.autoSigninTime==="string"&&/^\d{1,2}:\d{2}$/.test(c.autoSigninTime)?c.autoSigninTime:"07:00"),vehicleMonitor:c.vehicleMonitor===true, widgetVehicle:String(c.widgetVehicle||""), customBg:String(c.customBg||"")}}
 function saveCfg(c){return saveJSON(KEYS.cfg,c)}
 function getAccounts(){const a=loadJSON(KEYS.accounts,[]);return Array.isArray(a)?a:[]}
@@ -1089,7 +1089,8 @@ function applyRemoteCfg(c){
     autoSigninTime:(typeof c.autoSigninTime==="string"&&/^\d{1,2}:\d{2}$/.test(c.autoSigninTime)?c.autoSigninTime:"07:00"),
     vehicleMonitor:c.vehicleMonitor===true,
     widgetVehicle:String(c.widgetVehicle||""),
-    customBg:String(c.customBg||"")
+    customBg:String(c.customBg||""),
+    pics:(c.pics&&typeof c.pics==="object")?c.pics:(local.pics||{})
   });
 }
 let panelSyncing=false;
@@ -1457,6 +1458,9 @@ function renderCfg(){
   '<div class="f-item" style="margin-top:10px"><label>车辆</label><select id="widget_veh" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card2);color:var(--txt);font-size:14px"></select></div>'+
   '<div class="hint" style="margin-top:10px">选择后，iOS 桌面小组件将展示该车辆的实时状态（电量/续航/充电/签到）。<b>不选择时默认取第一个账号的第一辆车。</b>保存配置后生效。</div>'+
   '</div></div>'+
+  '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar"></span>车辆图片替换</h3><button class="btn sm" onclick="loadPicRows()">刷新车辆</button></div><div class="cfg-body" id="picList"><div style="text-align:center;padding:18px;color:var(--txt3);font-size:13px">加载中…</div></div>'+
+  '<div class="cfg-body" style="padding-top:0"><div class="btn-row"><button class="btn primary" onclick="savePicCfg()">保存图片替换</button></div>'+
+  '<div class="hint" style="margin-top:10px">为每辆车选择官方车型图（含 <b>AE5i 电轻摩版</b>四种配色）。保存后在 <b>Loon/代理脚本环境</b>下，官方 App 与面板里的该车辆照片即被替换（需面板脚本处于运行状态）；选「不替换」恢复官方原图。浏览器直开模式仅保存配置、不改写 App。</div></div></div>'+
   '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar"></span>自定义背景</h3></div><div class="cfg-body">'+
   '<div class="f-item"><label>上传背景照片（会铺在深色底色之上，建议深色/低亮度图片以保证文字可读）</label><input type="file" id="bg_file" accept="image/*" style="font-size:12px" onchange="bgFileChanged(this)"></div>'+
   '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div id="bgPreview" style="width:120px;height:72px;border-radius:10px;border:1px solid var(--line);background:var(--card3);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;color:var(--txt3);font-size:10px;overflow:hidden">未选择</div><div style="display:flex;flex-direction:column;gap:8px"><button class="btn sm primary" onclick="applyBgUpload()" id="bg_apply_btn">应用背景</button><button class="btn sm" onclick="resetBg()">恢复默认</button></div></div>'+
@@ -1488,6 +1492,7 @@ function renderCfg(){
   // 背景预览回填
   const bp=document.getElementById("bgPreview");
   if(bp){const bg=getCfg().customBg;if(bg){bp.style.backgroundImage="url("+bg+")";bp.textContent="";}}
+  loadPicCfg();
   renderInstallInfo();
 }
 /* ================= 当前安装信息 ================= */
@@ -1552,6 +1557,66 @@ function widgetSelectionText(){
   if(!acc||!veh||!acc.value||!veh.value)return "";
   return acc.value+"|"+veh.value;
 }
+/* ================= v2.16.9 车辆图片替换 ================= */
+const PIC_CATALOG=[{n:"不替换（官方原图）",u:""},{n:"AE5i 电轻摩 · 星光黑",u:"https://aka.doubaocdn.com/s/LbHzfCJq5Y"},{n:"AE5i 电轻摩 · 速感灰",u:"https://aka.doubaocdn.com/s/ozRKIcaSZG"},{n:"AE5i 电轻摩 · 星光白",u:"https://aka.doubaocdn.com/s/N5d9A3msPY"},{n:"AE5i 电轻摩 · 极核橙",u:"https://aka.doubaocdn.com/s/RsVDVGMIvF"},{n:"AE5i Pro 官方 · 灰",u:"https://oss-cfmoto.zeehoev.com/uploads/zeeho-client-pc/media/1758172641684.png"},{n:"AE5i Pro Max 官方 · 白",u:"https://oss-cfmoto.zeehoev.com/uploads/zeeho-client-pc/media/1758172630857.png"},{n:"AE8 S+ MY25 官方",u:"https://oss-cfmoto.zeehoev.com/uploads/zeeho-client-pc/media/1784626678222.png"}];
+let PIC_CFG={};
+function picKnown(u){return PIC_CATALOG.some(o=>o.u&&o.u===u)}
+function picRow(vin,name,acc){
+  const cur=PIC_CFG[vin]||"";
+  const opts=PIC_CATALOG.map(o=>'<option value="'+esc(o.u)+'"'+((o.u||"")===cur?" selected":"")+">"+esc(o.n)+"</option>").join("")+'<option value="__custom__"'+(cur&&!picKnown(cur)?" selected":"")+">自定义 URL…</option>";
+  const showCustom=cur&&!picKnown(cur);
+  return '<div class="f-item" style="margin-bottom:12px" data-vin="'+esc(vin)+'"><label>'+esc(name)+(acc?' <span style="color:var(--txt3);font-size:11px">('+esc(acc)+')</span>':'')+' · <code style="font-size:10px">'+esc(String(vin).slice(-6))+'</code></label>'+
+  '<select style="width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--card2);color:var(--txt);font-size:13px" onchange="picSelChanged(this)">'+opts+'</select>'+
+  '<input class="pic-custom" placeholder="自定义图片 URL（https 开头，建议官方 OSS/图床直链）" value="'+esc(showCustom?cur:"")+'" style="display:'+(showCustom?"block":"none")+';margin-top:6px;width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--txt);font-size:12px;box-sizing:border-box"></div>';
+}
+function picSelChanged(s){const item=s.closest(".f-item");const inp=item?item.querySelector(".pic-custom"):null;if(!inp)return;if(s.value==="__custom__"){inp.style.display="block";inp.focus()}else{inp.style.display="none"}}
+function picRowsHtml(){
+  const list=STATE.data||[];const rows=[];const seen={};
+  for(const a of list){
+    const v=a.vehicle;
+    if(v&&v.hasVehicle){
+      const arr=(Array.isArray(v.vehicles)&&v.vehicles.length)?v.vehicles:[{vehicleType:v.vehicleType||v.vehicleName,vinNo:v.vinNo}];
+      for(const x of arr){const vin=String(x.vinNo||"").trim();if(!vin||seen[vin])continue;seen[vin]=1;rows.push({vin,name:String(x.vehicleType||x.name||v.vehicleType||v.vehicleName||"车辆"),acc:a.userName||""})}
+    }
+  }
+  for(const vin of Object.keys(PIC_CFG)){if(!seen[vin])rows.push({vin,name:"已配置车辆",acc:""})}
+  return rows.length?rows.map(r=>picRow(r.vin,r.name,r.acc)).join(""):'<div style="text-align:center;padding:16px;color:var(--txt3);font-size:13px">未检测到已绑定车辆，可在下方按 VIN 手动添加</div>';
+}
+function picManualHtml(){
+  const opts=PIC_CATALOG.map(o=>'<option value="'+esc(o.u)+'">'+esc(o.n)+'</option>').join("");
+  return '<div class="f-item" style="margin-top:4px"><label>按 VIN 手动添加（完整 VIN 见 App 车辆信息）</label><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="pic_manual_vin" placeholder="完整 VIN（17位）" style="flex:1;min-width:150px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--txt);font-size:12px;box-sizing:border-box"><select id="pic_manual_pic" style="flex:1;min-width:130px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--card2);color:var(--txt);font-size:12px">'+opts+'</select><button class="btn sm primary" onclick="addPicManual()">添加</button></div></div>';
+}
+function loadPicRows(){const box=el("picList");if(!box)return;box.innerHTML=picRowsHtml()+picManualHtml()}
+function addPicManual(){
+  const vin=((el("pic_manual_vin")||{}).value||"").trim();
+  const u=(el("pic_manual_pic")||{}).value||"";
+  if(!vin){toast("请输入完整 VIN","err");return}
+  if(u)PIC_CFG[vin]=u;else delete PIC_CFG[vin];
+  loadPicRows();
+}
+function collectPicCfg(){
+  const out={};
+  document.querySelectorAll("#picList .f-item[data-vin]").forEach(item=>{
+    const vin=item.getAttribute("data-vin");if(!vin)return;
+    const s=item.querySelector("select");const inp=item.querySelector(".pic-custom");
+    const u=s.value==="__custom__"?(inp?inp.value.trim():""):s.value;
+    if(u&&/^https?:[/][/]/.test(u))out[vin]=u;
+  });
+  return out;
+}
+async function loadPicCfg(){
+  PIC_CFG={};
+  try{const r=await fetch("/api/pic-cfg").then(x=>x.json());if(r&&r.ok)PIC_CFG=r.pics||{}}catch(e){PIC_CFG=getCfg().pics||{}}
+  loadPicRows();
+}
+async function savePicCfg(){
+  const pics=collectPicCfg();PIC_CFG=pics;
+  if(isProxyMode()){
+    try{const r=await fetch("/api/pic-cfg",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pics})}).then(x=>x.json());
+      if(r&&r.ok){toast("图片替换已保存（"+r.count+" 辆车），打开极核App车辆页即生效","ok")}else{toast("保存失败:"+((r&&r.error)||"未知"),"err")}
+    }catch(e){toast("保存失败:"+e,"err")}
+  }else{const c=getCfg();c.pics=pics;saveCfg(c);toast("已保存到本地（浏览器模式不改写官方App）","info")}
+}
 /* ================= 自定义背景 ================= */
 let __bgData="";
 function bgFileChanged(inp){
@@ -1604,7 +1669,7 @@ async function phoneLoginUI(){
 }
 // v2.14.21 签名密钥配置面板已删除：app/h5/AES 密钥直接沿用当前值（内置默认），不再从输入框读取
 // v2.14.21 风险确认改弹窗：保存配置时沿用当前 vehicleControlRisk，不清空同意状态
-function collectCfgUI(){const cur=getCfg();return{app:{appId:cur.app.appId,appSecret:cur.app.appSecret},h5:{appId:cur.h5.appId,appSecret:cur.h5.appSecret},vehicleAesKey:cur.vehicleAesKey,vehicleControlRisk:cur.vehicleControlRisk,autoRefreshSec:normalizeRefreshSec(cur.autoRefreshSec||60),serverBase:cur.serverBase||"",autoSignin:el("auto_signin")?el("auto_signin").checked:false,autoSigninTime:(val("cfg_signin_time")||"07:00"),vehicleMonitor:el("vehicle_monitor")?el("vehicle_monitor").checked:false,widgetVehicle:widgetSelectionText()||cur.widgetVehicle,customBg:cur.customBg,community:{enablePost:el("comm_post").checked,enableLike:el("comm_like").checked,enableComment:el("comm_comment").checked,enableShare:el("comm_share").checked,enableDelete:el("comm_delete").checked}}}
+function collectCfgUI(){const cur=getCfg();return{app:{appId:cur.app.appId,appSecret:cur.app.appSecret},h5:{appId:cur.h5.appId,appSecret:cur.h5.appSecret},vehicleAesKey:cur.vehicleAesKey,vehicleControlRisk:cur.vehicleControlRisk,autoRefreshSec:normalizeRefreshSec(cur.autoRefreshSec||60),serverBase:cur.serverBase||"",autoSignin:el("auto_signin")?el("auto_signin").checked:false,autoSigninTime:(val("cfg_signin_time")||"07:00"),vehicleMonitor:el("vehicle_monitor")?el("vehicle_monitor").checked:false,widgetVehicle:widgetSelectionText()||cur.widgetVehicle,customBg:cur.customBg,pics:(cur.pics||{}),community:{enablePost:el("comm_post").checked,enableLike:el("comm_like").checked,enableComment:el("comm_comment").checked,enableShare:el("comm_share").checked,enableDelete:el("comm_delete").checked}}}
 function val(id){const e=document.getElementById(id);return e?e.value:""}
 function el(id){return document.getElementById(id)}
 async function saveCfgUI(){const c=collectCfgUI();const ok=await Backend.saveConfig(c);if(ok){if(isProxyMode()){applyRemoteCfg(c);STATE.panelLoaded=false}toast("配置已保存","ok");startAutoRefresh(c.autoRefreshSec);refreshAll(true)}else toast("保存失败","err")}
