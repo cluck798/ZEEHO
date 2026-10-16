@@ -1,6 +1,7 @@
-// ============= 极核 ZEEHO · Scriptable（单账号版 v2.1） =============
+// ============= 极核 ZEEHO · Scriptable（单账号版 v2.2） =============
 // 单账号：只维护一个账号，菜单内可随时「手机号登录 / 粘贴 Token」重设
 // 功能全集：自动签到 / 盲盒 / 补签 / 发布动态 · 车辆控制 · 充电监控 · 小组件（小 / 中 / 大 + 锁屏圆形 / 长方形）
+// v2.2：⚡当天总电耗——服务端 powerUseToday>0 直接用，否则按 电池容量×满电电压×当日(放电+回充) 计算（标「（算）」，需在配置设 batteryAh/vFull）；🚫离线车缺失数据显示「—」不再误读为 0
 // v2.1：🎯数据准确性修复——电量不再误读 batteryLevel（恒100，是电池健康标志），真值取 bmssoc；在线/离线改由 vehicleHomePageV2 判定（关机≠离线，widgets 无在线字段）
 // v2.0：📋多车卡片每辆加：在线/离线标记、今日里程·当天电耗、胎压、📍定位地址；卡片自上而下顶部对齐（不再分散撑开）
 // v1.9：🖼多车卡片显示车辆照片（右侧）；↕弹性间隔自动填满大尺寸组件（2/3 辆车均均匀分布，不留空白）
@@ -3102,7 +3103,25 @@ async function syncVehiclesLite(acc, store) {
   } catch (e) { }
 }
 
-async function fetchVehiclesLite(acc) {
+// ============== v2.2 当天总电耗：SOC 日追踪（放电+回充） ==============
+function localDateStr10() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function trackDailyEnergy(vin, soc, store) {
+  const e = (store && (store.energy = store.energy || {})) || {};
+  const rec = e[vin] || (e[vin] = { date: "", start: 0, last: 0, gain: 0 });
+  const today = localDateStr10();
+  const s = Number(soc || 0);
+  if (rec.date !== today) { rec.date = today; rec.start = s; rec.last = s; rec.gain = 0; }
+  const delta = s - rec.last;
+  if (delta > 0) rec.gain += delta; // 充电/换电回充补偿
+  rec.last = s;
+  const consumed = Math.max(0, rec.start - s) + rec.gain;
+  return { consumedPct: Math.min(100, consumed), chargedPct: rec.gain };
+}
+
+async function fetchVehiclesLite(acc, store) {
   const vs = (acc.vehicles || []).slice(0, 3);
   return await Promise.all(vs.map(async (v) => {
     const dev = getDeviceIdentify(acc);
@@ -3120,19 +3139,33 @@ async function fetchVehiclesLite(acc) {
     const hd = (hpRaw && hpRaw.data) || {};
     const onlineRaw = String(hd.onlineStatus || hd.rideState || "").toLowerCase().trim();
     const online = onlineRaw.includes("online") || onlineRaw === "在线";
+    const socNow = Number(w.batteryPercent || b.soc || 0);
+    const chargingNow = !!b.chargeStateStr && b.chargeStateStr !== "未充电";
+    // v2.2 当天总电耗：服务端 powerUseToday>0 优先；否则按容量×满电电压×当日(放电+回充)% 计算
+    const srvRaw = b.powerUseToday;
+    const srvKwh = (srvRaw == null || srvRaw === "" || !isFinite(Number(srvRaw))) ? null : Number(srvRaw);
+    const trk = trackDailyEnergy(v.vinNo, socNow, store);
+    let kwh = srvKwh && srvKwh > 0 ? srvKwh : null;
+    const cfgE = (store && store.cfg) || {};
+    if (kwh == null) {
+      const ah = Number(cfgE.batteryAh || 0), vf = Number(cfgE.vFull || 0);
+      if (ah > 0 && vf > 0) kwh = Math.round(trk.consumedPct / 100 * ah * vf) / 1000;
+    }
+    if (store) saveStore(store);
     return {
       vinNo: v.vinNo,
       name: v.name || "车辆",
-      soc: Number(w.batteryPercent || b.soc || 0),
+      soc: socNow,
       socEstimated: !!(w.batteryPercentEstimated || b.socEstimated),
       range: Number(w.residualRangeKm || b.residualRangeKm || 0),
       voltage: Number(b.voltage || w.voltage || 0),
-      charging: !!b.chargeStateStr && b.chargeStateStr !== "未充电",
+      charging: chargingNow,
       pic: String(v.pic || w.vehicleImageUrl || ""),
       online,
       address: w.address || "",
       todayKm: Number(rd.distanceKm || 0),
-      powerToday: Number(b.powerUseToday || 0),
+      powerToday: kwh,
+      powerSrc: srvKwh && srvKwh > 0 ? "srv" : "calc",
       tireF: String(tp.frontPressure || ""),
       tireR: String(tp.rearPressure || ""),
       isCurrent: v.vinNo === acc.activeVin,
@@ -3218,7 +3251,8 @@ async function buildLargeWidgetMulti(data) {
     big.font = Font.heavySystemFont(tight ? 18 : 21);
     big.textColor = v.charging ? C_OK : (pct <= 20 ? C_DANGER : pct <= 50 ? C_WARN : C_BATT);
     const volt = Number(v.voltage || 0);
-    const vr = r2.addText(`${Number(v.range || 0)}km${volt > 0 ? " · " + volt.toFixed(1) + "V" : ""}`);
+    const rangeTxt = Number(v.range) > 0 ? `${Number(v.range)}km` : (v.online ? "0km" : "—");
+    const vr = r2.addText(`${rangeTxt}${volt > 0 ? " · " + volt.toFixed(1) + "V" : ""}`);
     vr.font = Font.systemFont(10);
     vr.textColor = C_TEXT;
     const barFill = v.charging ? new Color("#10b981") : pct <= 20 ? new Color("#ef4444") : pct <= 50 ? new Color("#f59e0b") : new Color("#005782");
@@ -3226,7 +3260,9 @@ async function buildLargeWidgetMulti(data) {
     bar.imageSize = new Size(barW, 5);
     const r3 = left.addStack();
     r3.layoutHorizontally();
-    const ride = r3.addText(`今日 ${Number(v.todayKm || 0).toFixed(1)}km · 电耗 ${Number(v.powerToday || 0).toFixed(2)}kWh`);
+    const todayTxt = (v.online || Number(v.todayKm) > 0) ? `${Number(v.todayKm || 0).toFixed(1)}km` : "—";
+    const kwhTxt = v.powerToday == null ? "—" : `${Number(v.powerToday).toFixed(2)}kWh${v.powerSrc === "calc" ? "（算）" : ""}`;
+    const ride = r3.addText(`今日 ${todayTxt} · 电耗 ${kwhTxt}`);
     ride.font = Font.systemFont(tight ? 8 : 9);
     ride.textColor = C_TEXT;
     const r4 = left.addStack();
@@ -4076,7 +4112,7 @@ async function previewWidget(family) {
   if (!dash) return;
   try { await syncVehiclesLite(acc, store); } catch (e) { }
   if (family === "large" && acc.vehicles && acc.vehicles.length > 1) {
-    try { dash.data.vehList = await fetchVehiclesLite(acc); dash.data.accountName = dispName(acc); } catch (e) { }
+    try { dash.data.vehList = await fetchVehiclesLite(acc, getStore()); dash.data.accountName = dispName(acc); } catch (e) { }
   }
   const w = await buildWidgetForFamily(dash.data, dash.batteryInfo, dash.chargeStateStr, family);
   try {
@@ -4344,7 +4380,7 @@ async function main() {
       // v1.8 大尺寸多车总览（先自动同步车辆列表，App 新绑定车辆自动填充）
       try { await syncVehiclesLite(acc, store); } catch (e) { }
       if ((config.widgetFamily || "medium") === "large" && acc.vehicles && acc.vehicles.length > 1) {
-        try { dash.data.vehList = await fetchVehiclesLite(acc); dash.data.accountName = dispName(acc); } catch (e) { logDebug("多车状态获取失败", String(e?.message || e)); }
+        try { dash.data.vehList = await fetchVehiclesLite(acc, getStore()); dash.data.accountName = dispName(acc); } catch (e) { logDebug("多车状态获取失败", String(e?.message || e)); }
       }
       const widget = await buildWidgetForFamily(dash.data, dash.batteryInfo, dash.chargeStateStr, config.widgetFamily || "medium");
       try {
