@@ -1,6 +1,7 @@
-// ============= 极核 ZEEHO · Scriptable（单账号版 v2.2） =============
+// ============= 极核 ZEEHO · Scriptable（单账号版 v2.3） =============
 // 单账号：只维护一个账号，菜单内可随时「手机号登录 / 粘贴 Token」重设
 // 功能全集：自动签到 / 盲盒 / 补签 / 发布动态 · 车辆控制 · 充电监控 · 小组件（小 / 中 / 大 + 锁屏圆形 / 长方形）
+// v2.3：🧩卡片按车辆数量自适应填充剩余空间（2/3 辆车均匀分布不留大片空白）；胎压未绑定时整行隐藏不再显示字样
 // v2.2：⚡当天总电耗——服务端 powerUseToday>0 直接用，否则按 电池容量×满电电压×当日(放电+回充) 计算（标「（算）」，需在配置设 batteryAh/vFull）；🚫离线车缺失数据显示「—」不再误读为 0
 // v2.1：🎯数据准确性修复——电量不再误读 batteryLevel（恒100，是电池健康标志），真值取 bmssoc；在线/离线改由 vehicleHomePageV2 判定（关机≠离线，widgets 无在线字段）
 // v2.0：📋多车卡片每辆加：在线/离线标记、今日里程·当天电耗、胎压、📍定位地址；卡片自上而下顶部对齐（不再分散撑开）
@@ -3220,7 +3221,7 @@ async function buildLargeWidgetMulti(data) {
   const barW = Math.max(120, 300 - imgW - 12);
   for (let vi = 0; vi < show.length; vi++) {
     const v = show[vi];
-    if (vi > 0) w.addSpacer(tight ? 3 : 6);
+    if (vi > 0) w.addSpacer(); // v2.3：剩余空间按车辆数均匀分布
     const pct = Math.round(Number(v.soc || 0));
     const card = w.addStack();
     card.layoutHorizontally();
@@ -3265,12 +3266,14 @@ async function buildLargeWidgetMulti(data) {
     const ride = r3.addText(`今日 ${todayTxt} · 电耗 ${kwhTxt}`);
     ride.font = Font.systemFont(tight ? 8 : 9);
     ride.textColor = C_TEXT;
-    const r4 = left.addStack();
-    r4.layoutHorizontally();
     const hasTire = (v.tireF && v.tireF !== "未绑定") || (v.tireR && v.tireR !== "未绑定");
-    const tire = r4.addText(hasTire ? `胎压 前 ${v.tireF || "—"} · 后 ${v.tireR || "—"}` : "胎压 未绑定");
-    tire.font = Font.systemFont(tight ? 8 : 9);
-    tire.textColor = C_TEXT;
+    if (hasTire) {
+      const r4 = left.addStack();
+      r4.layoutHorizontally();
+      const tire = r4.addText(`胎压 前 ${v.tireF || "—"} · 后 ${v.tireR || "—"}`);
+      tire.font = Font.systemFont(tight ? 8 : 9);
+      tire.textColor = C_TEXT;
+    }
     if (v.address) {
       const r5 = left.addStack();
       const addr = r5.addText(`📍 ${v.address}`);
