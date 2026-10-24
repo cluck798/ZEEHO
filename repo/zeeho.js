@@ -2,7 +2,7 @@
 #!name=极核 每日签到 积分任务
 #!desc=极核打开我的插件自动捕获 user_id/Authorization/Cookie/User-Agent/app_secret，无需手动抓包；每日定时自动签到。仅供个人学习使用，请勿用于违规用途。
 #!author=lucky
-#!version=2.5.3
+#!version=2.5.4
 #!icon=https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/script/ZEEHO.png
 
 [Script]
@@ -79,8 +79,8 @@ async function main() {
         const _nowT = new Date();
         const _todayT = _nowT.getFullYear() + '-' + String(_nowT.getMonth() + 1).padStart(2, '0') + '-' + String(_nowT.getDate()).padStart(2, '0');
         if (signPrizeDate ? signPrizeDate === _todayT : prizes >= 30) {
-          // 盲盒抽奖（v2.5.3：官方 POST /H5/signin/lottery?dateTime=<开盒日>）
-          integralScore = await user.lottery(signPrizeDate || _todayT);
+          // 盲盒抽奖（v2.5.4：官方 GET /H5/signin/lottery?boxType=0）
+          integralScore = await user.lottery();
           await $.wait(user.getRandomTime());
         }
 
@@ -363,29 +363,30 @@ class UserInfo {
     // 开启盲盒
 
 
-  async lottery(dateTime) {
+  // v2.5.4：官方开盒实为 GET /H5/signin/lottery?boxType=0（2026-10-24 真实开盒日实测成功 +1288 积分；
+  // 旧 v2.5.3 POST ?dateTime=<开盒日> 形态服务端恒 40000「网络开小差」，当时误判）
+  async lottery() {
     try {
-      const date = new Date();
-      const today = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
-
-      const params = {
-        dateTime: dateTime || today
-      }
       const opts = {
-        url: "https://h5.zeehoev.com/cfmotoservermine/H5/signin/lottery",
-        type: "post",
-        headers: Object.assign({}, this.headers, getSign('h5', params)),
-        params,
+        url: "https://h5.zeehoev.com/cfmotoservermine/H5/signin/lottery?boxType=0",
+        type: "get",
+        headers: Object.assign({}, this.headers, getSign('h5', { boxType: "0" })),
         dataType: "json"
       }
       let res = await this.fetch(opts);
-      if (res?.code == '10000') {
-
+      const code = String(res?.code || "");
+      if (code === "10000") {
         const bd = (res?.data && res.data.signPrizesVO) || res?.data || {};
         const integralScore = bd.integral || bd.integralScore || 0;
         const prizesName = bd.prizesName || (integralScore + '积分');
         $.log(`✅ 盲盒抽奖获得: ${prizesName}`);
         return Number(integralScore);
+      } else if (code === "ALREADY_LOTTERY") {
+        $.log(`ℹ️ 今日盲盒已开过`);
+        return 0;
+      } else if (code === "NO_LOTTERY") {
+        $.log(`ℹ️ 今日无可用盲盒`);
+        return 0;
       } else {
         $.log(`⚠️ 盲盒抽奖(今日可能无盲盒): ${res?.message}`);
         return 0;
@@ -634,7 +635,7 @@ function getPostId(data) {
   }
   return null;
 }
-// v2.5.3 签到/盲盒修复：H5 密钥轮换 AiTXmBrm + 签到路径迁 /H5/ + POST 签名含 body + 盲盒改官方 lottery?dateTime=（开盒日以 signPrizeDate 为准）；v2.5.2 抓取修复：①Token 剥离 "Bearer " 前缀后入库（请求侧 UserInfo 会统一补 Bearer）；
+// v2.5.4 盲盒修正：开盒实为 GET /H5/signin/lottery?boxType=0（2026-10-24 真实开盒日实测成功；旧 POST ?dateTime= 恒 40000 系误判），并识别 ALREADY_LOTTERY/NO_LOTTERY；v2.5.3 签到/盲盒修复：H5 密钥轮换 AiTXmBrm + 签到路径迁 /H5/ + POST 签名含 body + 盲盒改官方 lottery?dateTime=（开盒日以 signPrizeDate 为准）；v2.5.2 抓取修复：①Token 剥离 "Bearer " 前缀后入库（请求侧 UserInfo 会统一补 Bearer）；
 // ②同一用户ID（或同一Token）视为同一账号 → 在原条目上更新，绝不新增；更新时保留面板配置的 barkKey。
 async function getCookie() {
   if ($request && $request.method === 'OPTIONS') return;

@@ -1,6 +1,7 @@
-// ============= 极核 ZEEHO · Scriptable（单账号版 v2.3） =============
+// ============= 极核 ZEEHO · Scriptable（单账号版 v2.4） =============
 // 单账号：只维护一个账号，菜单内可随时「手机号登录 / 粘贴 Token」重设
 // 功能全集：自动签到 / 盲盒 / 补签 / 发布动态 · 车辆控制 · 充电监控 · 小组件（小 / 中 / 大 + 锁屏圆形 / 长方形）
+// v2.4：🎁盲盒修正——开盒实为 GET /H5/signin/lottery?boxType=0（2026-10-24 真实开盒日实测成功 +1288 分；旧 POST ?dateTime= 恒 40000，v1.6 系非开盒日探测误判），识别 ALREADY_LOTTERY/NO_LOTTERY
 // v2.3：🧩卡片按车辆数量自适应填充剩余空间（2/3 辆车均匀分布不留大片空白）；胎压未绑定时整行隐藏不再显示字样
 // v2.2：⚡当天总电耗——服务端 powerUseToday>0 直接用，否则按 电池容量×满电电压×当日(放电+回充) 计算（标「（算）」，需在配置设 batteryAh/vFull）；🚫离线车缺失数据显示「—」不再误读为 0
 // v2.1：🎯数据准确性修复——电量不再误读 batteryLevel（恒100，是电池健康标志），真值取 bmssoc；在线/离线改由 vehicleHomePageV2 判定（关机≠离线，widgets 无在线字段）
@@ -915,16 +916,11 @@ async function fetchSigninStatus({ token }) {
   return await safeRequest(requestWithSign, 'h5', "GET", url, params, null, token, "signin(GET status)");
 }
 
-// v1.6 对齐官方 H5：POST /H5/signin/lottery?dateTime=<开盒日>（query 入签、空 body）
-async function fetchSigninLottery({ token, dateTime }) {
+// v2.4 修正：官方开盒实为 GET /H5/signin/lottery?boxType=0（2026-10-24 真实开盒日实测成功；
+// 旧 POST ?dateTime= 恒 40000——v1.6 当时在非开盒日探测，NO_LOTTERY 被误判为「形态不识别」）
+async function fetchSigninLottery({ token }) {
   const url = joinUrl(H5_BASE, API.signinLottery);
-  const params = dateTime ? { dateTime } : {};
-  return await safeRequest(requestWithSign, 'h5', "POST", url, params, null, token, "signinLottery");
-}
-
-async function fetchSupplementPrize({ supplementDate, token }) {
-  const url = joinUrl(H5_BASE, "/cfmotoservermine/H5/signin/supplementPrize");
-  return await safeRequest(requestWithSign, 'h5', "GET", url, { supplementDate }, null, token, "supplementPrize");
+  return await safeRequest(requestWithSign, 'h5', "GET", url, { boxType: "0" }, null, token, "signinLottery");
 }
 
 // ========== 获取电池信息（充电状态 + 电压/电流/温度 + 耗电统计） ==========
@@ -1765,10 +1761,7 @@ async function tryBlindBox({ token, state, cont, isBlindDay, today, persist }) {
   if (String(state.lastBlindBoxDate || "") === today) return { skipped: true, reason: "今日已抽" };
   logStep("盲盒", "start");
   try {
-    let res = await fetchSigninLottery({ token, dateTime: today }).catch(() => null);
-    if (!res || (String(res?.code) !== "10000" && !res?.success)) {
-      res = await fetchSupplementPrize({ supplementDate: state.lastSignDate || today, token }).catch(() => null);
-    }
+    const res = await fetchSigninLottery({ token }).catch(() => null);
     const code = String(res?.code || "");
     const ok = code === "10000" || res?.success === true;
     if (ok) {
@@ -1782,6 +1775,16 @@ async function tryBlindBox({ token, state, cont, isBlindDay, today, persist }) {
       logStep("盲盒", "ok", `${prizeName || "奖励"} ${integral ? integral + "分" : ""}`.trim());
       notifyBlindBoxResult({ ok: true, prizeName, integral });
       return { ok: true, prizeName, integral };
+    }
+    if (code === "ALREADY_LOTTERY") {
+      state.lastBlindBoxDate = today;
+      if (persist) persist(state);
+      logStep("盲盒", "ok", "今日已开过");
+      return { ok: false, already: true };
+    }
+    if (code === "NO_LOTTERY") {
+      logStep("盲盒", "skip", "今日无可用盲盒");
+      return { ok: false, msg: "今日无可用盲盒" };
     }
     const msg = String(res?.message || "");
     if (/已领|已抽|重复|30121/i.test(msg)) {
