@@ -21,4 +21,4 @@ http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/mine\/cfmotoservermine\/sett
 cron "0 7 * * *" script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/zeeho.js, timeout=120, tag=极核每日签到
 
 [MITM]
-hostname = tapi.zeehoev.com, h5.zeehoev.com, zeeho.box
+hostname = %APPEND% tapi.zeehoev.com, h5.zeehoev.com, zeeho.box
