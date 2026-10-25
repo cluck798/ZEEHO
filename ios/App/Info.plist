@@ -17,9 +17,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.2.19</string>
+	<string>1.2.20</string>
 	<key>CFBundleVersion</key>
-	<string>2026102401</string>
+	<string>2026102601</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>CFBundleURLTypes</key>

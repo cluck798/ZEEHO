@@ -580,7 +580,7 @@ nav.tabbar{
 <script>
 "use strict";
 /* ================= 常量 ================= */
-const APP_VERSION = "v2.16.12";
+const APP_VERSION = "v2.16.13";
 const KEYS = { cfg:"zeeho_cfg", accounts:"zeeho_accounts", logs:"zeeho_logs" };
 
 /* ================= 工具函数 ================= */
@@ -614,8 +614,8 @@ function aes256EcbEncryptBase64(plaintext,keyStr){const key=aesUtf8Bytes(keyStr)
 /* ================= 存储 ================= */
 function loadJSON(k,fallback){try{const raw=localStorage.getItem(k);if(!raw)return fallback;const v=JSON.parse(raw);return v===undefined||v===null?fallback:v}catch(e){return fallback}}
 function saveJSON(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
-const DEFAULT_CFG={app:{appId:"S7qPWPU1",appSecret:"c5e0da7f4da28df805694ec3dd1fc6792e9df99d"},h5:{appId:"Sw5F9uJi",appSecret:"46870a8f678a09109468f5b0168818b91c292845"},community:{enablePost:true,enableLike:true,enableComment:true,enableShare:true,enableDelete:true},vehicleAesKey:"ce2cd7cb57124c1349dd8543bf6fd31d",vehicleControlRisk:"",autoRefreshSec:60,serverBase:"",autoSignin:false,autoSigninTime:"07:00",vehicleMonitor:false,widgetVehicle:"",customBg:"",pics:{}};
-function getCfg(){const c=loadJSON(KEYS.cfg,null);if(!c)return JSON.parse(JSON.stringify(DEFAULT_CFG));return{app:{appId:c.app?.appId||DEFAULT_CFG.app.appId,appSecret:c.app?.appSecret||DEFAULT_CFG.app.appSecret},h5:{appId:c.h5?.appId||DEFAULT_CFG.h5.appId,appSecret:c.h5?.appSecret||DEFAULT_CFG.h5.appSecret},community:{enablePost:c.community?.enablePost!==false,enableLike:c.community?.enableLike!==false,enableComment:c.community?.enableComment!==false,enableShare:c.community?.enableShare!==false,enableDelete:c.community?.enableDelete!==false},vehicleAesKey:((typeof c.vehicleAesKey==="string"?c.vehicleAesKey:"").trim()||DEFAULT_CFG.vehicleAesKey),vehicleControlRisk:(typeof c.vehicleControlRisk==="string"?c.vehicleControlRisk:"").trim(),autoRefreshSec:normalizeRefreshSec(c.autoRefreshSec),serverBase:String(c.serverBase||"").trim(),autoSignin:c.autoSignin===true,autoSigninTime:(typeof c.autoSigninTime==="string"&&/^\d{1,2}:\d{2}$/.test(c.autoSigninTime)?c.autoSigninTime:"07:00"),vehicleMonitor:c.vehicleMonitor===true, widgetVehicle:String(c.widgetVehicle||""), customBg:String(c.customBg||"")}}
+const DEFAULT_CFG={app:{appId:"S7qPWPU1",appSecret:"c5e0da7f4da28df805694ec3dd1fc6792e9df99d"},h5:{appId:"Sw5F9uJi",appSecret:"46870a8f678a09109468f5b0168818b91c292845"},community:{enablePost:true,enableLike:true,enableComment:true,enableShare:true,enableDelete:true},vehicleAesKey:"ce2cd7cb57124c1349dd8543bf6fd31d",vehicleControlRisk:"",autoRefreshSec:60,serverBase:"",autoSignin:false,autoSigninTime:"07:00",vehicleMonitor:false,widgetVehicle:"",customBg:"",pics:{},vehicleAlertPush:true};
+function getCfg(){const c=loadJSON(KEYS.cfg,null);if(!c)return JSON.parse(JSON.stringify(DEFAULT_CFG));return{app:{appId:c.app?.appId||DEFAULT_CFG.app.appId,appSecret:c.app?.appSecret||DEFAULT_CFG.app.appSecret},h5:{appId:c.h5?.appId||DEFAULT_CFG.h5.appId,appSecret:c.h5?.appSecret||DEFAULT_CFG.h5.appSecret},community:{enablePost:c.community?.enablePost!==false,enableLike:c.community?.enableLike!==false,enableComment:c.community?.enableComment!==false,enableShare:c.community?.enableShare!==false,enableDelete:c.community?.enableDelete!==false},vehicleAesKey:((typeof c.vehicleAesKey==="string"?c.vehicleAesKey:"").trim()||DEFAULT_CFG.vehicleAesKey),vehicleControlRisk:(typeof c.vehicleControlRisk==="string"?c.vehicleControlRisk:"").trim(),autoRefreshSec:normalizeRefreshSec(c.autoRefreshSec),serverBase:String(c.serverBase||"").trim(),autoSignin:c.autoSignin===true,autoSigninTime:(typeof c.autoSigninTime==="string"&&/^\d{1,2}:\d{2}$/.test(c.autoSigninTime)?c.autoSigninTime:"07:00"),vehicleMonitor:c.vehicleMonitor===true, widgetVehicle:String(c.widgetVehicle||""), customBg:String(c.customBg||""), vehicleAlertPush:c.vehicleAlertPush!==false}}
 function saveCfg(c){return saveJSON(KEYS.cfg,c)}
 function getAccounts(){const a=loadJSON(KEYS.accounts,[]);return Array.isArray(a)?a:[]}
 function saveAccounts(list){return saveJSON(KEYS.accounts,list)}
@@ -1088,6 +1088,7 @@ function applyRemoteCfg(c){
     autoSignin:c.autoSignin===true,
     autoSigninTime:(typeof c.autoSigninTime==="string"&&/^\d{1,2}:\d{2}$/.test(c.autoSigninTime)?c.autoSigninTime:"07:00"),
     vehicleMonitor:c.vehicleMonitor===true,
+    vehicleAlertPush:c.vehicleAlertPush!==false,
     widgetVehicle:String(c.widgetVehicle||""),
     customBg:String(c.customBg||""),
     pics:(c.pics&&typeof c.pics==="object")?c.pics:(local.pics||{})
@@ -1437,6 +1438,7 @@ function renderCfg(){
   '<div class="cfg-panel"><div class="cfg-head"><h3><span class="bar green"></span>定时签到</h3></div><div class="cfg-body">'+
   sw("auto_signin","定时签到","到点自动为全部账号签到",cfg.autoSignin===true)+
   sw("vehicle_monitor","车辆状态监控","充满/离线时本地通知提醒（打开面板时检查）",cfg.vehicleMonitor===true)+
+  sw("vehicle_alert_push","车辆提醒推送","震动/忘关锁/电池拔出/低电量（打开面板时检查并推送）",cfg.vehicleAlertPush!==false)+
   '<div class="f-item" style="margin-top:10px"><label>签到时间（每天，HH:MM）</label><input type="time" id="cfg_signin_time" value="'+esc(cfg.autoSigninTime||"07:00")+'" style="font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>'+
   '<div class="hint" style="margin-top:10px">代理脚本无常驻后台，采用「打开补签」机制：开启后，每天首次打开面板且已过设定时间时，自动为全部账号执行一次签到（写日志、推 Bark，与手动签到一致），同一天只执行一次。首页「立即签到」悬浮按钮可随时手动执行。</div>'+
   '</div></div>'+
@@ -1669,12 +1671,12 @@ async function phoneLoginUI(){
 }
 // v2.14.21 签名密钥配置面板已删除：app/h5/AES 密钥直接沿用当前值（内置默认），不再从输入框读取
 // v2.14.21 风险确认改弹窗：保存配置时沿用当前 vehicleControlRisk，不清空同意状态
-function collectCfgUI(){const cur=getCfg();return{app:{appId:cur.app.appId,appSecret:cur.app.appSecret},h5:{appId:cur.h5.appId,appSecret:cur.h5.appSecret},vehicleAesKey:cur.vehicleAesKey,vehicleControlRisk:cur.vehicleControlRisk,autoRefreshSec:normalizeRefreshSec(cur.autoRefreshSec||60),serverBase:cur.serverBase||"",autoSignin:el("auto_signin")?el("auto_signin").checked:false,autoSigninTime:(val("cfg_signin_time")||"07:00"),vehicleMonitor:el("vehicle_monitor")?el("vehicle_monitor").checked:false,widgetVehicle:widgetSelectionText()||cur.widgetVehicle,customBg:cur.customBg,pics:(cur.pics||{}),community:{enablePost:el("comm_post").checked,enableLike:el("comm_like").checked,enableComment:el("comm_comment").checked,enableShare:el("comm_share").checked,enableDelete:el("comm_delete").checked}}}
+function collectCfgUI(){const cur=getCfg();return{app:{appId:cur.app.appId,appSecret:cur.app.appSecret},h5:{appId:cur.h5.appId,appSecret:cur.h5.appSecret},vehicleAesKey:cur.vehicleAesKey,vehicleControlRisk:cur.vehicleControlRisk,autoRefreshSec:normalizeRefreshSec(cur.autoRefreshSec||60),serverBase:cur.serverBase||"",autoSignin:el("auto_signin")?el("auto_signin").checked:false,autoSigninTime:(val("cfg_signin_time")||"07:00"),vehicleMonitor:el("vehicle_monitor")?el("vehicle_monitor").checked:false,vehicleAlertPush:el("vehicle_alert_push")?el("vehicle_alert_push").checked:true,widgetVehicle:widgetSelectionText()||cur.widgetVehicle,customBg:cur.customBg,pics:(cur.pics||{}),community:{enablePost:el("comm_post").checked,enableLike:el("comm_like").checked,enableComment:el("comm_comment").checked,enableShare:el("comm_share").checked,enableDelete:el("comm_delete").checked}}}
 function val(id){const e=document.getElementById(id);return e?e.value:""}
 function el(id){return document.getElementById(id)}
 async function saveCfgUI(){const c=collectCfgUI();const ok=await Backend.saveConfig(c);if(ok){if(isProxyMode()){applyRemoteCfg(c);STATE.panelLoaded=false}toast("配置已保存","ok");startAutoRefresh(c.autoRefreshSec);refreshAll(true)}else toast("保存失败","err")}
 // v2.14.21 签名密钥面板已删除：恢复默认时密钥直接写回内置默认值
-function resetCfgUI(){if(el("auto_signin"))el("auto_signin").checked=false;if(el("cfg_signin_time"))el("cfg_signin_time").value="07:00";if(el("comm_post"))el("comm_post").checked=true;if(el("comm_like"))el("comm_like").checked=true;if(el("comm_comment"))el("comm_comment").checked=true;if(el("comm_share"))el("comm_share").checked=true;if(el("comm_delete"))el("comm_delete").checked=true;const c=getCfg();c.app={appId:DEFAULT_CFG.app.appId,appSecret:DEFAULT_CFG.app.appSecret};c.h5={appId:DEFAULT_CFG.h5.appId,appSecret:DEFAULT_CFG.h5.appSecret};c.vehicleAesKey=DEFAULT_CFG.vehicleAesKey;c.vehicleControlRisk="";c.widgetVehicle="";c.customBg="";saveCfg(c);applyCustomBg();if(el("widget_acc")){el("widget_acc").value="";el("widget_veh").innerHTML="";}const bp=el("bgPreview");if(bp){bp.style.backgroundImage="";bp.textContent="未选择";}toast("已恢复默认（需点击保存）","info")}
+function resetCfgUI(){if(el("auto_signin"))el("auto_signin").checked=false;if(el("vehicle_alert_push"))el("vehicle_alert_push").checked=true;if(el("cfg_signin_time"))el("cfg_signin_time").value="07:00";if(el("comm_post"))el("comm_post").checked=true;if(el("comm_like"))el("comm_like").checked=true;if(el("comm_comment"))el("comm_comment").checked=true;if(el("comm_share"))el("comm_share").checked=true;if(el("comm_delete"))el("comm_delete").checked=true;const c=getCfg();c.app={appId:DEFAULT_CFG.app.appId,appSecret:DEFAULT_CFG.app.appSecret};c.h5={appId:DEFAULT_CFG.h5.appId,appSecret:DEFAULT_CFG.h5.appSecret};c.vehicleAesKey=DEFAULT_CFG.vehicleAesKey;c.vehicleControlRisk="";c.widgetVehicle="";c.customBg="";saveCfg(c);applyCustomBg();if(el("widget_acc")){el("widget_acc").value="";el("widget_veh").innerHTML="";}const bp=el("bgPreview");if(bp){bp.style.backgroundImage="";bp.textContent="未选择";}toast("已恢复默认（需点击保存）","info")}
 function addAccountUI(){cfgAccounts.push({userName:"",userId:"",token:"",barkKey:""});const list=el("accList");const idx=cfgAccounts.length-1;const html='<div class="acc-edit" data-i="'+idx+'"><div class="acc-edit-head"><span class="acc-edit-title"><span class="n">'+String(idx+1)+'</span>账号 '+String(idx+1)+'（新）</span><span class="acts"><button class="btn sm" id="uidBtn_'+idx+'" onclick="fetchUserIdUI('+idx+')">获取ID</button><button class="btn sm danger" onclick="deleteAccountUI('+idx+')">删除</button></span></div><div class="form-grid"><div class="f-item"><label>昵称</label><input type="text" id="acc_name_'+idx+'" placeholder="如 lucky798"></div><div class="f-item"><label>用户ID</label><input type="text" id="acc_uid_'+idx+'" placeholder="留空可点「获取ID」"></div></div><div class="f-item" style="margin-top:10px"><label>Authorization Token</label><input type="text" id="acc_token_'+idx+'" placeholder="a74779c7-…"></div><div class="f-item" style="margin-top:10px"><label>Bark 通知 Key（选填）</label><input type="text" id="acc_bark_'+idx+'" placeholder="Bark Key 或自建 https://域名/Key"></div></div>';if(list.querySelector(".acc-edit")||list.querySelector("[style*='text-align']")){list.insertAdjacentHTML("beforeend",html)}else{list.innerHTML=html}}
 function deleteAccountUI(idx){const row=document.querySelector('.acc-edit[data-i="'+idx+'"]');if(row){row.remove();cfgAccounts.splice(idx,1);toast("已删除（需点击保存）","info")}}
 function collectAccountsUI(){const rows=document.querySelectorAll("#accList .acc-edit");const list=[];rows.forEach(row=>{const i=row.getAttribute("data-i");const token=el("acc_token_"+i)?.value||"";if(token.trim()){list.push({userName:el("acc_name_"+i)?.value||"",userId:el("acc_uid_"+i)?.value||"",token:cleanToken(token),barkKey:cleanBarkKey(el("acc_bark_"+i)?.value||"")})}});return list}
@@ -2154,6 +2156,11 @@ async function renderVehiclePage(){
     const coupons=(info.coupons&&(info.coupons.records||info.coupons.list||info.coupons))||[];
     if(Array.isArray(coupons)&&coupons.length)html+='<div class="mon-row"><span class="k">优惠券</span><span class="v num">'+coupons.length+' 张</span></div>';
     if(info.ota!=null)html+='<div class="mon-row"><span class="k">OTA 升级</span><span class="v" style="font-size:12px">'+(Array.isArray(info.ota)&&info.ota.length?"有新版本":"已是最新")+'</span></div>';
+    const vms=(info.vehicleMessages&&Array.isArray(info.vehicleMessages.alerts))?info.vehicleMessages.alerts:[];
+    if(vms.length){
+      html+='<div style="font-size:12px;font-weight:700;color:var(--txt2);margin:10px 0 4px">车辆提醒（震动/忘关锁/电池）</div>';
+      html+=vms.slice(0,5).map(m=>'<div class="flow-item"><div><div class="nm">'+esc(m.content||"车辆消息")+'</div><div class="tm">'+esc([m.detail,m.address,m.time].filter(Boolean).join(" · ").slice(0,64))+'</div></div></div>').join("");
+    }
   }else{
     html+='<div style="color:var(--txt3);font-size:12px">'+esc((info&&(info.error||info.message))||"信息中心加载失败")+'</div>';
   }
