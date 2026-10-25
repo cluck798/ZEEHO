@@ -216,6 +216,12 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
+    override fun onResume() {
+        super.onResume()
+        // v1.2.15：打开 App 后同步刷新桌面小组件数据
+        ZHWidgetProvider.requestRefresh(this)
+    }
+
     private companion object {
         /** 端口轮询间隔（首次启动后服务通常 1-2s 内就绪） */
         const val PORT_POLL_INTERVAL_MS = 250L

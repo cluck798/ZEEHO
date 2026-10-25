@@ -11,8 +11,8 @@ android {
         applicationId "com.zeeho.signpanel"
         minSdk 24
         targetSdk 34
-        versionCode 2026102601
-        versionName "1.2.14"
+        versionCode 2026102602
+        versionName "1.2.15"
     }
 
     buildTypes {

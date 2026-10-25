@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="14dp"
+    android:background="@drawable/widget_bg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="极核 ZEEHO"
+            android:textColor="#E8ECF5"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/widget_online"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="● 打开 App"
+            android:textColor="#F59E0B"
+            android:textSize="10sp"
+            android:layout_marginEnd="8dp" />
+
+        <ImageView
+            android:id="@+id/widget_refresh"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:padding="3dp"
+            android:src="@android:drawable/ic_popup_sync"
+            android:contentDescription="刷新"
+            android:background="@android:color/transparent" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="bottom"
+        android:layout_marginTop="2dp">
+
+        <TextView
+            android:id="@+id/widget_soc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="--"
+            android:textColor="#FFFFFF"
+            android:textSize="34sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="%"
+            android:textColor="#93A3C0"
+            android:textSize="14sp"
+            android:layout_marginStart="2dp"
+            android:layout_marginBottom="5dp" />
+
+        <TextView
+            android:id="@+id/widget_range"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="续航 --"
+            android:textColor="#93A3C0"
+            android:textSize="12sp"
+            android:layout_marginStart="8dp"
+            android:layout_marginBottom="6dp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_detail"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="电压 -- V · --"
+        android:textColor="#7E90B0"
+        android:textSize="11sp"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+    <TextView
+        android:id="@+id/widget_sign"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="签到 --"
+        android:textColor="#7E90B0"
+        android:textSize="11sp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:layout_marginTop="1dp" />
+
+    <TextView
+        android:id="@+id/widget_time"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="--"
+        android:textColor="#4E5D7A"
+        android:textSize="9sp"
+        android:gravity="end" />
+</LinearLayout>

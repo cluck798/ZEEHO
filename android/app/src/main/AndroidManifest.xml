@@ -29,5 +29,18 @@
             android:name=".ZHPanelService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- v1.2.15 安卓桌面小组件：电量/续航/充电/签到 -->
+        <receiver
+            android:name=".ZHWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.zeeho.signpanel.action.WIDGET_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info" />
+        </receiver>
     </application>
 </manifest>
