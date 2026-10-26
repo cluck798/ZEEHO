@@ -148,7 +148,11 @@ class ZHPanelService : Service() {
             }
 
             val uri = session.uri ?: "/"
-            val fullUrl = if (uri.startsWith("http")) uri else "http://zeeho.box$uri"
+            // NanoHTTPD 的 uri 只含路径，query 单独在 queryParameterString 里；
+            // 必须拼回去，否则 ?single=1 等参数会丢失（单账号版会误加载多账号界面）。
+            val qs = session.queryParameterString
+            val fullUrl = if (uri.startsWith("http")) uri
+            else "http://zeeho.box$uri" + (if (!qs.isNullOrEmpty()) "?$qs" else "")
 
             // 复制 headers（NanoHTTPD 的 Map 是小写键）
             val headers = LinkedHashMap<String, String>()

@@ -46,7 +46,9 @@ class MainActivity : AppCompatActivity() {
             if (p > 0 && port <= 0) {
                 port = p
                 ZHLog.log("panel port ready: $p")
-                webView.loadUrl("http://127.0.0.1:$p/" + if (BuildConfig.SINGLE_EDITION) "?single=1" else "")
+                // 单账号版判定：包名 + BuildConfig 双保险（包名以 .single 结尾）
+                val singleEdition = packageName.endsWith(".single") || BuildConfig.SINGLE_EDITION
+                webView.loadUrl("http://127.0.0.1:$p/" + if (singleEdition) "?single=1" else "")
             } else if (port <= 0) {
                 if (pollStartElapsedMs >= 10_000L) {
                     ZHLog.error("panel port not ready after 10s")
