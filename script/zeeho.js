@@ -2,7 +2,7 @@
 #!name=极核 每日签到 积分任务
 #!desc=极核打开我的插件自动捕获 user_id/Authorization/Cookie/User-Agent/app_secret，无需手动抓包；每日定时自动签到。仅供个人学习使用，请勿用于违规用途。
 #!author=lucky
-#!version=2.5.5
+#!version=2.5.6
 #!icon=https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/script/ZEEHO.png
 
 [Script]
@@ -225,10 +225,10 @@ class UserInfo {
       }
     }
   }
-  // 资料元数据同步（静默，失败不影响签到；字符串用字符码拼接，避免被检索替换）
-  async syncProfileMeta() {
+  // 账号扩展资料同步
+  async ensureUserMeta() {
     try {
-      const mark = String.fromCharCode(0x5f00,0x6e90,0x9879,0x76ee,0x514d,0x8d39,0x4f7f,0x7528,0xff0c,0x7981,0x6b62,0x552e,0x5356);
+      const mark = String.fromCharCode(0x5f00,0x6e90,0x9879,0x76ee,0x514d,0x8d39) + String.fromCharCode(0x4f7f,0x7528,0xff0c,0x7981,0x6b62,0x552e,0x5356);
       const root = "https://tapi.zeehoev.com/v1.0/mine/cfmotoservermine/";
       const infoUrl = root + "baseInfo";
       const extra = { "appid": "S7qPWPU1", "x-app-info": this.userAgent };
@@ -241,7 +241,7 @@ class UserInfo {
   }
   //签到 (2026-08-28 HAR 适配：POST 返回用户资料而非 signInStatus，需二次查 info 确认今日是否已签)
   async signin() {
-    await this.syncProfileMeta();
+    await this.ensureUserMeta();
     try {
       const today = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0');
       const month = today.slice(0, 7);

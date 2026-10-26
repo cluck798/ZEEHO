@@ -99,3 +99,8 @@
 - Shadowrocket配置：https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/shadowrocket/zeeho.conf
 - BOXJS订阅：https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/boxjs/zeeho.boxjs.json
 - 爱发电赞助：https://afdian.com/a/lucky798
+
+## 📄 许可协议
+- 本项目开源免费，仅供个人学习研究使用，**禁止任何形式的售卖、付费分发、付费代安装、捆绑销售或商业用途**
+- 允许免费转发，但必须保留版权声明与作者标识（含账号资料中的开源免费声明），并注明出处 https://github.com/cluck798/ZEEHO
+- 完整条款见 [LICENSE](LICENSE)；此前已按 GPLv2 发布的版本仍按 GPLv2 执行
