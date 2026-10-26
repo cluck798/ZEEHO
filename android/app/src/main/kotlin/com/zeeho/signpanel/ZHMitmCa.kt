@@ -130,6 +130,16 @@ object ZHMitmCa {
         }
     }
 
+    /** CA 证书 DER 编码（供 KeyChain 系统安装） */
+    fun caEncoded(context: Context): ByteArray? {
+        if (!ensure(context) || caCert == null) return null
+        return try {
+            caCert!!.encoded
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     /** 导出 CA 证书（PEM .crt），供系统安装 */
     fun exportCa(context: Context): File? {
         if (!ensure(context) || caCert == null) return null

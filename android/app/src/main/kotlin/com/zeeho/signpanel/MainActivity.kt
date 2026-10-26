@@ -205,31 +205,24 @@ class MainActivity : AppCompatActivity() {
                 @JavascriptInterface
                 fun installCa() {
                     runOnUiThread {
-                        val f = ZHMitmCa.exportCa(this@MainActivity)
-                        if (f == null) {
+                        val der = ZHMitmCa.caEncoded(this@MainActivity)
+                        if (der == null) {
                             Toast.makeText(this@MainActivity, "证书生成失败，请重启应用重试", Toast.LENGTH_LONG).show()
                             return@runOnUiThread
                         }
+                        // KeyChain 系统安装（用户 CA），比 FileProvider + ACTION_VIEW 兼容性好
                         try {
-                            val uri = androidx.core.content.FileProvider.getUriForFile(
-                                this@MainActivity,
-                                BuildConfig.APPLICATION_ID + ".fileprovider",
-                                f
-                            )
-                            val intent = Intent(Intent.ACTION_VIEW).apply {
-                                setDataAndType(uri, "application/x-x509-ca-cert")
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            }
+                            val intent = android.security.KeyChain.createInstallIntent()
+                            intent.putExtra(android.security.KeyChain.EXTRA_CERTIFICATE, der)
+                            intent.putExtra(android.security.KeyChain.EXTRA_NAME, "ZEEHO Panel CA")
                             startActivity(intent)
-                            Toast.makeText(this@MainActivity, "请在系统弹窗中选择「CA 证书」并安装", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this@MainActivity, "请在系统弹窗中选择「CA 证书」并确认安装", Toast.LENGTH_LONG).show()
                         } catch (e: Exception) {
-                            // 部分系统无关联安装器：打开安全设置，让用户手动从「加密与凭据」安装
-                            Toast.makeText(this@MainActivity, "请到 设置 → 安全 → 加密与凭据 → 安装证书 选择 CA 证书", Toast.LENGTH_LONG).show()
+                            ZHLog.error("KeyChain install failed", e)
+                            Toast.makeText(this@MainActivity, "请到 设置 → 安全 → 加密与凭据 → 安装证书 手动安装", Toast.LENGTH_LONG).show()
                             try {
                                 startActivity(Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))
-                            } catch (e2: Exception) {
-                                ZHLog.error("open security settings failed", e2)
-                            }
+                            } catch (e2: Exception) {}
                         }
                     }
                 }
@@ -238,8 +231,15 @@ class MainActivity : AppCompatActivity() {
                 fun startCapture() {
                     runOnUiThread {
                         try {
-                            ZHVpnService.start(this@MainActivity)
-                            Toast.makeText(this@MainActivity, "已开启抓包，请在系统弹窗中允许 VPN；然后打开极核 App", Toast.LENGTH_LONG).show()
+                            // 必须先取得系统 VPN 授权（VpnService.prepare），直接 startService 不会弹授权框
+                            val prep = android.net.VpnService.prepare(this@MainActivity)
+                            if (prep != null) {
+                                Toast.makeText(this@MainActivity, "请在系统弹窗中允许 VPN", Toast.LENGTH_LONG).show()
+                                startActivityForResult(prep, REQ_VPN)
+                            } else {
+                                ZHVpnService.start(this@MainActivity)
+                                Toast.makeText(this@MainActivity, "已开启抓包，请打开极核 App", Toast.LENGTH_LONG).show()
+                            }
                         } catch (e: Exception) {
                             ZHLog.error("start capture failed", e)
                             Toast.makeText(this@MainActivity, "开启抓包失败：" + (e.message ?: "未知错误"), Toast.LENGTH_LONG).show()
@@ -292,8 +292,22 @@ class MainActivity : AppCompatActivity() {
         ZHWidgetProvider.requestRefresh(this)
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_VPN) {
+            if (resultCode == RESULT_OK) {
+                ZHVpnService.start(this)
+                Toast.makeText(this, "VPN 已授权，抓包已开启", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(this, "未授权 VPN，无法抓包；可改用手机号登录", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     private companion object {
         /** 端口轮询间隔（首次启动后服务通常 1-2s 内就绪） */
         const val PORT_POLL_INTERVAL_MS = 250L
+        /** VPN 授权请求码 */
+        const val REQ_VPN = 1001
     }
 }
