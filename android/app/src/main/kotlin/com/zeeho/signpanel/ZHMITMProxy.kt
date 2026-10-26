@@ -178,7 +178,7 @@ class ZHMITMProxy private constructor(private val context: Context) {
         // 一次连接处理一个请求（keep-alive 由客户端重连，足够抓 Token）
         val reqHeader = readHeaderBlock(sIn) ?: run { runCatching { sslServer.close() }; return }
         val headers = parseHeaders(reqHeader)
-        captureToken(headers)
+        captureToken(headers, host)
 
         // 上游 TLS
         val rawUp = Socket()
@@ -222,7 +222,7 @@ class ZHMITMProxy private constructor(private val context: Context) {
     /** 普通 HTTP（非 CONNECT）转发 */
     private fun plainHttp(client: Socket, clientIn: InputStream, clientOut: OutputStream, host: String, path: String, header: String) {
         try {
-            captureToken(parseHeaders(header))
+            captureToken(parseHeaders(header), host)
             val upstream = Socket()
             upstream.connect(InetSocketAddress(host, 80), 10_000)
             val upOut = upstream.getOutputStream()
@@ -337,7 +337,13 @@ class ZHMITMProxy private constructor(private val context: Context) {
     }
 
     // ================= Token 提取与导入 =================
-    private fun captureToken(headers: Map<String, String>) {
+    private fun captureToken(headers: Map<String, String>, host: String) {
+        // v1.2.25 只接受 App 网关（tapi）的 Token：h5.zeehoev.com 上的 Token 往往只在 H5 通道有效，
+        // 导入后会出现总积分 0、无车辆/定位、车控与社区全部失败（线上实测）
+        if (!host.startsWith("tapi.")) {
+            ZHLog.log("$TAG skip non-app token from $host")
+            return
+        }
         val auth = headers["authorization"] ?: return
         val token = auth.removePrefix("Bearer ").removePrefix("bearer ").trim()
         if (token.length < 16 || token == lastToken) return
@@ -355,7 +361,7 @@ class ZHMITMProxy private constructor(private val context: Context) {
                 ZHLog.log("$TAG panel port not ready, token cached only")
                 return
             }
-            val url = "http://127.0.0.1:$panelPort/api/quick-save?token=" + URLEncoder.encode(token, "UTF-8")
+            val url = "http://127.0.0.1:$panelPort/api/quick-save?replace=1&token=" + URLEncoder.encode(token, "UTF-8")
             OkHttpClient().newCall(Request.Builder().url(url).build()).enqueue(object : okhttp3.Callback {
                 override fun onFailure(call: okhttp3.Call, e: java.io.IOException) {
                     ZHLog.error("$TAG import token fail", e)
