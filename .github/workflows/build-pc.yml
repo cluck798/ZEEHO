@@ -61,9 +61,10 @@ jobs:
             - 内核：构建时打包 repo/zeeho_box_enhanced.js
             - 更新时间：${{ steps.bt.outputs.BJ }}（北京时间）
             - 构建提交：${{ github.sha }}
+          # 便携版产物名为「极核签到面板 <版本>.exe」（不含 Portable 字样），需单独匹配
           files: |
             desktop/dist/*Setup*.exe
-            desktop/dist/*Portable*.exe
+            desktop/dist/极核签到面板 [0-9]*.exe
           overwrite: true
           make_latest: true
 
