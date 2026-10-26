@@ -5,7 +5,7 @@
   "description": "极核 ZEEHO 签到面板桌面版：多账号签到、车辆管理、定时自动签到、托盘常驻",
   "author": "lucky",
   "homepage": "https://github.com/cluck798/ZEEHO",
-  "license": "MIT",
+  "license": "SEE LICENSE IN ../LICENSE",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -46,7 +46,11 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "shortcutName": "极核签到面板"
+      "shortcutName": "极核签到面板",
+      "artifactName": "ZeehoPanel-Setup-${version}.exe"
+    },
+    "portable": {
+      "artifactName": "ZeehoPanel-Portable-${version}.exe"
     }
   }
 }

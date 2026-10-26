@@ -61,10 +61,9 @@ jobs:
             - 内核：构建时打包 repo/zeeho_box_enhanced.js
             - 更新时间：${{ steps.bt.outputs.BJ }}（北京时间）
             - 构建提交：${{ github.sha }}
-          # 便携版产物名为「极核签到面板 <版本>.exe」（不含 Portable 字样），需单独匹配
           files: |
             desktop/dist/*Setup*.exe
-            desktop/dist/极核签到面板 [0-9]*.exe
+            desktop/dist/*Portable*.exe
           overwrite: true
           make_latest: true
 
@@ -85,8 +84,9 @@ jobs:
             const h = { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" };
             const rel = await (await fetch(`https://api.github.com/repos/${repo}/releases/tags/pc-latest`, { headers: h })).json();
             const assets = rel.assets || [];
+            const keep = new Set([`ZeehoPanel-Setup-${ver}.exe`, `ZeehoPanel-Portable-${ver}.exe`]);
             for (const a of assets) {
-              if (String(a.name).includes(ver)) continue;
+              if (keep.has(String(a.name))) continue;
               const r = await fetch(`https://api.github.com/repos/${repo}/releases/assets/${a.id}`, { method: "DELETE", headers: h });
               console.log(`pruned ${a.name} -> ${r.status}`);
             }
