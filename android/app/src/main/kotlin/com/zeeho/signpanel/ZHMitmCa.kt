@@ -109,7 +109,7 @@ object ZHMitmCa {
                 builder.addExtension(
                     Extension.subjectAlternativeName,
                     false,
-                    GeneralNames(arrayOf(GeneralName.dNSName(host)))
+                    GeneralNames(arrayOf(GeneralName(GeneralName.dNSName, host)))
                 )
                 builder.addExtension(Extension.basicConstraints, true, BasicConstraints(false))
                 val signer = JcaContentSignerBuilder("SHA256withRSA").build(caKey)

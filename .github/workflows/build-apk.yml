@@ -46,8 +46,9 @@ jobs:
         working-directory: android
         run: |
           chmod +x ./gradlew
-          # --no-daemon：CI 单次构建无需常驻 daemon
-          ./gradlew assembleRelease --no-daemon
+          # --no-daemon：CI 单次构建无需常驻 daemon；tee 保存日志供失败上传
+          set -o pipefail
+          ./gradlew assembleRelease --no-daemon 2>&1 | tee build.log
 
       - name: Decode keystore from secret
         env:
@@ -130,7 +131,8 @@ jobs:
       - name: Collect build log on failure
         if: failure()
         run: |
-          touch android/build.log
+          mkdir -p android
+          if [ ! -s android/build.log ]; then echo "build.log empty (failed before gradle output)" > android/build.log; fi
           tail -c 300000 android/build.log > android/build-tail.log || true
 
       - name: Upload build log on failure
