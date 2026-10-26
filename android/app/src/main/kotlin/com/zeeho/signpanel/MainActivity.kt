@@ -46,7 +46,7 @@ class MainActivity : AppCompatActivity() {
             if (p > 0 && port <= 0) {
                 port = p
                 ZHLog.log("panel port ready: $p")
-                webView.loadUrl("http://127.0.0.1:$p/")
+                webView.loadUrl("http://127.0.0.1:$p/" + if (BuildConfig.SINGLE_EDITION) "?single=1" else "")
             } else if (port <= 0) {
                 if (pollStartElapsedMs >= 10_000L) {
                     ZHLog.error("panel port not ready after 10s")
@@ -180,12 +180,35 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // JS 桥：window.ZeehoNative.hideSplash()
+        // JS 桥：window.ZeehoNative.hideSplash() / appVersion() / openExternal(url) / startCapture()
         webView.addJavascriptInterface(
             object {
                 @JavascriptInterface
                 fun hideSplash() {
                     runOnUiThread { this@MainActivity.hideSplash() }
+                }
+
+                @JavascriptInterface
+                fun appVersion(): String = BuildConfig.VERSION_NAME
+
+                @JavascriptInterface
+                fun openExternal(url: String) {
+                    try {
+                        startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                    } catch (e: Exception) {
+                        ZHLog.error("openExternal failed", e)
+                    }
+                }
+
+                @JavascriptInterface
+                fun startCapture() {
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "自动抓包需安装证书并开启 VPN，正在准备中",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                 }
             },
             "ZeehoNative"

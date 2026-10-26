@@ -108,7 +108,11 @@ static UIColor *ZHPanelBackgroundColor(void) {
         [webView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
     ]];
 
+#ifdef SINGLE_EDITION
+    NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"%@://panel/?single=1", kPanelScheme]];
+#else
     NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"%@://panel/", kPanelScheme]];
+#endif
     [webView loadRequest:[NSURLRequest requestWithURL:url]];
 
     // 品牌开屏：与 HTML 闪屏视觉一致，数据就绪后淡出
@@ -432,7 +436,9 @@ static UIColor *ZHPanelBackgroundColor(void) {
     // 原先首页要等一整轮「JSContext 创建 + 466KB 脚本求值 + JS 侧 B64/UTF-8 解码」才拿到 HTML；
     // 现在直接从脚本内嵌 B64 原生解码返回（毫秒级）。提取失败自动回退引擎通道，行为不变。
     if ([method isEqualToString:@"GET"] && ([path isEqualToString:@"/"] || path.length == 0)) {
-        NSString *fastHTML = [self.dispatcher panelHTMLLocal];
+        // v2.16.14 单账号版：?single=1 时原生直出单账号界面（解码 __SINGLE_HTML_B64）
+        BOOL single = reqURL.query.length && [reqURL.query containsString:@"single=1"];
+        NSString *fastHTML = single ? [self.dispatcher singlePanelHTMLLocal] : [self.dispatcher panelHTMLLocal];
         if (fastHTML.length) {
             NSLog(@"[ZH] 首屏 HTML 原生直出 %.0fms", (CACurrentMediaTime() - self.launchT0) * 1000);
             [self finishSchemeTask:urlSchemeTask url:reqURL status:200

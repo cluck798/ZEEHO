@@ -38,35 +38,46 @@ jobs:
           set -eo pipefail
           cd ios
           xcodegen generate
-          xcodebuild -project ZeehoSignPanel.xcodeproj -scheme ZeehoPanel -configuration Release \
-            -sdk iphoneos -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= \
-            build 2>&1 | tee xcodebuild.log
+          # 多账号版 + 单账号版（同一套源码，SINGLE_EDITION 宏切换）
+          for SCHEME in ZeehoPanel ZeehoSingle; do
+            xcodebuild -project ZeehoSignPanel.xcodeproj -scheme "$SCHEME" -configuration Release \
+              -sdk iphoneos -derivedDataPath build \
+              CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= \
+              build 2>&1 | tee -a xcodebuild.log
+          done
 
       - name: Package IPA
         run: |
           set -e
           cd ios
-          rm -rf Payload
-          mkdir Payload
-          cp -R build/Build/Products/Release-iphoneos/ZeehoPanel.app Payload/
-          # v2.14.21 桌面小组件：ad-hoc 签名 Widget Extension 并嵌入 App Group 权限（TrollStore 按已嵌入 entitlements 重签，不嵌入则共享容器不可用）
-          if [ -d Payload/ZeehoPanel.app/PlugIns/ZeehoWidget.appex ]; then
-            codesign --force --sign - --entitlements Widget/ZeehoWidget.entitlements Payload/ZeehoPanel.app/PlugIns/ZeehoWidget.appex
-          fi
-          # 注入 BackRun dylib（后台常驻增强）：复制到 Frameworks 并给主二进制追加 LC_LOAD_DYLIB
-          mkdir -p Payload/ZeehoPanel.app/Frameworks
-          cp ../ios/BackRun.dylib Payload/ZeehoPanel.app/Frameworks/BackRun.dylib
           # 从源码编译 insert_dylib（官方 release 二进制下载地址已失效 404，改用源码编译，无第三方依赖）
           curl -fsSL https://raw.githubusercontent.com/Tyilo/insert_dylib/eb7278162af8fcc372e7f2946a2dee6a386b17d8/insert_dylib/main.c -o insert_dylib.c
           clang -O2 -o insert_dylib insert_dylib.c
-          ./insert_dylib --all-yes --inplace --strip-codesig @rpath/BackRun.dylib Payload/ZeehoPanel.app/ZeehoPanel
-          codesign --force --sign - Payload/ZeehoPanel.app/Frameworks/BackRun.dylib 2>/dev/null || true
-          # 主二进制同样 ad-hoc 签名并嵌入 App Group 权限（insert_dylib 已剥掉签名，放其之后）
-          codesign --force --sign - --entitlements App/ZeehoPanel.entitlements Payload/ZeehoPanel.app/ZeehoPanel
-          ls -la Payload/ZeehoPanel.app/Frameworks/
-          zip -qry ../ZeehoSignPanel.ipa Payload
-          ls -la ../ZeehoSignPanel.ipa
+          pack() {
+            APP=$1; OUT=$2
+            rm -rf Payload
+            mkdir Payload
+            cp -R "build/Build/Products/Release-iphoneos/$APP.app" Payload/
+            # 桌面小组件：ad-hoc 签名 Widget Extension 并嵌入 App Group 权限（仅多账号版）
+            if [ -d "Payload/$APP.app/PlugIns/ZeehoWidget.appex" ]; then
+              codesign --force --sign - --entitlements Widget/ZeehoWidget.entitlements "Payload/$APP.app/PlugIns/ZeehoWidget.appex"
+            fi
+            # 注入 BackRun dylib（后台常驻增强）：复制到 Frameworks 并给主二进制追加 LC_LOAD_DYLIB
+            mkdir -p "Payload/$APP.app/Frameworks"
+            cp BackRun.dylib "Payload/$APP.app/Frameworks/BackRun.dylib"
+            ./insert_dylib --all-yes --inplace --strip-codesig @rpath/BackRun.dylib "Payload/$APP.app/$APP"
+            codesign --force --sign - "Payload/$APP.app/Frameworks/BackRun.dylib" 2>/dev/null || true
+            if [ "$APP" = "ZeehoPanel" ]; then
+              codesign --force --sign - --entitlements App/ZeehoPanel.entitlements "Payload/$APP.app/$APP"
+            else
+              codesign --force --sign - "Payload/$APP.app/$APP"
+            fi
+            ls -la "Payload/$APP.app/Frameworks/"
+            zip -qry "$OUT" Payload
+            ls -la "$OUT"
+          }
+          pack ZeehoPanel ../ZeehoSignPanel.ipa
+          pack ZeehoSingle ../ZeehoSinglePanel.ipa
 
       - name: Compute build time (Beijing)
         id: bt
@@ -76,14 +87,18 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ios-latest
-          name: 极核签到面板 iOS IPA（巨魔/TrollStore）
+          name: 极核签到面板 iOS IPA（多账号版 + 单账号版 / TrollStore）
           body: |
-            TrollStore（巨魔）专用未签名 IPA。
-            - 内核：构建时自动同步 repo/zeeho_box_enhanced.js（当前 v2.16.13）
-            - 安装：TrollStore 中点击 + 选择本 IPA 即可，永久签名不掉签
+            TrollStore（巨魔）专用未签名 IPA，包含两个独立版本：
+            - **ZeehoSignPanel.ipa**：多账号版（签到面板 + 车辆 + 桌面小组件）
+            - **ZeehoSinglePanel.ipa**：单账号版（签到 + 车控，独立包名，可与多账号版同时安装）
+            - 内核：构建时自动同步 repo/zeeho_box_enhanced.js（当前 v2.16.14）
+            - 安装：TrollStore 中点击 + 选择对应 IPA 即可，永久签名不掉签
             - 更新时间：${{ steps.bt.outputs.BJ }}（北京时间）
             - 构建提交：${{ github.sha }}
-          files: ZeehoSignPanel.ipa
+          files: |
+            ZeehoSignPanel.ipa
+            ZeehoSinglePanel.ipa
           overwrite_files: true
           make_latest: true
 

@@ -19,6 +19,10 @@ typedef void (^ZHDispatchCompletion)(NSInteger status, NSDictionary *headers, NS
 /// 脚本结构变化导致提取失败时返回 nil（调用方回退引擎通道）。
 - (nullable NSString *)panelHTMLLocal;
 
+/// 单账号版面板 HTML 原生直出（带缓存）：解码脚本内嵌的 __SINGLE_HTML_B64，
+/// 供单账号 target（?single=1）首屏快路径使用。
+- (nullable NSString *)singlePanelHTMLLocal;
+
 @end
 
 NS_ASSUME_NONNULL_END

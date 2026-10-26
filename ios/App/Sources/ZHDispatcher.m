@@ -18,6 +18,7 @@ static const NSTimeInterval kDispatchGuardTimeout = 180.0;
 @property (nonatomic, copy) NSString *scriptSource;
 @property (nonatomic, copy) NSString *shimSource;
 @property (nonatomic, copy) NSString *panelHTMLCache;
+@property (nonatomic, copy) NSString *singleHTMLCache;
 @property (nonatomic, strong) NSURLSession *session;
 @end
 
@@ -72,11 +73,9 @@ static const NSTimeInterval kDispatchGuardTimeout = 180.0;
 // v2.15.5 首屏快路径：面板 HTML 原生直出（带缓存）
 // 从核心脚本内嵌的 __APP_HTML_B64 提取 Base64 → 原生解码（毫秒级）→ 拼上 __PANEL_MODE__ 前缀。
 // 相比走引擎：省掉「JSContext 创建 + 466KB 脚本求值 + JS 侧 atob/UTF-8 解码」，首屏明显更快。
-- (NSString *)panelHTMLLocal {
-    if (_panelHTMLCache) return _panelHTMLCache;
+- (NSString *)decodePanelHTMLWithAnchor:(NSString *)anchor {
     NSString *src = self.scriptSource;
     if (!src.length) return nil;
-    NSString *anchor = @"const __APP_HTML_B64 = \"";
     NSRange r = [src rangeOfString:anchor];
     if (r.location == NSNotFound) return nil;
     NSUInteger start = r.location + r.length;
@@ -89,8 +88,20 @@ static const NSTimeInterval kDispatchGuardTimeout = 180.0;
     NSString *html = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
     if (!html.length) return nil;
     // 与脚本侧 `'<script>window.__PANEL_MODE__=1<\/script>' + __APP_HTML()` 输出保持一致
-    _panelHTMLCache = [@"<script>window.__PANEL_MODE__=1</script>" stringByAppendingString:html];
-    return _panelHTMLCache;
+    return [@"<script>window.__PANEL_MODE__=1</script>" stringByAppendingString:html];
+}
+
+- (NSString *)panelHTMLLocal {
+    if (self.panelHTMLCache) return self.panelHTMLCache;
+    self.panelHTMLCache = [self decodePanelHTMLWithAnchor:@"const __APP_HTML_B64 = \""];
+    return self.panelHTMLCache;
+}
+
+// v2.16.14 单账号版首屏：解码 __SINGLE_HTML_B64（脚本根路由 ?single=1 的同一份 HTML）
+- (NSString *)singlePanelHTMLLocal {
+    if (self.singleHTMLCache) return self.singleHTMLCache;
+    self.singleHTMLCache = [self decodePanelHTMLWithAnchor:@"const __SINGLE_HTML_B64 = \""];
+    return self.singleHTMLCache;
 }
 
 #pragma mark - 分发

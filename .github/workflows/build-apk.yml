@@ -87,16 +87,18 @@ jobs:
           BUILD_TOOLS=$(ls -d $ANDROID_HOME/build-tools/* | tail -1)
           ZIPALIGN="$BUILD_TOOLS/zipalign"
           APKSIGNER="$BUILD_TOOLS/apksigner"
-          UNSIGNED=app/build/outputs/apk/release/app-release-unsigned.apk
-          ALIGNED=app/build/outputs/apk/release/app-release-aligned.apk
-          FINAL=ZeehoSignPanel.apk
-          "$ZIPALIGN" -f -v 4 "$UNSIGNED" "$ALIGNED"
-          # 使用仓库 Secret 中固定的 keystore 签名（覆盖安装升级，无需卸载旧版）
-          "$APKSIGNER" sign --ks release.keystore --ks-pass pass:android \
-            --ks-key-alias zeeho --key-pass pass:android "$ALIGNED"
-          "$APKSIGNER" verify --verbose "$ALIGNED" || true
-          mv "$ALIGNED" "$FINAL"
-          ls -la "$FINAL"
+          # 多账号版 + 单账号版（flavor: multi / single），各自独立包名
+          for EDITION in multi single; do
+            UNSIGNED=app/build/outputs/apk/release/app-${EDITION}-release-unsigned.apk
+            ALIGNED=app/build/outputs/apk/release/app-${EDITION}-release-aligned.apk
+            if [ "$EDITION" = "multi" ]; then FINAL=ZeehoSignPanel.apk; else FINAL=ZeehoSinglePanel.apk; fi
+            "$ZIPALIGN" -f -v 4 "$UNSIGNED" "$ALIGNED"
+            "$APKSIGNER" sign --ks release.keystore --ks-pass pass:android \
+              --ks-key-alias zeeho --key-pass pass:android "$ALIGNED"
+            "$APKSIGNER" verify --verbose "$ALIGNED" || true
+            mv "$ALIGNED" "$FINAL"
+            ls -la "$FINAL"
+          done
 
       - name: Compute build time (Beijing)
         id: bt
@@ -114,7 +116,9 @@ jobs:
             - 签名：仓库固定 keystore 签名，新版本可直接覆盖安装（无需卸载旧版）
             - 更新时间：${{ steps.bt.outputs.BJ }}（北京时间）
             - 构建提交：${{ github.sha }}
-          files: android/ZeehoSignPanel.apk
+          files: |
+            android/ZeehoSignPanel.apk
+            android/ZeehoSinglePanel.apk
           overwrite: true
           make_latest: true
 
