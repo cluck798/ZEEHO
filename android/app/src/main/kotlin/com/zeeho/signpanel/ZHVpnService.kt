@@ -35,6 +35,11 @@ class ZHVpnService : VpnService() {
         var lastError: String = ""
             internal set
 
+        /** 本次抓包命中的官方 App 包名（逗号分隔），用于界面诊断 */
+        @Volatile
+        var targets: String = ""
+            internal set
+
         fun start(context: Context) {
             lastError = ""
             val intent = Intent(context, ZHVpnService::class.java)
@@ -86,13 +91,14 @@ class ZHVpnService : VpnService() {
             return START_NOT_STICKY
         }
 
-        val targets = findOfficialPackages()
-        if (targets.isEmpty()) {
+        val officialPkgs = findOfficialPackages()
+        if (officialPkgs.isEmpty()) {
             lastError = "未找到极核官方 App，请安装后再试（其他方式：手机号登录 / 粘贴 Token）"
             ZHLog.log(lastError)
             stopSelf()
             return START_NOT_STICKY
         }
+        targets = officialPkgs.joinToString(",")
 
         val proxy = ZHMITMProxy.get(this)
         val proxyPort = proxy.start()
@@ -100,11 +106,15 @@ class ZHVpnService : VpnService() {
             .addAddress("10.66.0.1", 32)
             .setSession("极核抓包")
             .setHttpProxy(ProxyInfo.buildDirectProxy("127.0.0.1", proxyPort))
-        for (pkg in targets) {
-            runCatching { builder.addAllowedApplication(pkg) }
-                .onFailure { ZHLog.error("addAllowedApplication failed: $pkg", it) }
+        // 反向排除：除极核官方 App 外，其他应用（含本面板自身）一律不走 VPN，
+        // 避免 addAllowedApplication/addDisallowedApplication 混用被系统拒绝后把面板自己也关进无网状态。
+        var disallowed = 0
+        for (pi in packageManager.getInstalledPackages(0)) {
+            val pn = pi.packageName
+            if (officialPkgs.contains(pn)) continue
+            if (runCatching { builder.addDisallowedApplication(pn) }.isSuccess) disallowed++
         }
-        runCatching { builder.addDisallowedApplication(packageName) }
+        ZHLog.log("vpn scope: allow=${officialPkgs} disallow=$disallowed")
 
         tun = try {
             builder.establish()
@@ -122,7 +132,7 @@ class ZHVpnService : VpnService() {
         running = true
         handler.removeCallbacks(autoStopTask)
         handler.postDelayed(autoStopTask, AUTO_STOP_MS)
-        ZHLog.log("VPN started (proxy-only), port=$proxyPort, targets=$targets")
+        ZHLog.log("VPN started (proxy-only), port=$proxyPort, targets=$targets disallow=$disallowed")
         return START_STICKY
     }
 

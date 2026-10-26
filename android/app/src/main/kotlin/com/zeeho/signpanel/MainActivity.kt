@@ -265,6 +265,9 @@ class MainActivity : AppCompatActivity() {
                     return "{\"vpn\":" + ZHVpnService.running +
                         ",\"port\":" + p.port +
                         ",\"hits\":" + p.hitCount +
+                        ",\"conns\":" + p.connCount +
+                        ",\"tlsFail\":" + p.tlsFailCount +
+                        ",\"targets\":" + org.json.JSONObject.quote(ZHVpnService.targets) +
                         ",\"err\":" + org.json.JSONObject.quote(ZHVpnService.lastError) + "}"
                 }
             },

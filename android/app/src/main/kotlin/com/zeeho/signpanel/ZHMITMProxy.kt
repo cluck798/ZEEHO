@@ -53,6 +53,16 @@ class ZHMITMProxy private constructor(private val context: Context) {
     var hitCount: Int = 0
         private set
 
+    /** 代理接到的连接总数（用于判断官方 App 是否真的走了系统代理） */
+    @Volatile
+    var connCount: Int = 0
+        private set
+
+    /** TLS 握手失败次数（通常代表官方 App 不信任本机 CA / 做了证书固定） */
+    @Volatile
+    var tlsFailCount: Int = 0
+        private set
+
     fun isRunning(): Boolean = server?.isClosed == false
 
     @Synchronized
@@ -87,6 +97,7 @@ class ZHMITMProxy private constructor(private val context: Context) {
     // ================= 连接处理 =================
     private fun handleClient(client: Socket) {
         client.soTimeout = 30_000
+        connCount++
         val input = BufferedInputStream(client.getInputStream())
         val output = client.getOutputStream()
         val header = readHeaderBlock(input) ?: run { client.close(); return }
@@ -155,6 +166,7 @@ class ZHMITMProxy private constructor(private val context: Context) {
         val sslServer = sslCtx.socketFactory.createSocket(client, host, client.port, true) as SSLSocket
         sslServer.useClientMode = false
         runCatching { sslServer.startHandshake() }.onFailure {
+            tlsFailCount++
             ZHLog.log("$TAG handshake fail $host: ${it.message}")
             runCatching { sslServer.close() }
             runCatching { client.close() }
