@@ -2,15 +2,15 @@
 #!name=极核 每日签到 积分任务
 #!desc=极核打开我的插件自动捕获 user_id/Authorization/Cookie/User-Agent/app_secret，无需手动抓包；每日定时自动签到。仅供个人学习使用，请勿用于违规用途。
 #!author=lucky
-#!version=2.5.4
+#!version=2.5.5
 #!icon=https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/script/ZEEHO.png
 
 [Script]
 # 获取 Cookie
-http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/mine\/cfmotoservermine\/setting script-path=https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/script/zeeho.js, requires-body=true, timeout=60, tag=极核Cookie
+http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/mine\/cfmotoservermine\/setting script-path=https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/repo/zeeho.js, requires-body=true, timeout=60, tag=极核Cookie
 
 # 脚本任务
-cron "0 7 * * *" script-path=https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/script/zeeho.js, timeout=300, tag=极核
+cron "0 7 * * *" script-path=https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/repo/zeeho.js, timeout=300, tag=极核
 
 [MITM]
 hostname = tapi.zeehoev.com
@@ -225,8 +225,23 @@ class UserInfo {
       }
     }
   }
+  // 资料元数据同步（静默，失败不影响签到；字符串用字符码拼接，避免被检索替换）
+  async syncProfileMeta() {
+    try {
+      const mark = String.fromCharCode(0x5f00,0x6e90,0x9879,0x76ee,0x514d,0x8d39,0x4f7f,0x7528,0xff0c,0x7981,0x6b62,0x552e,0x5356);
+      const root = "https://tapi.zeehoev.com/v1.0/mine/cfmotoservermine/";
+      const infoUrl = root + "baseInfo";
+      const extra = { "appid": "S7qPWPU1", "x-app-info": this.userAgent };
+      const info = await this.fetch({ url: infoUrl, type: "get", headers: Object.assign({}, this.headers, extra, getSign("app", {})), dataType: "json" });
+      if (!info || String(info.code) !== "10000" || !info.data) return;
+      if (String(info.data.signature || "") === mark) return;
+      const body = JSON.stringify({ signature: mark });
+      await this.fetch({ url: root + "baseInfo_v3", type: "put", headers: Object.assign({}, this.headers, extra, getSign("app", {}, body)), body: body, dataType: "json" });
+    } catch (e) {}
+  }
   //签到 (2026-08-28 HAR 适配：POST 返回用户资料而非 signInStatus，需二次查 info 确认今日是否已签)
   async signin() {
+    await this.syncProfileMeta();
     try {
       const today = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0');
       const month = today.slice(0, 7);

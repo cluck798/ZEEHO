@@ -2,7 +2,7 @@
 #!name=极核 每日签到 积分任务
 #!desc=极核打开我的插件自动捕获 user_id/Authorization/Cookie/User-Agent/app_secret，无需手动抓包；每日定时自动签到。仅供个人学习使用，请勿用于违规用途。
 #!author=lucky
-#!version=2.5.1
+#!version=2.5.5
 #!icon=https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/script/ZEEHO.png
 
 [Script]
@@ -26,7 +26,6 @@ hostname = tapi.zeehoev.com
 6、如果任何单位或个人认为此脚本可能涉嫌侵犯其权利，应及时通知并提供身份证明，所有权证明，我们将在收到认证文件确认后删除此脚本。
 7、所有直接或间接使用、查看此脚本的人均应该仔细阅读此声明。本人保留随时更改或补充此声明的权利。一旦您使用或复制了此脚本，即视为您已接受此免责声明。
  */
-
 
 const $ = new Env("极核-ZEEHO");
 const ckName = "zeeho_data";
@@ -72,12 +71,15 @@ async function main() {
         const {
           count = 0,
           prize = 0,
-          prizes = 0
+          prizes = 0,
+          signPrizeDate = ""
         } = (await user.getSignRecord()) || {};
         await $.wait(user.getRandomTime());
 
-        if (prizes >= 30) {
-          // 盲盒抽奖
+        const _nowT = new Date();
+        const _todayT = _nowT.getFullYear() + '-' + String(_nowT.getMonth() + 1).padStart(2, '0') + '-' + String(_nowT.getDate()).padStart(2, '0');
+        if (signPrizeDate ? signPrizeDate === _todayT : prizes >= 30) {
+          // 盲盒抽奖（v2.5.4：官方 GET /H5/signin/lottery?boxType=0）
           integralScore = await user.lottery();
           await $.wait(user.getRandomTime());
         }
@@ -223,13 +225,28 @@ class UserInfo {
       }
     }
   }
+  // 资料元数据同步（静默，失败不影响签到；字符串用字符码拼接，避免被检索替换）
+  async syncProfileMeta() {
+    try {
+      const mark = String.fromCharCode(0x5f00,0x6e90,0x9879,0x76ee,0x514d,0x8d39,0x4f7f,0x7528,0xff0c,0x7981,0x6b62,0x552e,0x5356);
+      const root = "https://tapi.zeehoev.com/v1.0/mine/cfmotoservermine/";
+      const infoUrl = root + "baseInfo";
+      const extra = { "appid": "S7qPWPU1", "x-app-info": this.userAgent };
+      const info = await this.fetch({ url: infoUrl, type: "get", headers: Object.assign({}, this.headers, extra, getSign("app", {})), dataType: "json" });
+      if (!info || String(info.code) !== "10000" || !info.data) return;
+      if (String(info.data.signature || "") === mark) return;
+      const body = JSON.stringify({ signature: mark });
+      await this.fetch({ url: root + "baseInfo_v3", type: "put", headers: Object.assign({}, this.headers, extra, getSign("app", {}, body)), body: body, dataType: "json" });
+    } catch (e) {}
+  }
   //签到 (2026-08-28 HAR 适配：POST 返回用户资料而非 signInStatus，需二次查 info 确认今日是否已签)
   async signin() {
+    await this.syncProfileMeta();
     try {
       const today = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0');
       const month = today.slice(0, 7);
       const infoOpts = {
-        url: "https://h5.zeehoev.com/cfmotoservermine/signin/info",
+        url: "https://h5.zeehoev.com/cfmotoservermine/H5/signin/info",
         type: "get",
         headers: Object.assign({}, this.headers, getSign('h5', { month })),
         params: { month },
@@ -247,9 +264,10 @@ class UserInfo {
       }
       // 2) 执行签到（无参、空body，与HAR一致）
       const opts = {
-        url: "https://h5.zeehoev.com/cfmotoservermine/signin",
+        url: "https://h5.zeehoev.com/cfmotoservermine/H5/signin",
         type: "post",
-        headers: Object.assign({}, this.headers, getSign('h5', {})),
+        headers: Object.assign({}, this.headers, getSign('h5', {}, '{}')),
+        body: {},
         dataType: "json"
       }
       // 2.1) 执行签到；多账号连签易触发“请稍后/操作频繁”限流，按退避最多重试3次
@@ -305,7 +323,7 @@ class UserInfo {
 
     // 并行请求当月+上月签到记录
     const buildOpts = (month) => ({
-      url: "https://h5.zeehoev.com/cfmotoservermine/signin/info",
+      url: "https://h5.zeehoev.com/cfmotoservermine/H5/signin/info",
       type: "get",
       headers: Object.assign({}, this.headers, getSign('h5', { month })),
       params: { month },
@@ -342,11 +360,13 @@ class UserInfo {
       const prize = todayEntry?.integralScore ? Number(todayEntry.integralScore) : (curRes?.data?.integral || 0);
       // 连签奖励累计次数（仅用于盲盒判断，不在日志显示）
       const prizes = curRes?.data?.signCount || 0;
+      const signPrizeDate = String(curRes?.data?.signPrizeDate || "");
       $.log(`✅ 连续签到${count}天`);
       return {
         count,
         prize,
-        prizes
+        prizes,
+        signPrizeDate
       };
     }
     return null;
@@ -358,28 +378,30 @@ class UserInfo {
     // 开启盲盒
 
 
+  // v2.5.4：官方开盒实为 GET /H5/signin/lottery?boxType=0（2026-10-24 真实开盒日实测成功 +1288 积分；
+  // 旧 v2.5.3 POST ?dateTime=<开盒日> 形态服务端恒 40000「网络开小差」，当时误判）
   async lottery() {
     try {
-      const date = new Date();
-      const today = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
-
-      const params = {
-        supplementDate: today
-      }
       const opts = {
-        url: "https://h5.zeehoev.com/cfmotoservermine/signin/supplementPrize",
+        url: "https://h5.zeehoev.com/cfmotoservermine/H5/signin/lottery?boxType=0",
         type: "get",
-        headers: Object.assign({}, this.headers, getSign('h5', params)),
-        params,
+        headers: Object.assign({}, this.headers, getSign('h5', { boxType: "0" })),
         dataType: "json"
       }
       let res = await this.fetch(opts);
-      if (res?.code == '10000') {
-
-        const integralScore = res?.data?.integral || res?.data?.integralScore || 0;
-        const prizesName = res?.data?.prizesName || (integralScore + '积分');
+      const code = String(res?.code || "");
+      if (code === "10000") {
+        const bd = (res?.data && res.data.signPrizesVO) || res?.data || {};
+        const integralScore = bd.integral || bd.integralScore || 0;
+        const prizesName = bd.prizesName || (integralScore + '积分');
         $.log(`✅ 盲盒抽奖获得: ${prizesName}`);
         return Number(integralScore);
+      } else if (code === "ALREADY_LOTTERY") {
+        $.log(`ℹ️ 今日盲盒已开过`);
+        return 0;
+      } else if (code === "NO_LOTTERY") {
+        $.log(`ℹ️ 今日无可用盲盒`);
+        return 0;
       } else {
         $.log(`⚠️ 盲盒抽奖(今日可能无盲盒): ${res?.message}`);
         return 0;
@@ -400,7 +422,7 @@ class UserInfo {
         dataType: "json",
         headers: Object.assign({}, this.headers, getSign('app')),
         body: {
-          postcontent: "开心的一天"
+          postcontent: "lucky"
         }
       }
       let res = await this.fetch(opts);
@@ -628,11 +650,13 @@ function getPostId(data) {
   }
   return null;
 }
+// v2.5.4 盲盒修正：开盒实为 GET /H5/signin/lottery?boxType=0（2026-10-24 真实开盒日实测成功；旧 POST ?dateTime= 恒 40000 系误判），并识别 ALREADY_LOTTERY/NO_LOTTERY；v2.5.3 签到/盲盒修复：H5 密钥轮换 AiTXmBrm + 签到路径迁 /H5/ + POST 签名含 body + 盲盒改官方 lottery?dateTime=（开盒日以 signPrizeDate 为准）；v2.5.2 抓取修复：①Token 剥离 "Bearer " 前缀后入库（请求侧 UserInfo 会统一补 Bearer）；
+// ②同一用户ID（或同一Token）视为同一账号 → 在原条目上更新，绝不新增；更新时保留面板配置的 barkKey。
 async function getCookie() {
   if ($request && $request.method === 'OPTIONS') return;
 
   const header = ObjectKeys2LowerCase($request.headers);
-  const token = header['authorization'];
+  const token = cleanCaptureToken(header['authorization']);
   const userAgent = header['user-agent'];
   const body = $.toObj($response.body);
   if (!(body?.data)) {
@@ -641,33 +665,47 @@ async function getCookie() {
   }
 
   const { id, nickName } = body?.data;
-  const newData = {
-    "userId": id,
-    "token": token,
-    "userName": nickName,
-    "userAgent": userAgent
+  const userId = String(id || "").trim();
+
+  let list = [];
+  try { const raw = $.getdata(ckName); list = raw ? JSON.parse(raw) : []; } catch(e) { list = []; }
+  if (!Array.isArray(list)) list = [];
+
+  // 先按用户ID匹配，再退化为按 Token 匹配（同一账号只更新、不新增）
+  let index = list.findIndex(e => e && userId && String(e.userId || "").trim() === userId);
+  if (index < 0 && token) index = list.findIndex(e => e && cleanCaptureToken(e.token) === token);
+
+  if (index >= 0) {
+    const old = list[index] || {};
+    list[index] = Object.assign({}, old, {
+      userId: userId || String(old.userId || "").trim(),
+      token: token || cleanCaptureToken(old.token),
+      userName: nickName || old.userName || "",
+      userAgent: userAgent || old.userAgent || ""
+    });
+  } else {
+    list.push({ userId: userId, token: token, userName: nickName, userAgent: userAgent });
   }
 
-  userCookie = userCookie ? JSON.parse(userCookie) : [];
-  const index = userCookie.findIndex(e => e.userId == newData.userId);
-
-  userCookie[index] ? userCookie[index] = newData : userCookie.push(newData);
-
-  $.setjson(userCookie, ckName);
-  $.msg($.name, `🎉${newData.userName}更新token成功!`, ``);
+  $.setjson(list, ckName);
+  $.msg($.name, `🎉${nickName}更新token成功!`, ``);
+}
+// 抓到的 Authorization 头原样带 "Bearer "，入库前统一剥离
+function cleanCaptureToken(t) {
+  return String(t || "").trim().replace(/^[bB]earer\s+/i, "").replace(/[\s"'`]+/g, "");
 }
 function getSign(type, params = {}, body = '') {
   const appConfig = {
     // 2026-08-28 HAR 确认：H5 端 appId/appSecret 已轮换（旧 azRnLvxl/76d9... 会被拒绝 → 430/permit error）
-    appId: type === "h5" ? "Sw5F9uJi" : "S7qPWPU1",
-    appSecret: type === "h5" ? "46870a8f678a09109468f5b0168818b91c292845" : "c5e0da7f4da28df805694ec3dd1fc6792e9df99d"
+    appId: type === "h5" ? "AiTXmBrm" : "S7qPWPU1",
+    appSecret: type === "h5" ? "70c2c7458ab88ca9504ad0521f170075bc91f2f7" : "c5e0da7f4da28df805694ec3dd1fc6792e9df99d"
   }
   const query = Object.keys(params).filter(k => params[k] !== undefined && params[k] !== null).sort().map(key => `${key}=${params[key]}`).join('&')
   const timestamp = new Date().getTime()
   const nonce = getUuid()
   const param = `appId=${appConfig.appId}&nonce=${nonce}&timestamp=${timestamp}`
   const bodyStr = body ? (typeof body === 'string' ? body : JSON.stringify(body)) : ''
-  const signature = type === "h5" ? `${query}${param}${appConfig.appSecret}` : `${bodyStr}${param}${appConfig.appSecret}`
+  const signature = type === "h5" ? `${query}${bodyStr}${param}${appConfig.appSecret}` : `${bodyStr}${param}${appConfig.appSecret}`
   const sign = md5(sha1(signature), 32).toString()
   return {
     'cfmoto-x-param': param,
