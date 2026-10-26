@@ -1,6 +1,10 @@
 package com.zeeho.signpanel
 
+import android.content.ContentValues
 import android.content.Context
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x509.BasicConstraints
 import org.bouncycastle.asn1.x509.Extension
@@ -31,6 +35,7 @@ object ZHMitmCa {
     private const val CA_PASS = "zeeho-mitm-ca"
     private const val CA_FILE = "zeeho_mitm_ca.p12"
     private const val CA_ALIAS = "zeeho-mitm-ca"
+    private const val CA_EXPORT_NAME = "zeeho-ca.crt"
 
     private var caKey: PrivateKey? = null
     private var caCert: X509Certificate? = null
@@ -136,6 +141,48 @@ object ZHMitmCa {
         return try {
             caCert!!.encoded
         } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * 导出 CA 到系统「下载」目录（DER 格式 .crt）。
+     *
+     * Android 11+ 已禁止应用用 KeyChain 直接拉起 CA 安装（弹窗只剩「关闭」），
+     * 只能把证书放到用户可见的位置，由用户在 设置 → 加密与凭据 → 安装证书 里选择文件安装。
+     *
+     * @return 导出的相对路径（如「下载/zeeho-ca.crt」），失败返回 null
+     */
+    fun exportCaToDownloads(context: Context): String? {
+        val der = caEncoded(context) ?: return null
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val resolver = context.contentResolver
+                val collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                // 覆盖旧文件，避免出现多份同名证书
+                runCatching {
+                    resolver.delete(
+                        collection,
+                        "${MediaStore.MediaColumns.DISPLAY_NAME}=?",
+                        arrayOf(CA_EXPORT_NAME)
+                    )
+                }
+                val values = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, CA_EXPORT_NAME)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "application/x-x509-ca-cert")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
+                val uri = resolver.insert(collection, values) ?: return null
+                resolver.openOutputStream(uri)?.use { it.write(der) } ?: return null
+                "下载/$CA_EXPORT_NAME"
+            } else {
+                val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                if (!dir.exists()) dir.mkdirs()
+                File(dir, CA_EXPORT_NAME).writeBytes(der)
+                "下载/$CA_EXPORT_NAME"
+            }
+        } catch (e: Exception) {
+            ZHLog.error("export CA to downloads failed", e)
             null
         }
     }

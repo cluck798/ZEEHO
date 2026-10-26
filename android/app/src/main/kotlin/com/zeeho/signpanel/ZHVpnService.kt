@@ -16,6 +16,8 @@ import android.os.ParcelFileDescriptor
 class ZHVpnService : VpnService() {
 
     companion object {
+        const val ACTION_STOP = "com.zeeho.signpanel.action.STOP_CAPTURE"
+
         @Volatile
         var running: Boolean = false
             private set
@@ -25,15 +27,27 @@ class ZHVpnService : VpnService() {
             context.startService(intent)
         }
 
+        /**
+         * 停止抓包：先把状态置 false 并断开代理端口，再让 Service 收到 STOP 并 stopService。
+         * 两条路径都走，避免个别机型 stopService 未能立刻回调 onDestroy 导致 VPN 一直挂着。
+         */
         fun stop(context: Context) {
-            context.stopService(Intent(context, ZHVpnService::class.java))
+            running = false
+            runCatching { ZHMITMProxy.get(context).stop() }
+            runCatching {
+                context.startService(Intent(context, ZHVpnService::class.java).setAction(ACTION_STOP))
+            }
+            runCatching {
+                context.stopService(Intent(context, ZHVpnService::class.java))
+            }
         }
     }
 
     private var tun: ParcelFileDescriptor? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == "STOP") {
+        if (intent?.action == ACTION_STOP) {
+            running = false
             stopSelf()
             return START_NOT_STICKY
         }

@@ -210,19 +210,23 @@ class MainActivity : AppCompatActivity() {
                             Toast.makeText(this@MainActivity, "证书生成失败，请重启应用重试", Toast.LENGTH_LONG).show()
                             return@runOnUiThread
                         }
-                        // KeyChain 系统安装（用户 CA），比 FileProvider + ACTION_VIEW 兼容性好
-                        try {
-                            val intent = android.security.KeyChain.createInstallIntent()
-                            intent.putExtra(android.security.KeyChain.EXTRA_CERTIFICATE, der)
-                            intent.putExtra(android.security.KeyChain.EXTRA_NAME, "ZEEHO Panel CA")
-                            startActivity(intent)
-                            Toast.makeText(this@MainActivity, "请在系统弹窗中选择「CA 证书」并确认安装", Toast.LENGTH_LONG).show()
-                        } catch (e: Exception) {
-                            ZHLog.error("KeyChain install failed", e)
-                            Toast.makeText(this@MainActivity, "请到 设置 → 安全 → 加密与凭据 → 安装证书 手动安装", Toast.LENGTH_LONG).show()
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                            // Android 10 及以下：KeyChain 可直接拉起 CA 安装
                             try {
-                                startActivity(Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))
-                            } catch (e2: Exception) {}
+                                val intent = android.security.KeyChain.createInstallIntent()
+                                intent.putExtra(android.security.KeyChain.EXTRA_CERTIFICATE, der)
+                                intent.putExtra(android.security.KeyChain.EXTRA_NAME, "ZEEHO Panel CA")
+                                startActivity(intent)
+                                Toast.makeText(this@MainActivity, "请在系统弹窗中选择「CA 证书」并确认安装", Toast.LENGTH_LONG).show()
+                            } catch (e: Exception) {
+                                ZHLog.error("KeyChain install failed", e)
+                                val path = ZHMitmCa.exportCaToDownloads(this@MainActivity)
+                                showCaGuide(path)
+                            }
+                        } else {
+                            // Android 11+：系统弹窗只剩「关闭」，改为导出文件 + 引导到系统设置安装
+                            val path = ZHMitmCa.exportCaToDownloads(this@MainActivity)
+                            showCaGuide(path)
                         }
                     }
                 }
@@ -249,7 +253,10 @@ class MainActivity : AppCompatActivity() {
 
                 @JavascriptInterface
                 fun stopCapture() {
-                    runOnUiThread { ZHVpnService.stop(this@MainActivity) }
+                    runOnUiThread {
+                        ZHVpnService.stop(this@MainActivity)
+                        Toast.makeText(this@MainActivity, "已停止抓包", Toast.LENGTH_SHORT).show()
+                    }
                 }
 
                 @JavascriptInterface
@@ -260,6 +267,58 @@ class MainActivity : AppCompatActivity() {
             },
             "ZeehoNative"
         )
+    }
+
+    /**
+     * Android 11+ 的 CA 安装引导：证书已导出到「下载」，给出手动安装步骤并直达系统设置。
+     */
+    private fun showCaGuide(exportedPath: String?) {
+        val sb = StringBuilder()
+        sb.append("Android 11 及以上系统已不允许应用直接安装 CA 证书，需要你在系统设置里手动安装。\n\n")
+        if (exportedPath != null) {
+            sb.append("证书已导出到：").append(exportedPath).append("\n\n")
+        } else {
+            sb.append("证书导出失败，请重试或检查存储权限。\n\n")
+        }
+        sb.append("安装步骤：\n")
+        sb.append("1. 点下方「打开设置」\n")
+        sb.append("2. 安全 → 更多安全设置 → 加密与凭据\n")
+        sb.append("3. 安装证书 → CA 证书 → 仍要安装\n")
+        sb.append("4. 在「下载」中选择 zeeho-ca.crt\n\n")
+        sb.append("提示：部分应用默认不信任用户安装的证书；若抓不到 Token，请改用手机号验证码登录或粘贴 Token。")
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("安装 CA 证书")
+            .setMessage(sb.toString())
+            .setPositiveButton("打开设置") { _, _ -> openSecuritySettings() }
+            .setNeutralButton("重新导出") { _, _ ->
+                val path = ZHMitmCa.exportCaToDownloads(this)
+                Toast.makeText(
+                    this,
+                    if (path != null) "已导出到 $path" else "导出失败，请检查存储空间",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            .setNegativeButton("关闭", null)
+            .show()
+    }
+
+    /** 尽力打开系统的「凭据存储 / 安全」页面，失败则退回设置首页 */
+    private fun openSecuritySettings() {
+        val candidates = listOf(
+            Intent("com.android.settings.TRUSTED_CREDENTIALS_USER"),
+            Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS),
+            Intent(android.provider.Settings.ACTION_SETTINGS)
+        )
+        for (intent in candidates) {
+            try {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+                return
+            } catch (e: Exception) {
+                ZHLog.error("open security settings failed", e)
+            }
+        }
+        Toast.makeText(this, "请手动打开 设置 → 安全 → 加密与凭据", Toast.LENGTH_LONG).show()
     }
 
     /**
