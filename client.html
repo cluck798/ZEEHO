@@ -176,8 +176,8 @@
     <div class="card">
       <h2>🔑 字段格式说明</h2>
       <div class="tutorial">
-        <div class="step">完整 Authorization：<code>Bearer f4f49d9c-e558-4887-a139-dffa9068c4f9</code></div>
-        <div class="step">需要的 Token：<code>f4f49d9c-e558-4887-a139-dffa9068c4f9</code>（去掉 Bearer 和空格）</div>
+        <div class="step">完整 Authorization：<code>Bearer xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></div>
+        <div class="step">需要的 Token：<code>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code>（去掉 Bearer 和空格）</div>
         <div class="step">用户ID：纯数字，如 <code>20251009000440652</code></div>
       </div>
     </div>
@@ -335,7 +335,7 @@ function onFormInput(){
 }
 
 function localFormatCheck(userId,token){
-  if(!UUID_RE.test(token)) return {ok:false,msg:'Token 格式错误，应为 UUID（如 f4f49d9c-e558-4887-a139-dffa9068c4f9），请检查是否多复制了 Bearer 或空格'};
+  if(!UUID_RE.test(token)) return {ok:false,msg:'Token 格式错误，应为 UUID（如 xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx），请检查是否多复制了 Bearer 或空格'};
   if(!/^\d{6,}$/.test(userId)) return {ok:false,msg:'用户ID 格式错误，应为纯数字（如 20251009000440652）'};
   return {ok:true};
 }
@@ -371,7 +371,7 @@ async function validateToken(){
 
   // 第1层：纯本地格式校验（离线即可，不需要Loon/网络）
   // 用户ID验证后自动获取，所以格式校验只检查Token
-  const fmt={ok:UUID_RE.test(token),msg:UUID_RE.test(token)?'':'Token 格式错误，应为 UUID（如 f4f49d9c-e558-4887-a139-dffa9068c4f9）'};
+  const fmt={ok:UUID_RE.test(token),msg:UUID_RE.test(token)?'':'Token 格式错误，应为 UUID（如 xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx）'};
   if(!fmt.ok){showResult('up_result','error','❌ '+fmt.msg);return;}
 
   const btn=document.getElementById('validateBtn');

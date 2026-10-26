@@ -113,6 +113,7 @@ jobs:
       - name: Publish APK to release
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
           tag_name: android-latest
           name: 极核签到面板 Android APK
           body: |
@@ -139,6 +140,7 @@ jobs:
         if: failure()
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
           tag_name: android-latest
           name: 极核签到面板 Android APK
           files: android/build-tail.log

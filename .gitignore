@@ -2,3 +2,16 @@ ios/dist/
 
 # IDE / 工具缓存
 .trae/
+.vscode/
+
+# 本地临时产物 / 抓包文件 / 账号数据（含 Token，严禁提交）
+.tmp_dp/
+.tmp_*
+*.har
+.pai/
+store.json
+
+# 独立子仓库 / 本地工作目录
+zeeho-diag/
+ZEEHO-fork/
+ZEEHO-fork-fix/

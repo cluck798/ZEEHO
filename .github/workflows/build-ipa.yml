@@ -86,6 +86,7 @@ jobs:
       - name: Publish IPA to release
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
           tag_name: ios-latest
           name: 极核签到面板 iOS IPA（多账号版 + 单账号版 / TrollStore）
           body: |
@@ -116,6 +117,7 @@ jobs:
         if: failure()
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
           tag_name: ios-latest
           name: 极核签到面板 iOS IPA（巨魔/TrollStore）
           files: ios/xcodebuild-tail.log
