@@ -262,7 +262,10 @@ class MainActivity : AppCompatActivity() {
                 @JavascriptInterface
                 fun captureState(): String {
                     val p = ZHMITMProxy.get(this@MainActivity)
-                    return "{\"vpn\":" + ZHVpnService.running + ",\"port\":" + p.port + ",\"hits\":" + p.hitCount + "}"
+                    return "{\"vpn\":" + ZHVpnService.running +
+                        ",\"port\":" + p.port +
+                        ",\"hits\":" + p.hitCount +
+                        ",\"err\":" + org.json.JSONObject.quote(ZHVpnService.lastError) + "}"
                 }
             },
             "ZeehoNative"

@@ -102,7 +102,7 @@ class ZHMITMProxy private constructor(private val context: Context) {
             if (isTarget(host)) {
                 mitmTls(client, input, output, host, portNum)
             } else {
-                tunnel(client, output, host, portNum)
+                tunnel(client, input, output, host, portNum)
             }
             return
         }
@@ -120,8 +120,8 @@ class ZHMITMProxy private constructor(private val context: Context) {
     private fun isTarget(host: String): Boolean =
         TARGET_HOSTS.any { host == it || host.endsWith(".$it") }
 
-    /** 非目标域名：直接 TCP 隧道 */
-    private fun tunnel(client: Socket, clientOut: OutputStream, host: String, port: Int) {
+    /** 非目标域名：直接 TCP 隧道（必须复用已缓冲的输入流，否则头部之后的数据会丢失） */
+    private fun tunnel(client: Socket, clientIn: InputStream, clientOut: OutputStream, host: String, port: Int) {
         try {
             val upstream = Socket()
             upstream.connect(InetSocketAddress(host, port), 10_000)
@@ -129,7 +129,7 @@ class ZHMITMProxy private constructor(private val context: Context) {
             clientOut.flush()
             val upIn = upstream.getInputStream()
             val upOut = upstream.getOutputStream()
-            val cIn = client.getInputStream()
+            val cIn = clientIn
             Thread {
                 runCatching { cIn.copyTo(upOut, 8192); upOut.flush() }.onFailure { }
                 runCatching { upstream.close() }
@@ -147,7 +147,7 @@ class ZHMITMProxy private constructor(private val context: Context) {
         val sslCtx = ZHMitmCa.serverContext(context, host)
         if (sslCtx == null) {
             // 证书不可用时退化为隧道，保证不断网
-            tunnel(client, clientOut, host, portNum)
+            tunnel(client, clientIn, clientOut, host, portNum)
             return
         }
         clientOut.write("HTTP/1.1 200 Connection Established\r\n\r\n".toByteArray())
