@@ -92,7 +92,7 @@ jobs:
             TrollStore（巨魔）专用未签名 IPA，包含两个独立版本：
             - **ZeehoSignPanel.ipa**：多账号版（签到面板 + 车辆 + 桌面小组件）
             - **ZeehoSinglePanel.ipa**：单账号版（签到 + 车控，独立包名，可与多账号版同时安装）
-            - 内核：构建时自动同步 repo/zeeho_box_enhanced.js（当前 v2.16.14）
+            - 内核：构建时自动同步 repo/zeeho_box_enhanced.js（当前 v2.16.15）
             - 安装：TrollStore 中点击 + 选择对应 IPA 即可，永久签名不掉签
             - 更新时间：${{ steps.bt.outputs.BJ }}（北京时间）
             - 构建提交：${{ github.sha }}

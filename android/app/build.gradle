@@ -11,8 +11,8 @@ android {
         applicationId "com.zeeho.signpanel"
         minSdk 24
         targetSdk 34
-        versionCode 2026102701
-        versionName "1.2.16"
+        versionCode 2026102702
+        versionName "1.2.17"
     }
 
     // 多账号版 / 单账号版：同一套内核，独立包名与名称，可同时安装
@@ -85,4 +85,8 @@ dependencies {
 
     // WorkManager（后台定时签到）
     implementation 'androidx.work:work-runtime-ktx:2.9.1'
+
+    // MITM 抓包：动态签发站点证书（CA + 站点证书）
+    implementation 'org.bouncycastle:bcprov-jdk15on:1.70'
+    implementation 'org.bouncycastle:bcpkix-jdk15on:1.70'
 }

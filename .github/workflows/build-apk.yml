@@ -89,9 +89,14 @@ jobs:
           APKSIGNER="$BUILD_TOOLS/apksigner"
           # 多账号版 + 单账号版（flavor: multi / single），各自独立包名
           for EDITION in multi single; do
-            UNSIGNED=app/build/outputs/apk/release/app-${EDITION}-release-unsigned.apk
-            ALIGNED=app/build/outputs/apk/release/app-${EDITION}-release-aligned.apk
+            UNSIGNED=app/build/outputs/apk/${EDITION}/release/app-${EDITION}-release-unsigned.apk
+            ALIGNED=app/build/outputs/apk/${EDITION}/release/app-${EDITION}-release-aligned.apk
             if [ "$EDITION" = "multi" ]; then FINAL=ZeehoSignPanel.apk; else FINAL=ZeehoSinglePanel.apk; fi
+            if [ ! -f "$UNSIGNED" ]; then
+              echo "::error::APK not found: $UNSIGNED"
+              find app/build/outputs/apk -name "*.apk" -print || true
+              exit 1
+            fi
             "$ZIPALIGN" -f -v 4 "$UNSIGNED" "$ALIGNED"
             "$APKSIGNER" sign --ks release.keystore --ks-pass pass:android \
               --ks-key-alias zeeho --key-pass pass:android "$ALIGNED"

@@ -30,6 +30,27 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- v1.2.16 抓包 VPN：本地面板 MITM 代理 -->
+        <service
+            android:name=".ZHVpnService"
+            android:exported="false"
+            android:permission="android.permission.BIND_VPN_SERVICE">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+
+        <!-- 导出 CA 证书供系统安装 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <!-- v1.2.15 安卓桌面小组件：电量/续航/充电/签到 -->
         <receiver
             android:name=".ZHWidgetProvider"

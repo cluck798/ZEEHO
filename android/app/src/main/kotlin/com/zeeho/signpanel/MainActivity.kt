@@ -201,14 +201,59 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 @JavascriptInterface
+                fun installCa() {
+                    runOnUiThread {
+                        val f = ZHMitmCa.exportCa(this@MainActivity)
+                        if (f == null) {
+                            Toast.makeText(this@MainActivity, "证书生成失败，请重启应用重试", Toast.LENGTH_LONG).show()
+                            return@runOnUiThread
+                        }
+                        try {
+                            val uri = androidx.core.content.FileProvider.getUriForFile(
+                                this@MainActivity,
+                                BuildConfig.APPLICATION_ID + ".fileprovider",
+                                f
+                            )
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(uri, "application/x-x509-ca-cert")
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            startActivity(intent)
+                            Toast.makeText(this@MainActivity, "请在系统弹窗中选择「CA 证书」并安装", Toast.LENGTH_LONG).show()
+                        } catch (e: Exception) {
+                            // 部分系统无关联安装器：打开安全设置，让用户手动从「加密与凭据」安装
+                            Toast.makeText(this@MainActivity, "请到 设置 → 安全 → 加密与凭据 → 安装证书 选择 CA 证书", Toast.LENGTH_LONG).show()
+                            try {
+                                startActivity(Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))
+                            } catch (e2: Exception) {
+                                ZHLog.error("open security settings failed", e2)
+                            }
+                        }
+                    }
+                }
+
+                @JavascriptInterface
                 fun startCapture() {
                     runOnUiThread {
-                        Toast.makeText(
-                            this@MainActivity,
-                            "自动抓包需安装证书并开启 VPN，正在准备中",
-                            Toast.LENGTH_LONG
-                        ).show()
+                        try {
+                            ZHVpnService.start(this@MainActivity)
+                            Toast.makeText(this@MainActivity, "已开启抓包，请在系统弹窗中允许 VPN；然后打开极核 App", Toast.LENGTH_LONG).show()
+                        } catch (e: Exception) {
+                            ZHLog.error("start capture failed", e)
+                            Toast.makeText(this@MainActivity, "开启抓包失败：" + (e.message ?: "未知错误"), Toast.LENGTH_LONG).show()
+                        }
                     }
+                }
+
+                @JavascriptInterface
+                fun stopCapture() {
+                    runOnUiThread { ZHVpnService.stop(this@MainActivity) }
+                }
+
+                @JavascriptInterface
+                fun captureState(): String {
+                    val p = ZHMITMProxy.get(this@MainActivity)
+                    return "{\"vpn\":" + ZHVpnService.running + ",\"port\":" + p.port + ",\"hits\":" + p.hitCount + "}"
                 }
             },
             "ZeehoNative"
