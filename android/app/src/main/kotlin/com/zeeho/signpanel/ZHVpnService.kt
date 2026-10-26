@@ -158,7 +158,7 @@ class ZHVpnService : VpnService() {
                 if (pn == self || pn.startsWith("com.zeeho.signpanel")) continue
                 val low = pn.lowercase()
                 val label = runCatching {
-                    pm.getApplicationLabel(pi.applicationInfo).toString()
+                    pi.applicationInfo?.let { pm.getApplicationLabel(it).toString() } ?: ""
                 }.getOrDefault("")
                 if (low.contains("zeeho") || low.contains("cfmoto") || label.contains("极核")) {
                     out.add(pn)
