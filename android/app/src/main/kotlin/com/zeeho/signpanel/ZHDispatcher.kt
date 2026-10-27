@@ -24,6 +24,9 @@ class ZHDispatcher(private val context: Context) {
     private val shimSource: String = loadAsset("shim.js") ?: ""
     private val scriptSource: String = loadAsset("zeeho_box_enhanced.js") ?: ""
 
+    /** v1.2.27 面板 HTML 进程内缓存：根路径（含 ?single=1）是静态页，二次打开直接返回，省掉一次 800KB 脚本求值 */
+    private val staticHtmlCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
     /** 服务启动时编译一次字节码，请求时直接 evaluate（避开每请求重编译 ~478KB 源码） */
     private val scriptBytecode: ByteArray? by lazy { compileScriptBytecode() }
 
@@ -48,6 +51,19 @@ class ZHDispatcher(private val context: Context) {
                 headers = mapOf("Content-Type" to "text/plain; charset=utf-8"),
                 body = "未找到核心脚本或 shim",
             )
+        }
+
+        val isRootHtml = method.equals("GET", ignoreCase = true) &&
+            (url == "http://zeeho.box/" || url.startsWith("http://zeeho.box/?"))
+        if (isRootHtml) {
+            staticHtmlCache[url]?.let { body ->
+                ZHLog.log("panel html cache hit: $url")
+                return ShimJS.DispatchResult(
+                    status = 200,
+                    headers = mapOf("Content-Type" to "text/html; charset=utf-8", "Cache-Control" to "no-cache"),
+                    body = body,
+                )
+            }
         }
 
         val request = ShimJS.ZHRequest(url, method.uppercase(), headers, body)
@@ -90,6 +106,9 @@ class ZHDispatcher(private val context: Context) {
             timers.clearAll()
         }
 
+        if (isRootHtml && result.status == 200 && result.body.contains("<html")) {
+            staticHtmlCache[url] = result.body
+        }
         return result
     }
 
