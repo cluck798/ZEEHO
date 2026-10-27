@@ -1,11 +1,14 @@
 package com.zeeho.signpanel
 
+import android.content.ContentValues
 import android.content.Intent
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.MediaStore
+import android.util.Base64
 import android.view.View
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
@@ -192,6 +195,46 @@ class MainActivity : AppCompatActivity() {
 
                 @JavascriptInterface
                 fun appVersion(): String = BuildConfig.VERSION_NAME
+
+                @JavascriptInterface
+                fun saveImage(dataUrl: String) {
+                    runOnUiThread {
+                        try {
+                            val b64 = dataUrl.substringAfter(",", "")
+                            if (b64.isEmpty()) {
+                                Toast.makeText(this@MainActivity, "图片数据为空", Toast.LENGTH_SHORT).show()
+                                return@runOnUiThread
+                            }
+                            val bytes = Base64.decode(b64, Base64.DEFAULT)
+                            val name = "zeeho_ride_" + System.currentTimeMillis() + ".png"
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                val values = ContentValues().apply {
+                                    put(MediaStore.Images.Media.DISPLAY_NAME, name)
+                                    put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                                    put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/ZEEHO")
+                                    put(MediaStore.Images.Media.IS_PENDING, 1)
+                                }
+                                val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                                if (uri == null) {
+                                    Toast.makeText(this@MainActivity, "保存失败：无法创建相册文件", Toast.LENGTH_LONG).show()
+                                    return@runOnUiThread
+                                }
+                                contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
+                                val done = ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }
+                                contentResolver.update(uri, done, null, null)
+                                Toast.makeText(this@MainActivity, "海报已保存到相册（Pictures/ZEEHO）", Toast.LENGTH_LONG).show()
+                            } else {
+                                val dir = getExternalFilesDir("ZEEHO")
+                                val f = java.io.File(dir, name)
+                                f.writeBytes(bytes)
+                                Toast.makeText(this@MainActivity, "已保存：" + f.absolutePath, Toast.LENGTH_LONG).show()
+                            }
+                        } catch (e: Exception) {
+                            ZHLog.error("saveImage failed", e)
+                            Toast.makeText(this@MainActivity, "保存失败：" + e.message, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
 
                 @JavascriptInterface
                 fun openExternal(url: String) {

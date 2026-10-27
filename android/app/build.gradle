@@ -11,8 +11,8 @@ android {
         applicationId "com.zeeho.signpanel"
         minSdk 24
         targetSdk 34
-        versionCode 2026102809
-        versionName "1.2.34"
+        versionCode 2026102810
+        versionName "1.2.35"
     }
 
     // 多账号版 / 单账号版：同一套内核，独立包名与名称，可同时安装
