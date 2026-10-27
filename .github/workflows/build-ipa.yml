@@ -58,9 +58,14 @@ jobs:
             rm -rf Payload
             mkdir Payload
             cp -R "build/Build/Products/Release-iphoneos/$APP.app" Payload/
-            # 桌面小组件：ad-hoc 签名 Widget Extension 并嵌入 App Group 权限（仅多账号版）
+            # 桌面小组件：ad-hoc 签名 Widget Extension 并嵌入 App Group 权限
             if [ -d "Payload/$APP.app/PlugIns/ZeehoWidget.appex" ]; then
-              codesign --force --sign - --entitlements Widget/ZeehoWidget.entitlements "Payload/$APP.app/PlugIns/ZeehoWidget.appex"
+              if [ "$APP" = "ZeehoPanel" ]; then
+                ENT="Widget/ZeehoWidget.entitlements"
+              else
+                ENT="Widget/ZeehoWidgetSingle.entitlements"
+              fi
+              codesign --force --sign - --entitlements "$ENT" "Payload/$APP.app/PlugIns/ZeehoWidget.appex"
             fi
             # 注入 BackRun dylib（后台常驻增强）：复制到 Frameworks 并给主二进制追加 LC_LOAD_DYLIB
             mkdir -p "Payload/$APP.app/Frameworks"
@@ -70,7 +75,7 @@ jobs:
             if [ "$APP" = "ZeehoPanel" ]; then
               codesign --force --sign - --entitlements App/ZeehoPanel.entitlements "Payload/$APP.app/$APP"
             else
-              codesign --force --sign - "Payload/$APP.app/$APP"
+              codesign --force --sign - --entitlements App/ZeehoSingle.entitlements "Payload/$APP.app/$APP"
             fi
             ls -la "Payload/$APP.app/Frameworks/"
             zip -qry "$OUT" Payload
@@ -92,7 +97,7 @@ jobs:
           body: |
             TrollStore（巨魔）专用未签名 IPA，包含两个独立版本：
             - **ZeehoSignPanel.ipa**：多账号版（签到面板 + 车辆 + 桌面小组件）
-            - **ZeehoSinglePanel.ipa**：单账号版（签到 + 车控，独立包名，可与多账号版同时安装）
+            - **ZeehoSinglePanel.ipa**：单账号版（签到 + 车控 + 桌面小组件，独立包名，可与多账号版同时安装）
             - 内核：构建时自动同步 repo/zeeho_box_enhanced.js（当前 v2.16.16）
             - 安装：TrollStore 中点击 + 选择对应 IPA 即可，永久签名不掉签
             - 更新时间：${{ steps.bt.outputs.BJ }}（北京时间）

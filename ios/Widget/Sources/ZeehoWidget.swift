@@ -26,7 +26,11 @@ struct ZeehoSnapshot: Codable {
 }
 
 enum SharedStore {
+#if SINGLE_WIDGET
+    static let groupID = "group.com.zeeho.signpanel.single"
+#else
     static let groupID = "group.com.zeeho.signpanel"
+#endif
     static func load() -> ZeehoSnapshot? {
         guard let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupID) else { return nil }
         let file = url.appendingPathComponent("widget_snapshot.json")

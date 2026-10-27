@@ -8,6 +8,11 @@
 #import <UserNotifications/UserNotifications.h>
 
 static NSString * const kPanelScheme = @"zeeho";
+#ifdef SINGLE_EDITION
+static NSString * const kWidgetAppGroup = @"group.com.zeeho.signpanel.single";
+#else
+static NSString * const kWidgetAppGroup = @"group.com.zeeho.signpanel";
+#endif
 // POST 请求体桥接头：WKWebView 对自定义 scheme 的 fetch/XHR POST 会剥离请求体
 // （WebKit bug 179077 / radar 35087855，HTTPBody 与 HTTPBodyStream 均为 nil），
 // 导致面板 /api/* 的 POST（签到/车控扩展/保存配置等）全部收到空 body。
@@ -306,7 +311,7 @@ static UIColor *ZHPanelBackgroundColor(void) {
                             body:nil
                       completion:^(NSInteger status, NSDictionary *respHeaders, NSString *respBody) {
         if (status != 200 || !respBody.length) return;
-        NSURL *dir = [[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:@"group.com.zeeho.signpanel"];
+        NSURL *dir = [[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:kWidgetAppGroup];
         if (!dir) return;
         NSURL *file = [dir URLByAppendingPathComponent:@"widget_snapshot.json"];
         [respBody writeToFile:file.path atomically:YES encoding:NSUTF8StringEncoding error:NULL];

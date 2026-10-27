@@ -2,6 +2,9 @@ package com.zeeho.signpanel
 
 import android.content.Context
 import androidx.work.CoroutineWorker
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withTimeoutOrNull
@@ -51,8 +54,22 @@ class SignWorker(
 
     companion object {
         const val WORK_NAME = "zeeho_daily_sign"
+        const val WORK_NOW = "zeeho_widget_sign"
         /** 默认每日触发时刻（与核心脚本 cron "0 7 * * *" 对齐） */
         const val TRIGGER_HOUR = 7
         const val TRIGGER_MINUTE = 0
+
+        /** 小组件「签到」按钮：立即排队执行一次（无需 App 常驻后台） */
+        fun enqueueNow(context: Context) {
+            try {
+                WorkManager.getInstance(context).enqueueUniqueWork(
+                    WORK_NOW,
+                    ExistingWorkPolicy.REPLACE,
+                    OneTimeWorkRequestBuilder<SignWorker>().build()
+                )
+            } catch (e: Exception) {
+                ZHLog.error("SignWorker enqueueNow failed", e)
+            }
+        }
     }
 }

@@ -28,6 +28,7 @@ class ZHWidgetProvider : AppWidgetProvider() {
 
     companion object {
         const val ACTION_REFRESH = "com.zeeho.signpanel.action.WIDGET_REFRESH"
+        const val ACTION_SIGN = "com.zeeho.signpanel.action.WIDGET_SIGN"
         const val CACHE_PREFS = "zeeho_widget"
         const val CACHE_SNAPSHOT = "snapshot"
         const val CACHE_TS = "ts"
@@ -93,6 +94,14 @@ class ZHWidgetProvider : AppWidgetProvider() {
             )
             views.setOnClickPendingIntent(R.id.widget_refresh, piRefresh)
 
+            // 签到行：点击立即签到（WorkManager 执行，无需后台常驻）
+            val signIntent = Intent(context, ZHWidgetProvider::class.java).setAction(ACTION_SIGN)
+            val piSign = PendingIntent.getBroadcast(
+                context, widgetId * 10 + 2, signIntent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            views.setOnClickPendingIntent(R.id.widget_sign, piSign)
+
             if (o == null || !o.optBoolean("ok", false)) {
                 val err = o?.optString("error").orEmpty()
                 views.setTextViewText(R.id.widget_title, "极核 ZEEHO")
@@ -144,7 +153,7 @@ class ZHWidgetProvider : AppWidgetProvider() {
             val todayScore = o.optInt("todayScore", 0)
             views.setTextViewText(
                 R.id.widget_sign,
-                if (signed) "今日已签到 · +$todayScore 分" else "今日未签到 · 打开面板签到"
+                if (signed) "今日已签到 · +$todayScore 分" else "今日未签到 · 点此签到"
             )
             views.setTextViewText(R.id.widget_time, if (ts > 0) "更新 " + hhmm(ts) else "--")
             return views
@@ -162,6 +171,10 @@ class ZHWidgetProvider : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         if (intent.action == ACTION_REFRESH) {
+            requestRefresh(context)
+        } else if (intent.action == ACTION_SIGN) {
+            SignWorker.enqueueNow(context)
+            // 稍后刷新小组件，展示签到结果
             requestRefresh(context)
         }
     }
