@@ -141,10 +141,20 @@ class ZHWidgetProvider : AppWidgetProvider() {
 
             val voltage = o.optDouble("voltage", 0.0)
             val charge = o.optString("chargeState").ifBlank { "未充电" }
+            val power = o.optInt("power", 0)
+            val remainSec = o.optLong("chargeRemainSec", 0L)
+            val charging = charge.contains("充电") && !charge.contains("未充电")
             val detail = StringBuilder()
-            detail.append("电压 ")
-            if (voltage > 0) detail.append(String.format(Locale.CHINA, "%.1f V", voltage)) else detail.append("--")
-            detail.append(" · ").append(charge)
+            if (charging) {
+                // v2.16.42 充电中优先展示功率与剩余时间
+                detail.append("⚡ ")
+                detail.append(if (power > 0) "${power}W" else "充电中")
+                if (remainSec > 0) detail.append(" · 剩余 ").append(fmtRemain(remainSec))
+            } else {
+                detail.append("电压 ")
+                if (voltage > 0) detail.append(String.format(Locale.CHINA, "%.1f V", voltage)) else detail.append("--")
+                detail.append(" · ").append(charge)
+            }
             val dist = o.optDouble("todayDistance", 0.0)
             if (dist > 0) detail.append(" · 今日 ").append(String.format(Locale.CHINA, "%.1f km", dist))
             views.setTextViewText(R.id.widget_detail, detail.toString())
@@ -161,6 +171,12 @@ class ZHWidgetProvider : AppWidgetProvider() {
 
         private fun hhmm(ms: Long): String =
             SimpleDateFormat("HH:mm", Locale.CHINA).format(Date(ms))
+
+        /** 剩余秒数 → 42 分 / 1 时 05 分 */
+        private fun fmtRemain(sec: Long): String {
+            val m = (sec / 60).coerceAtLeast(1)
+            return if (m >= 60) "${m / 60} 时 " + (if (m % 60 > 0) "${m % 60} 分" else "") else "$m 分"
+        }
     }
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {

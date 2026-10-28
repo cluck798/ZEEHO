@@ -253,6 +253,16 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
+                /** v2.16.42 面板本地通知（充电完成等）：走 ZHNotifier 统一通道，无需 Bark */
+                @JavascriptInterface
+                fun notify(title: String, body: String) {
+                    try {
+                        ZHNotifier.notify(title.ifBlank { getString(R.string.app_name) }, "", body)
+                    } catch (e: Exception) {
+                        ZHLog.error("notify failed", e)
+                    }
+                }
+
                 @JavascriptInterface
                 fun installCa() {
                     runOnUiThread {

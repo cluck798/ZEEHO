@@ -71,12 +71,14 @@ static UIColor *ZHPanelBackgroundColor(void) {
     [userCtrl addScriptMessageHandler:self name:@"hideLoading"];
     [userCtrl addScriptMessageHandler:self name:@"dashcam"];
     [userCtrl addScriptMessageHandler:self name:@"openExternal"];
+    [userCtrl addScriptMessageHandler:self name:@"notify"];
     // v2.16.39 原生桥：版本号 / 打开外部链接（检查更新下载用）
     NSString *appVer = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"";
     NSString *nativeBridge = [NSString stringWithFormat:
         @"window.ZeehoNative=window.ZeehoNative||{};"
         "window.ZeehoNative.appVersion=function(){return '%@'};"
         "window.ZeehoNative.openExternal=function(u){try{window.webkit.messageHandlers.openExternal.postMessage(String(u||''))}catch(e){}};"
+        "window.ZeehoNative.notify=function(t,b){try{window.webkit.messageHandlers.notify.postMessage({title:String(t||''),body:String(b||'')})}catch(e){}};"
         "window.ZeehoNative.hideSplash=function(){try{window.webkit.messageHandlers.hideLoading.postMessage(null)}catch(e){}};",
         appVer];
     [userCtrl addUserScript:[[WKUserScript alloc] initWithSource:nativeBridge
@@ -362,6 +364,19 @@ static UIColor *ZHPanelBackgroundColor(void) {
         if (url && [[UIApplication sharedApplication] canOpenURL:url]) {
             [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
         }
+    }
+    // v2.16.42 面板本地通知（充电完成等）
+    if ([message.name isEqualToString:@"notify"]) {
+        NSDictionary *b = [message.body isKindOfClass:[NSDictionary class]] ? message.body : nil;
+        NSString *title = [b[@"title"] isKindOfClass:[NSString class]] ? b[@"title"] : @"极核 ZEEHO";
+        NSString *body = [b[@"body"] isKindOfClass:[NSString class]] ? b[@"body"] : @"";
+        UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
+        content.title = title;
+        content.body = body;
+        content.sound = [UNNotificationSound defaultSound];
+        NSString *rid = [NSString stringWithFormat:@"zeeho_panel_%f", CACurrentMediaTime()];
+        UNNotificationRequest *req = [UNNotificationRequest requestWithIdentifier:rid content:content trigger:nil];
+        [[UNUserNotificationCenter currentNotificationCenter] addNotificationRequest:req withCompletionHandler:nil];
     }
     // 行车记录仪 RTSP 桥接
     if ([message.name isEqualToString:@"dashcam"]) {

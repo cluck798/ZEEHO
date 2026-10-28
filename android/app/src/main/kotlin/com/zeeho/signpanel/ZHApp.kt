@@ -23,6 +23,7 @@ class ZHApp : Application() {
         ZHStore.init(this)
         ZHNotifier.init(this)
         scheduleDailySignWork()
+        scheduleWidgetWork()
     }
 
     private fun createNotificationChannel() {
@@ -67,5 +68,18 @@ class ZHApp : Application() {
             request,
         )
         ZHLog.log("SignWorker scheduled, initial delay ${initialDelay}ms")
+    }
+
+    /**
+     * v2.16.42 桌面小组件后台刷新：每 30 分钟跑一次 ZHWidgetWorker。
+     * App 进程被杀后仍能通过 ZHDispatcher 取数，不必等用户打开 App。
+     */
+    private fun scheduleWidgetWork() {
+        val request = PeriodicWorkRequestBuilder<ZHWidgetWorker>(30, TimeUnit.MINUTES).build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "zeeho_widget_periodic",
+            ExistingPeriodicWorkPolicy.KEEP,
+            request,
+        )
     }
 }
