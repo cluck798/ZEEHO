@@ -86,9 +86,9 @@ class MainActivity : AppCompatActivity() {
 
         configureWebView()
 
-        // 启动端口轮询
+        // 启动端口轮询（首轮立即执行，端口一旦就绪立刻加载页面）
         pollStartElapsedMs = 0L
-        mainHandler.postDelayed(portPollRunnable, PORT_POLL_INTERVAL_MS)
+        mainHandler.post(portPollRunnable)
 
         // 15s 兜底：若 JS hook 未触发 hideSplash，强制淡出
         mainHandler.postDelayed({ hideSplash() }, 15_000L)
@@ -414,7 +414,7 @@ class MainActivity : AppCompatActivity() {
 
     private companion object {
         /** 端口轮询间隔（首次启动后服务通常 1-2s 内就绪） */
-        const val PORT_POLL_INTERVAL_MS = 250L
+        const val PORT_POLL_INTERVAL_MS = 80L
         /** VPN 授权请求码 */
         const val REQ_VPN = 1001
     }

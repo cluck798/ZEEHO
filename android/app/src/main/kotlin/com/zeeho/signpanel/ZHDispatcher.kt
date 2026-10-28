@@ -4,6 +4,7 @@ import android.content.Context
 import com.dokar.quickjs.QuickJs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withTimeout
+import java.io.File
 import java.io.IOException
 
 /**
@@ -26,6 +27,63 @@ class ZHDispatcher(private val context: Context) {
 
     /** v1.2.27 面板 HTML 进程内缓存：根路径（含 ?single=1）是静态页，二次打开直接返回，省掉一次 800KB 脚本求值 */
     private val staticHtmlCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    /**
+     * v1.2.40 启动提速：把首屏 HTML 持久化到 filesDir/panel_cache。
+     * 下次冷启动直接读文件返回，不再等待 QuickJs 求值脚本；脚本内容变化时 hash 变化，旧缓存自动失效。
+     */
+    private val htmlCacheDir = File(context.filesDir, "panel_cache")
+    private val scriptTag = Integer.toHexString(scriptSource.hashCode()) + "_" + scriptSource.length
+
+    init {
+        loadPersistedHtmlCache()
+    }
+
+    /** 后台预热：提前编译核心脚本字节码，避免首个 API 请求再等编译 */
+    fun warmUp() {
+        try {
+            scriptBytecode
+            ZHLog.log("ZHDispatcher warmUp done")
+        } catch (e: Exception) {
+            ZHLog.error("ZHDispatcher warmUp failed", e)
+        }
+    }
+
+    private fun loadPersistedHtmlCache() {
+        try {
+            if (!htmlCacheDir.exists()) return
+            val files = htmlCacheDir.listFiles() ?: return
+            for (f in files) {
+                if (!f.name.contains(scriptTag)) {
+                    f.delete()
+                    continue
+                }
+                if (f.length() < 1024) continue
+                val key = if (f.name.startsWith("single")) "http://zeeho.box/?single=1" else "http://zeeho.box/"
+                staticHtmlCache[key] = f.readText(Charsets.UTF_8)
+            }
+            if (staticHtmlCache.isNotEmpty()) ZHLog.log("panel html disk cache loaded: ${staticHtmlCache.size}")
+        } catch (e: Exception) {
+            ZHLog.error("load panel html cache failed", e)
+        }
+    }
+
+    private fun persistHtmlCache(url: String, body: String) {
+        try {
+            Thread {
+                try {
+                    if (!htmlCacheDir.exists()) htmlCacheDir.mkdirs()
+                    val name = (if (url.contains("single=1")) "single_" else "root_") + scriptTag + ".html"
+                    File(htmlCacheDir, name).writeText(body, Charsets.UTF_8)
+                    ZHLog.log("panel html cached to disk: $name")
+                } catch (e: Exception) {
+                    ZHLog.error("persist panel html failed", e)
+                }
+            }.start()
+        } catch (e: Exception) {
+            ZHLog.error("persist panel html thread failed", e)
+        }
+    }
 
     /** 服务启动时编译一次字节码，请求时直接 evaluate（避开每请求重编译 ~478KB 源码） */
     private val scriptBytecode: ByteArray? by lazy { compileScriptBytecode() }
@@ -108,6 +166,7 @@ class ZHDispatcher(private val context: Context) {
 
         if (isRootHtml && result.status == 200 && result.body.contains("<html")) {
             staticHtmlCache[url] = result.body
+            persistHtmlCache(url, result.body)
         }
         return result
     }
