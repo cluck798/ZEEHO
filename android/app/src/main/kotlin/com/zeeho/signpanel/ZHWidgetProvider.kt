@@ -132,6 +132,8 @@ class ZHWidgetProvider : AppWidgetProvider() {
                 views.setTextViewText(R.id.widget_state, err.ifBlank { "点右上角刷新" })
                 views.setTextViewText(R.id.widget_tires, "")
                 views.setViewVisibility(R.id.widget_tires, View.GONE)
+                views.setTextViewText(R.id.widget_tires2, "")
+                views.setViewVisibility(R.id.widget_tires2, View.GONE)
                 views.setTextViewText(R.id.widget_loc, "")
                 views.setViewVisibility(R.id.widget_loc, View.GONE)
                 views.setTextViewText(R.id.widget_sign, "签到 --")
@@ -204,17 +206,17 @@ class ZHWidgetProvider : AppWidgetProvider() {
             }
             views.setTextViewText(R.id.widget_state, state.toString())
 
-            // 胎压 / 胎温
+            // 胎压 / 胎温（v2.16.45 两行放照片右侧，位于电量区上方）
             val fp = pressure(o.optString("frontPressure"))
             val ft = o.optString("frontTemp").trim()
             val rp = pressure(o.optString("rearPressure"))
             val rt = o.optString("rearTemp").trim()
-            val tires = StringBuilder()
-            if (fp.isNotEmpty()) tires.append("前 $fp").append(if (ft.isNotEmpty()) " $ft" else "")
-            if (rp.isNotEmpty()) tires.append(if (tires.isNotEmpty()) "  " else "").append("后 $rp")
-                .append(if (rt.isNotEmpty()) " $rt" else "")
-            views.setTextViewText(R.id.widget_tires, tires.toString())
-            views.setViewVisibility(R.id.widget_tires, if (tires.isNotEmpty()) View.VISIBLE else View.GONE)
+            val frontLine = if (fp.isNotEmpty()) "前 $fp" + (if (ft.isNotEmpty()) " $ft" else "") else ""
+            val rearLine = if (rp.isNotEmpty()) "后 $rp" + (if (rt.isNotEmpty()) " $rt" else "") else ""
+            views.setTextViewText(R.id.widget_tires, frontLine)
+            views.setViewVisibility(R.id.widget_tires, if (frontLine.isNotEmpty()) View.VISIBLE else View.GONE)
+            views.setTextViewText(R.id.widget_tires2, rearLine)
+            views.setViewVisibility(R.id.widget_tires2, if (rearLine.isNotEmpty()) View.VISIBLE else View.GONE)
 
             // 定位地址
             val addr = o.optString("address").trim()

@@ -344,10 +344,46 @@ static UIColor *ZHPanelBackgroundColor(void) {
         if (!dir) return;
         NSURL *file = [dir URLByAppendingPathComponent:@"widget_snapshot.json"];
         [respBody writeToFile:file.path atomically:YES encoding:NSUTF8StringEncoding error:NULL];
-        // 通过 ObjC runtime 调用 WidgetBridge.reloadAll()（Swift 桥接类，@objcMembers 暴露到 ObjC runtime）
-        Class bridgeClass = NSClassFromString(@"WidgetBridge");
-        if (bridgeClass) {
-            [bridgeClass performSelector:NSSelectorFromString(@"reloadAll")];
+        void (^reload)(void) = ^{
+            // 通过 ObjC runtime 调用 WidgetBridge.reloadAll()（Swift 桥接类，@objcMembers 暴露到 ObjC runtime）
+            Class bridgeClass = NSClassFromString(@"WidgetBridge");
+            if (bridgeClass) {
+                [bridgeClass performSelector:NSSelectorFromString(@"reloadAll")];
+            }
+        };
+        // v2.16.45 车辆照片：下载并下采样（宽 ≤420px）写入 App Group，再刷新小组件
+        NSString *imgUrl = @"";
+        NSData *jsonData = [respBody dataUsingEncoding:NSUTF8StringEncoding];
+        if (jsonData) {
+            NSDictionary *snap = [NSJSONSerialization JSONObjectWithData:jsonData options:0 error:NULL];
+            if ([snap[@"vehicleImageUrl"] isKindOfClass:[NSString class]]) imgUrl = snap[@"vehicleImageUrl"];
+        }
+        if (imgUrl.length > 0 && ([imgUrl hasPrefix:@"http://"] || [imgUrl hasPrefix:@"https://"])) {
+            NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithURL:[NSURL URLWithString:imgUrl]
+                                                                 completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+                if (data.length > 0) {
+                    UIImage *im = [UIImage imageWithData:data];
+                    if (im && im.size.width > 420) {
+                        CGFloat scale = 420.0 / im.size.width;
+                        CGSize size = CGSizeMake(420, im.size.height * scale);
+                        UIGraphicsImageRendererFormat *fmt = [UIGraphicsImageRendererFormat defaultFormat];
+                        fmt.scale = 1.0;
+                        UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size format:fmt];
+                        im = [renderer imageWithActions:^(UIGraphicsImageRendererContext *ctx) {
+                            [im drawInRect:CGRectMake(0, 0, size.width, size.height)];
+                        }];
+                    }
+                    if (im) {
+                        NSData *png = UIImagePNGRepresentation(im);
+                        NSURL *imgFile = [dir URLByAppendingPathComponent:@"widget_vehicle.png"];
+                        [png writeToFile:imgFile.path atomically:YES];
+                    }
+                }
+                reload();
+            }];
+            [task resume];
+        } else {
+            reload();
         }
     }];
 }
