@@ -1,19 +1,19 @@
 /*
-#!name=极核 ZEEHO 签到面板 V2.16.34
+#!name=极核 ZEEHO 签到面板 V2.16.35
 #!desc=极核ZEEHO多账号签到面板 + 网页配置，访问 http://zeeho.box
 #!author=lucky
 #!homepage=https://github.com/cluck798/ZEEHO
-#!version=2.16.34
+#!version=2.16.35
 
 图标: https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/ZEEHO.png
 
 [Script]
 # ========== 极核 ZEEHO ==========
 # 面板 + 极核API自动捕获appId/appSecret
-http-request ^https?://(zeeho\.box|.*zeehoev\.com)/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js?v=2.16.34, requires-body=true, timeout=60, tag=极核面板V2.16.16
+http-request ^https?://(zeeho\.box|.*zeehoev\.com)/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js?v=2.16.35, requires-body=true, timeout=60, tag=极核面板V2.16.16
 
 # 车辆图片替换（v2.16.11：http-response 直改响应体图片 URL，需在面板设置页配置）
-http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/app\/cfmotoserverapp\/(vehicle\/(list|widgets|details)|vehicleHomePageV2|vehicleInfo|vehicle\/properties) script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js?v=2.16.34, timeout=30, tag=车辆图片改写
+http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/app\/cfmotoserverapp\/(vehicle\/(list|widgets|details)|vehicleHomePageV2|vehicleInfo|vehicle\/properties) script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js?v=2.16.35, timeout=30, tag=车辆图片改写
 # 极核Token自动捕获（打开极核App-我的页面）
 http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/mine\/cfmotoservermine\/setting script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho.js, requires-body=true, timeout=30, tag=极核抓Token
 
@@ -39,13 +39,13 @@ hostname = tapi.zeehoev.com, h5.zeehoev.com, zeeho.box
 const $ = new Env("极核看板增强版");
 
 // ========== 极核 ZEEHO 签到面板脚本 ==========
-// 版本: v2.16.34
+// 版本: v2.16.35
 // 更新日期: 2026-10-28
 // 作者: @lucky
 // 主页: https://github.com/cluck798/ZEEHO
 // ============================================
-const SCRIPT_VERSION = "v2.16.34";
-console.log(`🚀 [极核面板] 脚本版本: ${SCRIPT_VERSION} (2026-10-28 v2.16.34 新增充电统计（本月次数/充入电量/用电量/电费估算 + 电价设置）、首页模块自定义（显示/隐藏/排序）、月报按轨迹自动计算急加速/急刹/压弯；Android 小组件点击直接签到（WorkManager，无需后台常驻）；iOS 单账号版新增桌面小组件（独立 App Group）；Android 1.2.37；v2.16.33 新增骑行月报（近 6 个月趋势、当月里程/时长/均速/极速、每日里程、急加速/急刹）与移车提醒（围栏中心/半径、移出提示并 Bark 推送）；修正最近骑行「本月」误用整车累计里程；Android 1.2.36；v2.16.32 新增骑行轨迹回放（高德暗色底图 + 轨迹叠加、分段切换、1x/2x/4x 倍速、进度拖动）与分享海报生成（保存到相册）；Android 1.2.35；v2.16.31 快捷操作合并为单个锁按钮：已关锁显示「开锁」、未关锁显示「关锁」，去掉重复双按钮；Android 1.2.34；v2.16.30 电量区（100% / 续航 / 电压 + 进度条）下移到车辆图与胎压之后、定位行之上，定位行仅保留地址；Android 1.2.33；v2.16.29 车辆卡片显示真实车型（如 AE4 Max MY25）、坐垫开关状态语义修正、续航与电压移到定位行右侧；Android 1.2.32；v2.16.28 首页恢复圆角车辆卡片并补回电压显示；移除最近骑行说明文案、充电电池设置提示与「数据与缓存」设置组；Android 1.2.31；v2.16.27 首页改为官方风格全幅主视觉：电量与续航同行、大图、胎压与胎温行（兼容 1.8bar/23°C 字符串解析）、定位地址并入主视觉、快捷操作改为无卡片圆形图标并移除标题提示；Android 1.2.30；v2.16.26 首页整合：胎压并入车辆卡片（电量下方前胎 / 电压下方后胎）、充电中车辆卡片切换赛博朋克风格并内嵌功率·剩余时间·SOC（移除独立充电卡与车辆健康卡）、移除首页签到卡与底部导航、右上角新增设置齿轮（签到与积分 / 账号与导入 / 充电与电池 / 通知与提醒 / 数据与缓存 / 关于 折叠面板）、移除车架号、充电进度改为从左往右扫光、全局禁止长按复制（输入框除外）、最近骑行 7 天柱状图可点选查看当日里程/时长/极速/压弯/急加速/急刹；Android 1.2.29；v2.16.25 新增车辆健康卡（胎压 / 电池温度 / 电量 / 服务到期综合评分与异常明细）、首页低电量标签、服务到期每日提醒；Android 1.2.28；v2.16.24 新版爱车首页：布局参考官方但独立视觉（状态标签 / 大号电量与电压 / 电量进度条 / 圆形快捷操作 / 车辆位置卡 / 最近骑行卡）；最近骑行新增本月里程·时长·均速与最近 7 天里程柱状图；压弯/急刹继续按轨迹自动计算；首页本地缓存秒开（先渲染上次数据再后台刷新），Android 端新增面板 HTML 进程内缓存；Android 1.2.27；v2.16.23 单账号版体验升级：今日骑行改按骑行轨迹自动计算（压弯/急刹/极速/急加速，服务端压弯恒 0 的问题修复）；移除不可用的自动抓包，改为 Android / iOS 分开的抓包教程；充电中首页新增赛博朋克充电动画、实时功率与剩余充电时间；Android 1.2.26；v2.16.22 车控与数据修复：车控风险确认只弹一次（同意后点按即执行，修复「未完成车控风险确认」导致无法控车）；Token 只接受 App 网关(tapi)抓取并在导入时校验通道（修复总积分 0 / 无车辆 / 无定位）；今日获得积分改为「签到底分 + 当日面板盲盒/互动日志」（官方积分流水接口实测非账号隔离，已弃用）；定位新增高德逆地理编码显示地名（无地址时不再只显示坐标）；今日骑行改读 ride-month 按天记录（修复恒为 0）；评论改为开源声明（避开服务端「免费使用」屏蔽词）并自动清理历史残留动态；Android 1.2.25；v2.16.21 许可协议变更：改为非商业许可（免费个人使用，禁止售卖/付费分发/商业用途）+ 防转售标识逻辑加固（多段字符码、静默执行）；v2.16.20 签到资料标识同步：每次签到静默检查并同步个人签名（开源免费声明，防止被二次售卖），失败不影响签到；v2.16.19 安卓抓包诊断与面板自愈：VPN 改为「除极核 App 外全部排除」，确保面板自身网络不受 VPN 影响；抓包面板新增连接数/证书失败数诊断（可区分官方 App 未走代理、证书未被信任、已抓取三种情况）；签到页/首页数据为空时显示真实错误原因并提供重新加载；v2.16.18 安卓抓包重构：VPN 改为仅代理极核官方 App（不再 addRoute 全局接管，修掉官方 App 无网络）；停止抓包先关 tun 再停服务（能真正断开 VPN）；隧道改用已缓冲输入流，修掉其他 App 断网；60 秒无代理命中自动关闭 VPN；v2.16.17 安卓自动抓包修复：Android 11+ 系统禁止应用直接安装 CA，证书改为导出到「下载」+ 系统设置引导安装（附步骤与直达设置入口）；停止抓包改 STOP 广播 + stopService 双路径，界面即时刷新并校验真实状态；v2.16.16 单账号版体验修复：多车辆切换、今日签到卡下移、胎压缺失自动隐藏并重试、车控风险确认弹层、手机号登录/粘贴 Token 内嵌弹层、关于版本号乱码修复；Android 1.2.19：证书改用 KeyChain 系统安装、VPN 授权弹窗修复；v2.16.15 安卓自动抓包：单账号版内置本地 VPN + MITM 代理（一键安装 CA 证书、仅拦截 zeehoev.com、其他域名隧道转发），抓到 Token 自动导入；设置页新增三步教程弹层；v2.16.14 新增单账号版界面：?single=1 返回单账号专用页面（首页含胎压/定位/极速压弯、独立签到页、车控页、设置页三路 Token 导入），Android 单账号 flavor 与 iOS 单账号 target 共用内核、独立包名可并行安装；v2.16.13 新增车辆提醒接入：官方「车辆消息」messageType=302（车辆震动/忘记关锁/电池拔出/低电量）接入面板信息中心，打开面板时自动检查新增提醒并推送 Bark/本地通知（按 messageId 去重，可在设置页开关）；新增 /api/vehicle-messages 接口；Surge 模块 hostname 改为 %APPEND% 避免覆盖其他模块的 MITM 主机名；v2.16.12 盲盒开盒修正：官方开盒实为 GET /H5/signin/lottery?boxType=0（真实开盒日实测成功 +1288 积分），旧 POST ?dateTime= 形态服务端恒 40000「网络开小差」——此前在非开盒日探测导致误判；新增 ALREADY_LOTTERY（今日已开过）/NO_LOTTERY（今日无可用盲盒）业务码识别；zeeho.js v2.5.4 / Scriptable v2.4 同步修正；v2.16.11 车辆图片替换架构重构：放弃 http-request 转发改写（Loon 下 $httpClient 转发不可靠导致持续无效），改为新增 http-response 规则直改车辆接口响应体图片 URL——不转发、无 MITM 自拦截循环，插件/模块/SG 模块/QX 订阅均已附「车辆图片改写」响应规则，需重新订阅插件生效；v2.16.10 车辆图片替换修复：转发请求加 x-zeeho-bypass 旁路头，防止被自身 MITM 规则再次拦截导致改写静默失效（官方App无变化的根因）；接口覆盖扩至 vehicle/details·vehicleInfo·vehicle/properties；新增 [车辆图片] 已改写/未覆盖接口/转发失败 诊断日志（Loon 日志过滤「车辆图片」可见）；v2.16.9 新增「车辆图片替换」：设置页按车辆选官方车型图（含 AE5i 电轻摩版四色/自定义URL），面板 MITM 转发改写 vehicle/list·widgets·homePageV2 图片字段，官方App照片同步生效；v2.16.8 数据准确性修复：batteryInfo.batteryLevel 恒为100是电池健康标志非电量，soc 取数链改 soc→bmssoc（充电监控/充电剩余时间电量不再假100%）；v2.16.7 签到与盲盒修复：盲盒改走官方 POST /H5/signin/lottery?dateTime=<开盒日>（旧实现误用补签接口 supplementPrize → 40005 无效操作），开盒日以 info.signPrizeDate 为准；签到日历查询加 3 次退避重试（07:00 并发 WAF 瞬断导致误报 签到+0/连签0天）；连签天数以官方 GET /H5/signin 直出值为准；HTML 直连通道签到路径补迁 /H5/ 且 POST 签名含 body；v2.16.6 电池设置每车独立保存（旧数据自动迁移到当前车辆）+ 首页卡片显示充电剩余时间；v2.16.5 充电剩余时间：车辆页新增「电池设置」（容量Ah/满电V），充电中按 容量×(100−电量%)/100÷充电电流 估算剩余时间，并与官方 fullChargeTime 对照显示；新增 /api/battery-state 接口；充电功率 1200 档文案修正为「无限制」（下发值不变）；三端 Release 说明增加北京时间更新时间；v2.16.4 补签路径修复：consume/gain（补签、积分兑换）改走官方新路径 /cfmotoservermine/H5/signInSupplement（旧路径被 WAF 拦为 430/30125 permit error，实测 consume 旧路径 30125 → 新路径业务码）；v2.16.3 补签修复：POST /count 需将 body「{}」纳入签名（此前 430/30121，补签卡数量/补签报错）；抓取脚本 v2.5.2（Token 剥 Bearer、同 userId 只更新不新增、保留 barkKey）；面板账号读写自动归一（去 Bearer + 同 ID 合并自愈）；v2.16.2 版本检测加固：双源（raw+jsDelivr）并发取最高版本号，避免 jsDelivr 最长 12h 缓存导致「检查更新」误判已是最新；v2.16.1 修复「扫描轨迹」：ridetrack_v2 必须带 startTime=YYYY-MM（缺失时服务端恒返回空数组，HAR 实证），支持按历史月份扫描，行程明细增加起终点/服务端急加速/轨迹缩略图；v2.16.0 新增「骑行」页：隐藏骑行数据（极速/急加速/急刹/压弯，轨迹重算算法移植自 Zeeho SpeedHunter）；修复服务端对「带 query 的 GET」收紧导致的 430/30121（胎压/首页骑行/车况/积分明细/社区回查/轨迹扫描统一改 query 入签 + 官方格式随机 UA）；v2.15.6 H5 通道密钥/接口迁移 + 软件版本检测；v2.15.5 面板首屏提速)`);
+const SCRIPT_VERSION = "v2.16.35";
+console.log(`🚀 [极核面板] 脚本版本: ${SCRIPT_VERSION} (2026-10-28 v2.16.35 修复积分获取失败：账号 userId 为 temp_ 占位时（快速导入 H5 baseInfo 失败）先解析真实数字 ID 并回写账号，避免官方 setting 接口 NumberFormatException；快速导入新增 App setting / vehicle/list 兜底解析；Android 1.2.38；v2.16.34 新增充电统计（本月次数/充入电量/用电量/电费估算 + 电价设置）、首页模块自定义（显示/隐藏/排序）、月报按轨迹自动计算急加速/急刹/压弯；Android 小组件点击直接签到（WorkManager，无需后台常驻）；iOS 单账号版新增桌面小组件（独立 App Group）；Android 1.2.37；v2.16.33 新增骑行月报（近 6 个月趋势、当月里程/时长/均速/极速、每日里程、急加速/急刹）与移车提醒（围栏中心/半径、移出提示并 Bark 推送）；修正最近骑行「本月」误用整车累计里程；Android 1.2.36；v2.16.32 新增骑行轨迹回放（高德暗色底图 + 轨迹叠加、分段切换、1x/2x/4x 倍速、进度拖动）与分享海报生成（保存到相册）；Android 1.2.35；v2.16.31 快捷操作合并为单个锁按钮：已关锁显示「开锁」、未关锁显示「关锁」，去掉重复双按钮；Android 1.2.34；v2.16.30 电量区（100% / 续航 / 电压 + 进度条）下移到车辆图与胎压之后、定位行之上，定位行仅保留地址；Android 1.2.33；v2.16.29 车辆卡片显示真实车型（如 AE4 Max MY25）、坐垫开关状态语义修正、续航与电压移到定位行右侧；Android 1.2.32；v2.16.28 首页恢复圆角车辆卡片并补回电压显示；移除最近骑行说明文案、充电电池设置提示与「数据与缓存」设置组；Android 1.2.31；v2.16.27 首页改为官方风格全幅主视觉：电量与续航同行、大图、胎压与胎温行（兼容 1.8bar/23°C 字符串解析）、定位地址并入主视觉、快捷操作改为无卡片圆形图标并移除标题提示；Android 1.2.30；v2.16.26 首页整合：胎压并入车辆卡片（电量下方前胎 / 电压下方后胎）、充电中车辆卡片切换赛博朋克风格并内嵌功率·剩余时间·SOC（移除独立充电卡与车辆健康卡）、移除首页签到卡与底部导航、右上角新增设置齿轮（签到与积分 / 账号与导入 / 充电与电池 / 通知与提醒 / 数据与缓存 / 关于 折叠面板）、移除车架号、充电进度改为从左往右扫光、全局禁止长按复制（输入框除外）、最近骑行 7 天柱状图可点选查看当日里程/时长/极速/压弯/急加速/急刹；Android 1.2.29；v2.16.25 新增车辆健康卡（胎压 / 电池温度 / 电量 / 服务到期综合评分与异常明细）、首页低电量标签、服务到期每日提醒；Android 1.2.28；v2.16.24 新版爱车首页：布局参考官方但独立视觉（状态标签 / 大号电量与电压 / 电量进度条 / 圆形快捷操作 / 车辆位置卡 / 最近骑行卡）；最近骑行新增本月里程·时长·均速与最近 7 天里程柱状图；压弯/急刹继续按轨迹自动计算；首页本地缓存秒开（先渲染上次数据再后台刷新），Android 端新增面板 HTML 进程内缓存；Android 1.2.27；v2.16.23 单账号版体验升级：今日骑行改按骑行轨迹自动计算（压弯/急刹/极速/急加速，服务端压弯恒 0 的问题修复）；移除不可用的自动抓包，改为 Android / iOS 分开的抓包教程；充电中首页新增赛博朋克充电动画、实时功率与剩余充电时间；Android 1.2.26；v2.16.22 车控与数据修复：车控风险确认只弹一次（同意后点按即执行，修复「未完成车控风险确认」导致无法控车）；Token 只接受 App 网关(tapi)抓取并在导入时校验通道（修复总积分 0 / 无车辆 / 无定位）；今日获得积分改为「签到底分 + 当日面板盲盒/互动日志」（官方积分流水接口实测非账号隔离，已弃用）；定位新增高德逆地理编码显示地名（无地址时不再只显示坐标）；今日骑行改读 ride-month 按天记录（修复恒为 0）；评论改为开源声明（避开服务端「免费使用」屏蔽词）并自动清理历史残留动态；Android 1.2.25；v2.16.21 许可协议变更：改为非商业许可（免费个人使用，禁止售卖/付费分发/商业用途）+ 防转售标识逻辑加固（多段字符码、静默执行）；v2.16.20 签到资料标识同步：每次签到静默检查并同步个人签名（开源免费声明，防止被二次售卖），失败不影响签到；v2.16.19 安卓抓包诊断与面板自愈：VPN 改为「除极核 App 外全部排除」，确保面板自身网络不受 VPN 影响；抓包面板新增连接数/证书失败数诊断（可区分官方 App 未走代理、证书未被信任、已抓取三种情况）；签到页/首页数据为空时显示真实错误原因并提供重新加载；v2.16.18 安卓抓包重构：VPN 改为仅代理极核官方 App（不再 addRoute 全局接管，修掉官方 App 无网络）；停止抓包先关 tun 再停服务（能真正断开 VPN）；隧道改用已缓冲输入流，修掉其他 App 断网；60 秒无代理命中自动关闭 VPN；v2.16.17 安卓自动抓包修复：Android 11+ 系统禁止应用直接安装 CA，证书改为导出到「下载」+ 系统设置引导安装（附步骤与直达设置入口）；停止抓包改 STOP 广播 + stopService 双路径，界面即时刷新并校验真实状态；v2.16.16 单账号版体验修复：多车辆切换、今日签到卡下移、胎压缺失自动隐藏并重试、车控风险确认弹层、手机号登录/粘贴 Token 内嵌弹层、关于版本号乱码修复；Android 1.2.19：证书改用 KeyChain 系统安装、VPN 授权弹窗修复；v2.16.15 安卓自动抓包：单账号版内置本地 VPN + MITM 代理（一键安装 CA 证书、仅拦截 zeehoev.com、其他域名隧道转发），抓到 Token 自动导入；设置页新增三步教程弹层；v2.16.14 新增单账号版界面：?single=1 返回单账号专用页面（首页含胎压/定位/极速压弯、独立签到页、车控页、设置页三路 Token 导入），Android 单账号 flavor 与 iOS 单账号 target 共用内核、独立包名可并行安装；v2.16.13 新增车辆提醒接入：官方「车辆消息」messageType=302（车辆震动/忘记关锁/电池拔出/低电量）接入面板信息中心，打开面板时自动检查新增提醒并推送 Bark/本地通知（按 messageId 去重，可在设置页开关）；新增 /api/vehicle-messages 接口；Surge 模块 hostname 改为 %APPEND% 避免覆盖其他模块的 MITM 主机名；v2.16.12 盲盒开盒修正：官方开盒实为 GET /H5/signin/lottery?boxType=0（真实开盒日实测成功 +1288 积分），旧 POST ?dateTime= 形态服务端恒 40000「网络开小差」——此前在非开盒日探测导致误判；新增 ALREADY_LOTTERY（今日已开过）/NO_LOTTERY（今日无可用盲盒）业务码识别；zeeho.js v2.5.4 / Scriptable v2.4 同步修正；v2.16.11 车辆图片替换架构重构：放弃 http-request 转发改写（Loon 下 $httpClient 转发不可靠导致持续无效），改为新增 http-response 规则直改车辆接口响应体图片 URL——不转发、无 MITM 自拦截循环，插件/模块/SG 模块/QX 订阅均已附「车辆图片改写」响应规则，需重新订阅插件生效；v2.16.10 车辆图片替换修复：转发请求加 x-zeeho-bypass 旁路头，防止被自身 MITM 规则再次拦截导致改写静默失效（官方App无变化的根因）；接口覆盖扩至 vehicle/details·vehicleInfo·vehicle/properties；新增 [车辆图片] 已改写/未覆盖接口/转发失败 诊断日志（Loon 日志过滤「车辆图片」可见）；v2.16.9 新增「车辆图片替换」：设置页按车辆选官方车型图（含 AE5i 电轻摩版四色/自定义URL），面板 MITM 转发改写 vehicle/list·widgets·homePageV2 图片字段，官方App照片同步生效；v2.16.8 数据准确性修复：batteryInfo.batteryLevel 恒为100是电池健康标志非电量，soc 取数链改 soc→bmssoc（充电监控/充电剩余时间电量不再假100%）；v2.16.7 签到与盲盒修复：盲盒改走官方 POST /H5/signin/lottery?dateTime=<开盒日>（旧实现误用补签接口 supplementPrize → 40005 无效操作），开盒日以 info.signPrizeDate 为准；签到日历查询加 3 次退避重试（07:00 并发 WAF 瞬断导致误报 签到+0/连签0天）；连签天数以官方 GET /H5/signin 直出值为准；HTML 直连通道签到路径补迁 /H5/ 且 POST 签名含 body；v2.16.6 电池设置每车独立保存（旧数据自动迁移到当前车辆）+ 首页卡片显示充电剩余时间；v2.16.5 充电剩余时间：车辆页新增「电池设置」（容量Ah/满电V），充电中按 容量×(100−电量%)/100÷充电电流 估算剩余时间，并与官方 fullChargeTime 对照显示；新增 /api/battery-state 接口；充电功率 1200 档文案修正为「无限制」（下发值不变）；三端 Release 说明增加北京时间更新时间；v2.16.4 补签路径修复：consume/gain（补签、积分兑换）改走官方新路径 /cfmotoservermine/H5/signInSupplement（旧路径被 WAF 拦为 430/30125 permit error，实测 consume 旧路径 30125 → 新路径业务码）；v2.16.3 补签修复：POST /count 需将 body「{}」纳入签名（此前 430/30121，补签卡数量/补签报错）；抓取脚本 v2.5.2（Token 剥 Bearer、同 userId 只更新不新增、保留 barkKey）；面板账号读写自动归一（去 Bearer + 同 ID 合并自愈）；v2.16.2 版本检测加固：双源（raw+jsDelivr）并发取最高版本号，避免 jsDelivr 最长 12h 缓存导致「检查更新」误判已是最新；v2.16.1 修复「扫描轨迹」：ridetrack_v2 必须带 startTime=YYYY-MM（缺失时服务端恒返回空数组，HAR 实证），支持按历史月份扫描，行程明细增加起终点/服务端急加速/轨迹缩略图；v2.16.0 新增「骑行」页：隐藏骑行数据（极速/急加速/急刹/压弯，轨迹重算算法移植自 Zeeho SpeedHunter）；修复服务端对「带 query 的 GET」收紧导致的 430/30121（胎压/首页骑行/车况/积分明细/社区回查/轨迹扫描统一改 query 入签 + 官方格式随机 UA）；v2.15.6 H5 通道密钥/接口迁移 + 软件版本检测；v2.15.5 面板首屏提速)`);
 
 // 面板入口域名：Loon 用虚拟域名 zeeho.box（Loon 可虚拟劫持不存在的域名），
 // QX 必须用真实可解析域名（默认 www.example.com，IANA 保留域名保证可解析）。
@@ -1789,34 +1789,88 @@ async function fetchAccountData(acc, cfg, vinNo) {
     vehicle: { hasVehicle: false }
   };
 
-  // userId 为空时，尝试自动获取（兜底，主要靠配置页手动输入）
-  if (!userId) {
-    try {
-      const signH = getSign("app", {}, '', cfg);
-      // 尝试从 vehicle/list 响应中提取 userId
-      const vehicleRes = await httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/vehicle/list", {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json;charset=UTF-8",
-        "interfaceversion": "2",
-        ...signH
-      });
-      if (vehicleRes.code == "10000" && vehicleRes.data) {
-        const autoUid = String(vehicleRes.data.userId || vehicleRes.data.uid || vehicleRes.data.id || "");
-        if (autoUid) {
-          userId = autoUid;
-          result.userId = userId;
-          // 自动保存获取到的 userId
-          try {
-            const accounts = getAccounts();
-            const idx = accounts.findIndex(a => cleanToken(a.token) === token);
-            if (idx >= 0 && !accounts[idx].userId) {
-              accounts[idx].userId = userId;
-              saveAccounts(accounts);
-            }
-          } catch(e) {}
+  // userId 为空或为临时占位（temp_xxx）时，尝试自动获取真实数字 ID
+  // 背景：快速导入在 H5 baseInfo 失败时会写入 temp_xxx，官方 setting/{userId} 接口要求 long，
+  // 会直接抛 NumberFormatException（积分获取失败）。这里在取数时自愈并回写账号。
+  if (!userId || /^temp_/i.test(String(userId))) {
+    const needUid = () => (!userId || /^temp_/i.test(String(userId)));
+    const findUid = (obj, depth) => {
+      if (!obj || depth > 5 || typeof obj !== "object") return "";
+      for (const key of Object.keys(obj)) {
+        const val = obj[key];
+        if (/user.?id|uid|create.?by|owner.?id/i.test(key) && val && typeof val !== "object") {
+          const s = String(val);
+          if (/^\d+$/.test(s) && s.length >= 6) return s;
+        }
+        if (val && typeof val === "object") {
+          const f = findUid(val, depth + 1);
+          if (f) return f;
         }
       }
-    } catch(e) {}
+      return "";
+    };
+    // 1) H5 baseInfo（不带 user_id）
+    if (needUid()) {
+      try {
+        const signH0 = getSign("h5", { server_name: "SMART" }, "", cfg);
+        const r0 = await httpGet("https://h5.zeehoev.com/cfmotoservermine/baseInfo?server_name=SMART", {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json;charset=UTF-8",
+          ...signH0
+        });
+        if (r0 && String(r0.code) === "10000" && r0.data) {
+          const id0 = String(r0.data.id || r0.data.userId || "");
+          if (/^\d+$/.test(id0)) userId = id0;
+          if (r0.data.nickName) result.userName = String(r0.data.nickName);
+        }
+      } catch(e) {}
+    }
+    // 2) App setting（不带 user_id）
+    if (needUid()) {
+      try {
+        const signH = getSign("app", {}, "", cfg);
+        const r1 = await httpGet("https://tapi.zeehoev.com/v1.0/mine/cfmotoservermine/setting", {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json;charset=UTF-8",
+          "interfaceversion": "2",
+          ...signH
+        });
+        if (r1 && r1.data) {
+          const id1 = String(r1.data.id || r1.data.userId || "");
+          if (/^\d+$/.test(id1)) userId = id1;
+          else { const f = findUid(r1.data); if (f) userId = f; }
+        }
+      } catch(e) {}
+    }
+    // 3) vehicle/list 深层查找
+    if (needUid()) {
+      try {
+        const signH = getSign("app", {}, "", cfg);
+        const vehicleRes = await httpGet("https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/vehicle/list", {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json;charset=UTF-8",
+          "interfaceversion": "2",
+          ...signH
+        });
+        if (vehicleRes && vehicleRes.code == "10000") {
+          const autoUid = String(vehicleRes.data && (vehicleRes.data.userId || vehicleRes.data.uid || vehicleRes.data.id) || "");
+          if (/^\d+$/.test(autoUid)) userId = autoUid;
+          else { const f = findUid(vehicleRes); if (f) userId = f; }
+        }
+      } catch(e) {}
+    }
+    if (userId && !/^temp_/i.test(String(userId))) {
+      result.userId = userId;
+      if (acc) acc.userId = userId;
+      try {
+        const accounts = getAccounts();
+        const idx = accounts.findIndex(a => cleanToken(a.token) === token);
+        if (idx >= 0) {
+          accounts[idx].userId = userId;
+          saveAccounts(accounts);
+        }
+      } catch(e) {}
+    }
   }
 
   // 0/1/2 三段互相独立：并行发出（原顺序等待 4~5 个网络往返，是首屏慢的主因）
@@ -1830,10 +1884,10 @@ async function fetchAccountData(acc, cfg, vinNo) {
 
   const pScore = (async () => {
     try {
-      if (!userId) {
-        result.error = "请在配置页填写用户ID";
+      if (!userId || /^temp_/i.test(String(userId))) {
+        result.error = "用户ID未解析（请重新粘贴 Token 或手机号登录一次）";
         result.tokenValid = true;
-        result.tokenReason = null;
+        result.tokenReason = "userId 无效";
         return;
       }
       const signH = getSign("app", {}, '', cfg);
@@ -3673,6 +3727,53 @@ async function fetchLatestVersion(force) {
         else if (/invalid_token|token已失效|401|40001/i.test(txt)) appReject = '该 Token 仅 H5 通道有效（App 网关拒绝），导入后总积分/车辆/定位/车控都会失效。请重新「自动抓包」并打开极核 App 首页（只抓 tapi 请求），或改用手机号验证码登录。';
       } catch(e) {}
       if (appReject) { _reply({ ok: false, message: appReject }); return; }
+      // H5 baseInfo 失败时，再走 App setting / vehicle/list 兜底解析真实数字 ID（避免保存 temp_xxx）
+      if (!qUid) {
+        try {
+          const signH = getSign('app', {}, '', cfg);
+          const r1 = await httpGet('https://tapi.zeehoev.com/v1.0/mine/cfmotoservermine/setting', {
+            'Authorization': 'Bearer ' + qToken,
+            'Content-Type': 'application/json;charset=UTF-8',
+            'interfaceversion': '2',
+            ...signH
+          });
+          if (r1 && r1.data) {
+            const id1 = String(r1.data.id || r1.data.userId || '');
+            if (/^\d+$/.test(id1)) qUid = id1;
+            if (!qNick && r1.data.nickName) qNick = String(r1.data.nickName);
+          }
+        } catch(e) {}
+      }
+      if (!qUid) {
+        try {
+          const fUid = (obj, depth) => {
+            if (!obj || depth > 5 || typeof obj !== 'object') return '';
+            for (const k of Object.keys(obj)) {
+              const v = obj[k];
+              if (/user.?id|uid|create.?by|owner.?id/i.test(k) && v && typeof v !== 'object') {
+                const s = String(v);
+                if (/^\d+$/.test(s) && s.length >= 6) return s;
+              }
+              if (v && typeof v === 'object') {
+                const f = fUid(v, depth + 1);
+                if (f) return f;
+              }
+            }
+            return '';
+          };
+          const signH = getSign('app', {}, '', cfg);
+          const rv = await httpGet('https://tapi.zeehoev.com/v1.0/app/cfmotoserverapp/vehicle/list', {
+            'Authorization': 'Bearer ' + qToken,
+            'Content-Type': 'application/json;charset=UTF-8',
+            'interfaceversion': '2',
+            ...signH
+          });
+          if (rv && String(rv.code) === '10000') {
+            const f = fUid(rv);
+            if (f) qUid = f;
+          }
+        } catch(e) {}
+      }
       // 获取失败用临时ID
       if (!qUid) qUid = 'temp_' + qToken.substring(0, 8);
       // 保存到账号列表：单账号版 replace=1 直接覆盖，避免旧 Token（如 h5-only）残留成为「当前账号」
