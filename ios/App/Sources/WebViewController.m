@@ -4,6 +4,7 @@
 #import "WebViewController.h"
 #import "ZHDispatcher.h"
 #import <WebKit/WebKit.h>
+#import <UIKit/UIKit.h>
 #import <AVFoundation/AVFoundation.h>
 #import <UserNotifications/UserNotifications.h>
 
@@ -69,6 +70,18 @@ static UIColor *ZHPanelBackgroundColor(void) {
     WKUserContentController *userCtrl = [[WKUserContentController alloc] init];
     [userCtrl addScriptMessageHandler:self name:@"hideLoading"];
     [userCtrl addScriptMessageHandler:self name:@"dashcam"];
+    [userCtrl addScriptMessageHandler:self name:@"openExternal"];
+    // v2.16.39 原生桥：版本号 / 打开外部链接（检查更新下载用）
+    NSString *appVer = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"";
+    NSString *nativeBridge = [NSString stringWithFormat:
+        @"window.ZeehoNative=window.ZeehoNative||{};"
+        "window.ZeehoNative.appVersion=function(){return '%@'};"
+        "window.ZeehoNative.openExternal=function(u){try{window.webkit.messageHandlers.openExternal.postMessage(String(u||''))}catch(e){}};"
+        "window.ZeehoNative.hideSplash=function(){try{window.webkit.messageHandlers.hideLoading.postMessage(null)}catch(e){}};",
+        appVer];
+    [userCtrl addUserScript:[[WKUserScript alloc] initWithSource:nativeBridge
+                                                   injectionTime:WKUserScriptInjectionTimeAtDocumentStart
+                                                forMainFrameOnly:YES]];
     static NSString * const kSplashHook =
     @"<script>(function(){"
     // ⚠️ 原生桥必须最先定义：下面 hideSplash 的分支在"闪屏已撤下"时会直接 return，
@@ -342,6 +355,13 @@ static UIColor *ZHPanelBackgroundColor(void) {
 - (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message {
     if ([message.name isEqualToString:@"hideLoading"]) {
         [self hideLoadingOverlay];
+    }
+    if ([message.name isEqualToString:@"openExternal"]) {
+        NSString *u = [message.body isKindOfClass:[NSString class]] ? message.body : @"";
+        NSURL *url = [NSURL URLWithString:u];
+        if (url && [[UIApplication sharedApplication] canOpenURL:url]) {
+            [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
+        }
     }
     // 行车记录仪 RTSP 桥接
     if ([message.name isEqualToString:@"dashcam"]) {
