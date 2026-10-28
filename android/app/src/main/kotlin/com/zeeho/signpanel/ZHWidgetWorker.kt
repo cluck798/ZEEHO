@@ -3,6 +3,8 @@ package com.zeeho.signpanel
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
@@ -10,6 +12,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 /**
@@ -36,6 +39,13 @@ class ZHWidgetWorker(context: Context, params: WorkerParameters) : CoroutineWork
                 .putString(ZHWidgetProvider.CACHE_SNAPSHOT, snap)
                 .putLong(ZHWidgetProvider.CACHE_TS, System.currentTimeMillis())
                 .apply()
+            // v2.16.44 小组件车辆照片：按快照里的图片地址下载并下采样缓存
+            try {
+                val imgUrl = JSONObject(snap).optString("vehicleImageUrl")
+                if (imgUrl.isNotBlank()) downloadImage(ctx, imgUrl)
+            } catch (e: Exception) {
+                ZHLog.error("widget image parse failed", e)
+            }
         }
         ZHWidgetProvider.updateAll(ctx)
         Result.success()
@@ -73,6 +83,37 @@ class ZHWidgetWorker(context: Context, params: WorkerParameters) : CoroutineWork
         } catch (e: Exception) {
             ZHLog.error("widget snapshot dispatcher failed", e)
             null
+        }
+    }
+
+    /** 下载车辆照片并按宽度 420px 下采样，写入 cacheDir/widget_vehicle.png */
+    private fun downloadImage(ctx: Context, url: String) {
+        if (!url.startsWith("http://") && !url.startsWith("https://")) return
+        try {
+            val client = OkHttpClient.Builder()
+                .connectTimeout(8, TimeUnit.SECONDS)
+                .readTimeout(20, TimeUnit.SECONDS)
+                .build()
+            val req = Request.Builder().url(url).header("User-Agent", "ZEEHO-Panel").get().build()
+            client.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return
+                val bytes = resp.body?.bytes() ?: return
+                if (bytes.isEmpty()) return
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+                var sample = 1
+                while (bounds.outWidth > 0 && bounds.outWidth / sample > 420) sample *= 2
+                val bmp = BitmapFactory.decodeByteArray(
+                    bytes, 0, bytes.size,
+                    BitmapFactory.Options().apply { inSampleSize = sample }
+                ) ?: return
+                java.io.File(ctx.cacheDir, ZHWidgetProvider.IMAGE_FILE).outputStream().use { out ->
+                    bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+                }
+                bmp.recycle()
+            }
+        } catch (e: Exception) {
+            ZHLog.error("widget image download failed", e)
         }
     }
 }
