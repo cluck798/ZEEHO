@@ -22,18 +22,20 @@ import java.io.IOException
  */
 class ZHDispatcher(private val context: Context) {
 
-    private val shimSource: String = loadAsset("shim.js") ?: ""
-    private val scriptSource: String = loadAsset("zeeho_box_enhanced.js") ?: ""
+    // 大文件懒加载：命中 HTML 磁盘缓存时完全不读取 700KB 核心脚本，缩短冷启动
+    private val shimSource: String by lazy { loadAsset("shim.js") ?: "" }
+    private val scriptSource: String by lazy { loadAsset("zeeho_box_enhanced.js") ?: "" }
 
     /** v1.2.27 面板 HTML 进程内缓存：根路径（含 ?single=1）是静态页，二次打开直接返回，省掉一次 800KB 脚本求值 */
     private val staticHtmlCache = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     /**
      * v1.2.40 启动提速：把首屏 HTML 持久化到 filesDir/panel_cache。
-     * 下次冷启动直接读文件返回，不再等待 QuickJs 求值脚本；脚本内容变化时 hash 变化，旧缓存自动失效。
+     * 下次冷启动直接读文件返回，不再等待 QuickJs 求值脚本；APK versionCode 变化时旧缓存自动失效。
      */
     private val htmlCacheDir = File(context.filesDir, "panel_cache")
-    private val scriptTag = Integer.toHexString(scriptSource.hashCode()) + "_" + scriptSource.length
+    // 用 APK versionCode 作为缓存代次：每次发版自动失效，无需启动时读取并哈希 700KB 脚本
+    private val scriptTag = "v" + BuildConfig.VERSION_CODE
 
     init {
         loadPersistedHtmlCache()
@@ -103,14 +105,6 @@ class ZHDispatcher(private val context: Context) {
         headers: Map<String, String>,
         body: String?,
     ): ShimJS.DispatchResult {
-        if (shimSource.isEmpty() || scriptSource.isEmpty()) {
-            return ShimJS.DispatchResult(
-                status = 500,
-                headers = mapOf("Content-Type" to "text/plain; charset=utf-8"),
-                body = "未找到核心脚本或 shim",
-            )
-        }
-
         val isRootHtml = method.equals("GET", ignoreCase = true) &&
             (url == "http://zeeho.box/" || url.startsWith("http://zeeho.box/?"))
         if (isRootHtml) {
@@ -122,6 +116,14 @@ class ZHDispatcher(private val context: Context) {
                     body = body,
                 )
             }
+        }
+
+        if (shimSource.isEmpty() || scriptSource.isEmpty()) {
+            return ShimJS.DispatchResult(
+                status = 500,
+                headers = mapOf("Content-Type" to "text/plain; charset=utf-8"),
+                body = "未找到核心脚本或 shim",
+            )
         }
 
         val request = ShimJS.ZHRequest(url, method.uppercase(), headers, body)

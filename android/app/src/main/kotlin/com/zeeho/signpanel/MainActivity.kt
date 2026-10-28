@@ -69,14 +69,16 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // 收集需要申请的权限并一次性弹窗（按版本）
-        val toRequest = mutableListOf<String>()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            toRequest.add(android.Manifest.permission.POST_NOTIFICATIONS)
-        }
-        if (toRequest.isNotEmpty()) {
-            multiPermissionLauncher.launch(toRequest.toTypedArray())
-        }
+        // 权限弹窗延后到首屏显示后，避免启动瞬间弹窗抢焦点/阻塞绘制
+        mainHandler.postDelayed({
+            val toRequest = mutableListOf<String>()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                toRequest.add(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+            if (toRequest.isNotEmpty()) {
+                multiPermissionLauncher.launch(toRequest.toTypedArray())
+            }
+        }, 1200L)
 
         // 启动前台 Service（NanoHTTPD + 监控循环）
         startForegroundService(Intent(this, ZHPanelService::class.java))
@@ -133,6 +135,12 @@ class MainActivity : AppCompatActivity() {
                     return true
                 }
                 return false
+            }
+
+            override fun onPageCommitVisible(view: WebView?, url: String?) {
+                super.onPageCommitVisible(view, url)
+                // v1.2.41：内容首帧可见即撤掉开屏，不再等整页 onPageFinished
+                hideSplash()
             }
 
             override fun onPageFinished(view: WebView, url: String?) {

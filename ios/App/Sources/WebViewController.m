@@ -195,11 +195,25 @@ static UIColor *ZHPanelBackgroundColor(void) {
     [logo.layer addAnimation:logoAnim forKey:@"popIn"];
     self.loadingView = loading;
 
-    [self requestNotificationAuth];
     [self startBackgroundKeepAlive];
     [self startMonitorTimer];
-    // 首次启动立即拉取小组件快照，不等 3 分钟定时器
-    [self refreshWidgetSnapshot];
+}
+
+// v1.2.42 启动提速：页面首帧完成即撤开屏；通知授权与小组件快照延后，避免抢占启动资源
+- (void)hideLoadingOverlay {
+    UIView *lv = self.loadingView;
+    if (!lv) return;
+    self.loadingView = nil;
+    NSLog(@"[ZH] 首屏完成（隐藏原生开屏）%.0fms", (CACurrentMediaTime() - self.launchT0) * 1000);
+    [UIView animateWithDuration:0.25 animations:^{
+        lv.alpha = 0;
+    } completion:^(BOOL finished) {
+        [lv removeFromSuperview];
+        [self requestNotificationAuth];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [self refreshWidgetSnapshot];
+        });
+    }];
 }
 
 #pragma mark - 常驻后台 & 充电监控
@@ -327,16 +341,7 @@ static UIColor *ZHPanelBackgroundColor(void) {
 
 - (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message {
     if ([message.name isEqualToString:@"hideLoading"]) {
-        // HTML 数据就绪，淡出加载提示
-        if (self.loadingView) {
-            NSLog(@"[ZH] 首屏完成（隐藏原生开屏）%.0fms", (CACurrentMediaTime() - self.launchT0) * 1000);
-            [UIView animateWithDuration:0.3 animations:^{
-                self.loadingView.alpha = 0;
-            } completion:^(BOOL finished) {
-                [self.loadingView removeFromSuperview];
-                self.loadingView = nil;
-            }];
-        }
+        [self hideLoadingOverlay];
     }
     // 行车记录仪 RTSP 桥接
     if ([message.name isEqualToString:@"dashcam"]) {
@@ -370,17 +375,18 @@ static UIColor *ZHPanelBackgroundColor(void) {
 #pragma mark - WKNavigationDelegate
 
 - (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation {
-    // 兜底：若 JS hook 未触发（如数据极快返回或出错），15 秒后强制隐藏
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(15 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        if (self.loadingView) {
-            [UIView animateWithDuration:0.3 animations:^{
-                self.loadingView.alpha = 0;
-            } completion:^(BOOL finished) {
-                [self.loadingView removeFromSuperview];
-                self.loadingView = nil;
-            }];
-        }
+    // v1.2.42：HTML 本地直出，didFinish 后 80ms 即撤开屏；不再等 15 秒兜底
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.08 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self hideLoadingOverlay];
     });
+}
+
+- (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)navigation withError:(NSError *)error {
+    [self hideLoadingOverlay];
+}
+
+- (void)webView:(WKWebView *)webView didFailProvisionalNavigation:(WKNavigation *)navigation withError:(NSError *)error {
+    [self hideLoadingOverlay];
 }
 
 - (void)dealloc {

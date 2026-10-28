@@ -63,11 +63,13 @@ class ZHPanelService : Service() {
         ZHLog.log("ZHPanelService onCreate")
 
         dispatcher = ZHDispatcher(this).also { ZHLog.log("ZHDispatcher ready") }
-        // v1.2.40 启动提速：后台预热字节码，与 NanoHTTPD 启动并行
+        // v1.2.41 启动提速：页面显示后再预热字节码，避免与首屏加载抢 CPU
         dispatcher?.let { d ->
-            Thread {
-                runCatching { d.warmUp() }.onFailure { ZHLog.error("warmUp failed", it) }
-            }.start()
+            monitorHandler.postDelayed({
+                Thread {
+                    runCatching { d.warmUp() }.onFailure { ZHLog.error("warmUp failed", it) }
+                }.start()
+            }, 1500L)
         }
         server = ZHServer(this, dispatcher!!).also { srv ->
             try {
