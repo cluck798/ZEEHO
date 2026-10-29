@@ -30,9 +30,24 @@ class ZHWidgetWorker(context: Context, params: WorkerParameters) : CoroutineWork
         } catch (e: Exception) {
             intArrayOf()
         }
-        if (ids.isEmpty()) return@withContext Result.success()
+        if (ids.isEmpty()) {
+            // v2.16.46 没有加小组件也要跑车辆提醒检查（震动/忘关锁等），周期 30 分钟
+            try {
+                val d = ZHDispatcher(ctx)
+                withTimeoutOrNull(120_000) {
+                    d.dispatch("GET", "http://zeeho.box/api/vehicle-monitor-tick", mapOf("Host" to "zeeho.box"), "")
+                }
+            } catch (e: Exception) {
+                ZHLog.error("monitor tick (no widget) failed", e)
+            }
+            return@withContext Result.success()
+        }
 
-        val snap = fetchViaService(ctx) ?: fetchViaDispatcher(ctx)
+        var dispatcher: ZHDispatcher? = null
+        val snap = fetchViaService(ctx) ?: run {
+            dispatcher = ZHDispatcher(ctx)
+            fetchViaDispatcher(dispatcher!!, ctx)
+        }
         if (snap != null) {
             ctx.getSharedPreferences(ZHWidgetProvider.CACHE_PREFS, Context.MODE_PRIVATE)
                 .edit()
@@ -45,6 +60,16 @@ class ZHWidgetWorker(context: Context, params: WorkerParameters) : CoroutineWork
                 if (imgUrl.isNotBlank()) downloadImage(ctx, imgUrl)
             } catch (e: Exception) {
                 ZHLog.error("widget image parse failed", e)
+            }
+        }
+        // v2.16.46 App 进程不在时也跑一次车辆提醒检查（震动/忘关锁等），最长 30 分钟一次
+        if (dispatcher != null) {
+            try {
+                withTimeoutOrNull(120_000) {
+                    dispatcher!!.dispatch("GET", "http://zeeho.box/api/vehicle-monitor-tick", mapOf("Host" to "zeeho.box"), "")
+                }
+            } catch (e: Exception) {
+                ZHLog.error("widget monitor tick failed", e)
             }
         }
         ZHWidgetProvider.updateAll(ctx)
@@ -73,9 +98,8 @@ class ZHWidgetWorker(context: Context, params: WorkerParameters) : CoroutineWork
     }
 
     /** 服务未运行：在本进程内用 QuickJS 执行核心脚本取数（与后台签到同一条链路） */
-    private suspend fun fetchViaDispatcher(ctx: Context): String? {
+    private suspend fun fetchViaDispatcher(dispatcher: ZHDispatcher, ctx: Context): String? {
         return try {
-            val dispatcher = ZHDispatcher(ctx)
             val r = withTimeoutOrNull(60_000) {
                 dispatcher.dispatch("GET", "http://zeeho.box/api/widget-snapshot", mapOf("Host" to "zeeho.box"), "")
             }
