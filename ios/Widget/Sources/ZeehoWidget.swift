@@ -88,6 +88,18 @@ let zhTxt2 = Color(red: 147/255, green: 160/255, blue: 184/255)
 let zhDim = Color(red: 94/255, green: 110/255, blue: 136/255)
 let zhLine = Color(red: 146/255, green: 170/255, blue: 205/255).opacity(0.18)
 
+extension View {
+    /// iOS 17 起小组件必须使用 containerBackground，否则系统会额外加内边距导致内容被裁切
+    @ViewBuilder
+    func zeehoWidgetBG() -> some View {
+        if #available(iOSApplicationExtension 17.0, *) {
+            self.containerBackground(for: .widget) { zhBg }
+        } else {
+            self.background(zhBg)
+        }
+    }
+}
+
 func fmtTime(_ iso: String?) -> String {
     guard let iso = iso else { return "--:--" }
     let f = ISO8601DateFormatter()
@@ -219,15 +231,16 @@ struct VehicleInfoView: View {
             VStack(alignment: .leading, spacing: 2) {
                 let f = tireLine("前", snap?.frontPressure, snap?.frontTemp)
                 let r = tireLine("后", snap?.rearPressure, snap?.rearTemp)
-                if !f.isEmpty { Text(f).font(.system(size: 9.5, weight: .semibold)).foregroundColor(zhTxt2) }
-                if !r.isEmpty { Text(r).font(.system(size: 9.5, weight: .semibold)).foregroundColor(zhTxt2) }
+                if !f.isEmpty { Text(f).font(.system(size: 9.5, weight: .semibold)).foregroundColor(zhTxt2).lineLimit(1).minimumScaleFactor(0.8) }
+                if !r.isEmpty { Text(r).font(.system(size: 9.5, weight: .semibold)).foregroundColor(zhTxt2).lineLimit(1).minimumScaleFactor(0.8) }
                 if let addr = snap?.address, !addr.isEmpty {
-                    Text("📍 " + addr).font(.system(size: 9.5, weight: .semibold)).foregroundColor(zhTxt2).lineLimit(1)
+                    Text("📍 " + addr).font(.system(size: 9.5, weight: .semibold)).foregroundColor(zhTxt2).lineLimit(1).minimumScaleFactor(0.8)
                 }
                 Text(snap?.signedToday == true ? "今日已签到 · +\(snap?.todayScore ?? 0) 分" : "今日未签到")
                     .font(.system(size: 9.5, weight: .semibold))
                     .foregroundColor(snap?.signedToday == true ? zhOk : zhTxt2)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             Spacer(minLength: 0)
         }
@@ -269,14 +282,14 @@ struct StateLine: View {
                 let p = snap?.power ?? 0
                 let rm = remainText(snap?.chargeRemainSec)
                 Text("⚡ 充电中" + (p > 0 ? " · \(p)W" : "") + (rm.isEmpty ? "" : " · 剩余 \(rm)"))
-                    .font(.system(size: 9.5, weight: .semibold)).foregroundColor(zhBrand).lineLimit(1)
+                    .font(.system(size: 9.5, weight: .semibold)).foregroundColor(zhBrand).lineLimit(1).minimumScaleFactor(0.8)
             } else {
                 let d = snap?.todayDistance ?? 0
                 Text((snap?.chargeState ?? "未充电") + (d > 0 ? String(format: " · 今日 %.1f km", d) : ""))
-                    .font(.system(size: 9.5, weight: .semibold)).foregroundColor(zhTxt2).lineLimit(1)
+                    .font(.system(size: 9.5, weight: .semibold)).foregroundColor(zhTxt2).lineLimit(1).minimumScaleFactor(0.8)
             }
-            Spacer()
-            Text("更新 \(fmtTime(snap?.ts))").font(.system(size: 9, weight: .semibold)).foregroundColor(zhTxt2.opacity(0.75))
+            Spacer(minLength: 4)
+            Text("更新 \(fmtTime(snap?.ts))").font(.system(size: 9, weight: .semibold)).foregroundColor(zhTxt2.opacity(0.75)).lineLimit(1)
         }
     }
 }
@@ -307,7 +320,6 @@ struct SmallWidgetView: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .background(zhBg)
     }
 }
 
@@ -315,16 +327,15 @@ struct MediumWidgetView: View {
     let snap: ZeehoSnapshot?
     let image: UIImage?
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 3) {
             HeaderView(snap: snap)
             ChipRow(snap: snap)
-            VehicleInfoView(snap: snap, image: image, photoW: 84, photoH: 56)
-            BatteryView(snap: snap, socSize: 26)
+            VehicleInfoView(snap: snap, image: image, photoW: 72, photoH: 46)
+            BatteryView(snap: snap, socSize: 24)
             StateLine(snap: snap)
         }
-        .padding(12)
+        .padding(10)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .background(zhBg)
     }
 }
 
@@ -352,7 +363,6 @@ struct LargeWidgetView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .background(zhBg)
     }
     func cell(_ k: String, _ v: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -377,6 +387,7 @@ struct ZeehoWidgetEntryView: View {
             }
         }
         .widgetURL(URL(string: "zeehopanel://widget"))
+        .zeehoWidgetBG()
     }
 }
 

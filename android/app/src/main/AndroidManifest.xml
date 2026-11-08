@@ -5,6 +5,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 后台定时签到：重启后恢复闹钟 / WorkManager，以及精确闹钟兜底 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- 抓包时定位极核官方 App 包名（仅用于 VPN 分流，不上传） -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 
@@ -64,6 +67,23 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_info" />
+        </receiver>
+
+        <!-- 每日 7:00 精确闹钟：兜底 WorkManager 被厂商省电策略延后 -->
+        <receiver
+            android:name=".SignAlarmReceiver"
+            android:exported="false" />
+
+        <!-- 开机 / 应用更新 / 系统时间变化后重新注册后台任务 -->
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
         </receiver>
     </application>
 </manifest>
