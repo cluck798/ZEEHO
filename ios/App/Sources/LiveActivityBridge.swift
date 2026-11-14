@@ -30,7 +30,12 @@ final class ZeehoLiveActivityBridge: NSObject {
         let state = ZeehoChargeAttributes.ContentState(
             soc: soc, power: power, remainSeconds: remain, voltage: voltage, charging: true
         )
-        Task { await push(state: state, name: name, vin: vin) }
+        // 版本变更后强制重建一次活动，避免旧版本（旧扩展）创建的卡片一直渲染不出来
+        let ver = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? ""
+        let key = "zh_la_render_ver"
+        let restart = UserDefaults.standard.string(forKey: key) != ver
+        if restart { UserDefaults.standard.set(ver, forKey: key) }
+        Task { await push(state: state, name: name, vin: vin, restart: restart) }
         #endif
     }
 
@@ -55,8 +60,10 @@ final class ZeehoLiveActivityBridge: NSObject {
     }
 
     @available(iOS 16.1, *)
-    private static func push(state: ZeehoChargeAttributes.ContentState, name: String, vin: String) async {
-        if let act = Activity<ZeehoChargeAttributes>.activities.first {
+    private static func push(state: ZeehoChargeAttributes.ContentState, name: String, vin: String, restart: Bool) async {
+        if restart {
+            await endAll()
+        } else if let act = Activity<ZeehoChargeAttributes>.activities.first {
             if #available(iOS 16.2, *) {
                 await act.update(ActivityContent(state: state, staleDate: Date().addingTimeInterval(1800)))
             } else {
