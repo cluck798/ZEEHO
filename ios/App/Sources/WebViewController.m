@@ -84,6 +84,7 @@ static UIColor *ZHPanelBackgroundColor(void) {
     [userCtrl addScriptMessageHandler:self name:@"dashcam"];
     [userCtrl addScriptMessageHandler:self name:@"openExternal"];
     [userCtrl addScriptMessageHandler:self name:@"notify"];
+    [userCtrl addScriptMessageHandler:self name:@"chargeActivity"];
     // v2.16.39 原生桥：版本号 / 打开外部链接（检查更新下载用）
     NSString *appVer = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"";
     NSString *nativeBridge = [NSString stringWithFormat:
@@ -91,6 +92,7 @@ static UIColor *ZHPanelBackgroundColor(void) {
         "window.ZeehoNative.appVersion=function(){return '%@'};"
         "window.ZeehoNative.openExternal=function(u){try{window.webkit.messageHandlers.openExternal.postMessage(String(u||''))}catch(e){}};"
         "window.ZeehoNative.notify=function(t,b){try{window.webkit.messageHandlers.notify.postMessage({title:String(t||''),body:String(b||'')})}catch(e){}};"
+        "window.ZeehoNative.showChargeLiveActivity=function(){try{window.webkit.messageHandlers.chargeActivity.postMessage(null)}catch(e){}};"
         "window.ZeehoNative.hideSplash=function(){try{window.webkit.messageHandlers.hideLoading.postMessage(null)}catch(e){}};",
         appVer];
     [userCtrl addUserScript:[[WKUserScript alloc] initWithSource:nativeBridge
@@ -468,6 +470,20 @@ static UIColor *ZHPanelBackgroundColor(void) {
         NSString *rid = [NSString stringWithFormat:@"zeeho_panel_%f", CACurrentMediaTime()];
         UNNotificationRequest *req = [UNNotificationRequest requestWithIdentifier:rid content:content trigger:nil];
         [[UNUserNotificationCenter currentNotificationCenter] addNotificationRequest:req withCompletionHandler:nil];
+    }
+    // v1.2.57 手动重新显示充电实时活动（用户关闭锁屏卡片后可再次唤起）
+    if ([message.name isEqualToString:@"chargeActivity"]) {
+        NSURL *dir = [[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:kWidgetAppGroup];
+        if (dir) {
+            NSURL *file = [dir URLByAppendingPathComponent:@"widget_snapshot.json"];
+            NSData *d = [NSData dataWithContentsOfURL:file];
+            if (d) {
+                NSDictionary *snap = [NSJSONSerialization JSONObjectWithData:d options:0 error:NULL];
+                if ([snap isKindOfClass:[NSDictionary class]]) {
+                    [self updateChargeLiveActivity:snap];
+                }
+            }
+        }
     }
     // 行车记录仪 RTSP 桥接
     if ([message.name isEqualToString:@"dashcam"]) {
