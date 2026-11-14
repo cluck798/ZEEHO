@@ -38,6 +38,17 @@ static NSString * const kFetchBodyShim =
 // 后台充电/离线监控轮询间隔（秒）
 static const NSTimeInterval kMonitorTickInterval = 180.0;
 
+// 查找 Swift 类：优先无前缀名；旧写法下运行时名是「模块名.类名」，逐个模块回退尝试。
+static Class ZHFindSwiftClass(NSString *name) {
+    Class c = NSClassFromString(name);
+    if (c) return c;
+    for (NSString *mod in @[@"ZeehoPanel", @"ZeehoSingle"]) {
+        c = NSClassFromString([NSString stringWithFormat:@"%@.%@", mod, name]);
+        if (c) return c;
+    }
+    return nil;
+}
+
 @interface WebViewController () <WKURLSchemeHandler, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler>
 @property (nonatomic, strong) WKWebView *webView;
 @property (nonatomic, strong) ZHDispatcher *dispatcher;
@@ -213,6 +224,15 @@ static UIColor *ZHPanelBackgroundColor(void) {
 
     [self startBackgroundKeepAlive];
     [self startMonitorTimer];
+    // v1.2.53 回到前台立即刷新快照（顺带更新充电实时活动，避免只在 3 分钟 tick 时才更新）
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(appDidBecomeActive)
+                                                 name:UIApplicationDidBecomeActiveNotification
+                                               object:nil];
+}
+
+- (void)appDidBecomeActive {
+    [self refreshWidgetSnapshot];
 }
 
 // v1.2.42 启动提速：页面首帧完成即撤开屏；通知授权与小组件快照延后，避免抢占启动资源
@@ -355,8 +375,8 @@ static UIColor *ZHPanelBackgroundColor(void) {
         NSURL *file = [dir URLByAppendingPathComponent:@"widget_snapshot.json"];
         [respBody writeToFile:file.path atomically:YES encoding:NSUTF8StringEncoding error:NULL];
         void (^reload)(void) = ^{
-            // 通过 ObjC runtime 调用 WidgetBridge.reloadAll()（Swift 桥接类，@objcMembers 暴露到 ObjC runtime）
-            Class bridgeClass = NSClassFromString(@"WidgetBridge");
+            // 通过 ObjC runtime 调用 WidgetBridge.reloadAll()（Swift 桥接类，已用 @objc 固定运行时名）
+            Class bridgeClass = ZHFindSwiftClass(@"WidgetBridge");
             if (bridgeClass) {
                 [bridgeClass performSelector:NSSelectorFromString(@"reloadAll")];
             }
@@ -411,9 +431,11 @@ static UIColor *ZHPanelBackgroundColor(void) {
         @"voltage": @([voltN doubleValue]),
         @"vehicleName": name
     };
-    Class liveClass = NSClassFromString(@"ZeehoLiveActivityBridge");
+    Class liveClass = ZHFindSwiftClass(@"ZeehoLiveActivityBridge");
     if (liveClass) {
         [liveClass performSelector:NSSelectorFromString(@"updateWithInfo:") withObject:info];
+    } else {
+        NSLog(@"[ZH] 实时活动桥未找到（ZeehoLiveActivityBridge）");
     }
 }
 

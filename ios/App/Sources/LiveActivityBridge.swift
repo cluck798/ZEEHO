@@ -1,5 +1,7 @@
 // LiveActivityBridge.swift — 充电实时活动的启停与刷新（供 ObjC 通过 runtime 调用）
 // ObjC 侧：Class c = NSClassFromString(@"ZeehoLiveActivityBridge"); [c performSelector:@selector(updateWithInfo:) withObject:dict];
+// 注意：Swift 类默认运行时名是「模块名.类名」，必须用 @objc(ZeehoLiveActivityBridge) 固定成无前缀名，
+// 否则 ObjC 的 NSClassFromString(@"ZeehoLiveActivityBridge") 取到 nil，实时活动会静默不生效。
 import Foundation
 
 #if canImport(ActivityKit)
@@ -7,6 +9,7 @@ import ActivityKit
 #endif
 
 @objcMembers
+@objc(ZeehoLiveActivityBridge)
 final class ZeehoLiveActivityBridge: NSObject {
 
     /// info: charging(Bool) / soc(Int) / power(Int) / remain(Int 秒) / voltage(Double) / vehicleName / vin
@@ -59,17 +62,23 @@ final class ZeehoLiveActivityBridge: NSObject {
             } else {
                 await act.update(using: state)
             }
+            NSLog("[ZH] 实时活动已更新 %d%% %dW", state.soc, state.power)
             return
         }
         let attrs = ZeehoChargeAttributes(vehicleName: name, vin: vin)
-        if #available(iOS 16.2, *) {
-            _ = try? Activity.request(
-                attributes: attrs,
-                content: ActivityContent(state: state, staleDate: Date().addingTimeInterval(1800)),
-                pushType: nil
-            )
-        } else {
-            _ = try? Activity.request(attributes: attrs, contentState: state, pushType: nil)
+        do {
+            if #available(iOS 16.2, *) {
+                _ = try Activity.request(
+                    attributes: attrs,
+                    content: ActivityContent(state: state, staleDate: Date().addingTimeInterval(1800)),
+                    pushType: nil
+                )
+            } else {
+                _ = try Activity.request(attributes: attrs, contentState: state, pushType: nil)
+            }
+            NSLog("[ZH] 实时活动已启动 %d%% %dW", state.soc, state.power)
+        } catch {
+            NSLog("[ZH] 实时活动启动失败: %@", String(describing: error))
         }
     }
     #endif
