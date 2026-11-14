@@ -367,7 +367,11 @@ static UIColor *ZHPanelBackgroundColor(void) {
         if (jsonData) {
             snap = [NSJSONSerialization JSONObjectWithData:jsonData options:0 error:NULL];
         }
-        if ([snap isKindOfClass:[NSDictionary class]]) {
+        // v1.2.56 只有快照真正成功且拿到车辆数据时才更新/结束活动，
+        // 避免一次网络失败（ok=false、字段全 0）被误判成「未充电」而把活动结束掉。
+        BOOL snapOk = [snap[@"ok"] isKindOfClass:[NSNumber class]] && [snap[@"ok"] boolValue];
+        BOOL hasVehicle = [snap[@"hasVehicle"] isKindOfClass:[NSNumber class]] && [snap[@"hasVehicle"] boolValue];
+        if (snapOk && hasVehicle) {
             [self updateChargeLiveActivity:snap];
         }
         NSURL *dir = [[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:kWidgetAppGroup];
