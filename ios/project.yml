@@ -31,6 +31,7 @@ targets:
         OTHER_LDFLAGS: "-weak_framework WidgetKit -weak_framework ActivityKit"
     dependencies:
       - target: ZeehoWidget
+      - target: ZeehoLiveWidget
   ZeehoSingle:
     type: application
     platform: iOS
@@ -55,12 +56,12 @@ targets:
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: SINGLE_EDITION
     dependencies:
       - target: ZeehoWidgetSingle
+      - target: ZeehoLiveWidgetSingle
   ZeehoWidget:
     type: app-extension
     platform: iOS
     sources:
       - path: Widget/Sources
-      - path: Shared
       - path: Widget/Info.plist
         buildPhase: none
     settings:
@@ -72,13 +73,11 @@ targets:
         ENABLE_BITCODE: "NO"
         IPHONEOS_DEPLOYMENT_TARGET: "16.0"
         SKIP_INSTALL: "NO"
-        OTHER_LDFLAGS: "-weak_framework ActivityKit"
   ZeehoWidgetSingle:
     type: app-extension
     platform: iOS
     sources:
       - path: Widget/Sources
-      - path: Shared
       - path: Widget/Info.plist
         buildPhase: none
     settings:
@@ -89,6 +88,41 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Widget/ZeehoWidgetSingle.entitlements
         ENABLE_BITCODE: "NO"
         IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+        SKIP_INSTALL: "NO"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: SINGLE_WIDGET
+  # 实时活动独立扩展（iOS 16.1 同一 bundle 内含桌面小组件时灵动岛可能不显示）
+  ZeehoLiveWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widget/LiveSources
+      - path: Shared
+      - path: Widget/LiveInfo.plist
+        buildPhase: none
+    settings:
+      base:
+        PRODUCT_NAME: ZeehoLiveWidget
+        PRODUCT_BUNDLE_IDENTIFIER: com.zeeho.signpanel.livewidget
+        INFOPLIST_FILE: Widget/LiveInfo.plist
+        ENABLE_BITCODE: "NO"
+        IPHONEOS_DEPLOYMENT_TARGET: "16.1"
+        SKIP_INSTALL: "NO"
+        OTHER_LDFLAGS: "-weak_framework ActivityKit"
+  ZeehoLiveWidgetSingle:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widget/LiveSources
+      - path: Shared
+      - path: Widget/LiveInfo.plist
+        buildPhase: none
+    settings:
+      base:
+        PRODUCT_NAME: ZeehoLiveWidget
+        PRODUCT_BUNDLE_IDENTIFIER: com.zeeho.signpanel.single.livewidget
+        INFOPLIST_FILE: Widget/LiveInfo.plist
+        ENABLE_BITCODE: "NO"
+        IPHONEOS_DEPLOYMENT_TARGET: "16.1"
         SKIP_INSTALL: "NO"
         OTHER_LDFLAGS: "-weak_framework ActivityKit"
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: SINGLE_WIDGET

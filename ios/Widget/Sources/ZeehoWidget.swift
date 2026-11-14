@@ -391,6 +391,7 @@ struct ZeehoWidgetEntryView: View {
     }
 }
 
+@main
 struct ZeehoWidget: Widget {
     let kind = "ZeehoWidget"
     var body: some WidgetConfiguration {
