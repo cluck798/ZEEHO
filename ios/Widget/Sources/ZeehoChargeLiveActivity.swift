@@ -43,7 +43,7 @@ struct ZeehoChargeLiveActivity: Widget {
                             Text(context.state.power > 0 ? "\(context.state.power)W" : "--")
                                 .font(.system(size: 11, weight: .bold)).foregroundColor(zhBrand)
                             Spacer()
-                            Text(remainText(context.state.remainSeconds))
+                            Text(laRemainText(context.state.remainSeconds))
                                 .font(.system(size: 11, weight: .semibold)).foregroundColor(zhTxt2)
                         }
                     }
@@ -107,7 +107,7 @@ private struct ZeehoChargeLockView: View {
                     .font(.system(size: 15, weight: .heavy))
                     .foregroundColor(zhBrand)
                     .monospacedDigit()
-                Text(remainText(state.remainSeconds))
+                Text(laRemainText(state.remainSeconds))
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(zhTxt2)
                 if state.voltage > 0 {
@@ -123,7 +123,7 @@ private struct ZeehoChargeLockView: View {
 }
 
 @available(iOS 16.1, *)
-private func remainText(_ sec: Int) -> String {
+private func laRemainText(_ sec: Int) -> String {
     if sec <= 0 { return "剩余 --" }
     let m = max(1, sec / 60)
     if m >= 60 {
