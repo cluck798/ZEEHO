@@ -46,6 +46,7 @@ static const NSTimeInterval kMonitorTickInterval = 180.0;
 @property (nonatomic, strong) NSTimer *monitorTimer;
 @property (nonatomic, strong) UIView *loadingView;
 @property (nonatomic, assign) CFTimeInterval launchT0;
+- (void)updateChargeLiveActivity:(NSDictionary *)snap;
 @end
 
 @implementation WebViewController
@@ -340,6 +341,15 @@ static UIColor *ZHPanelBackgroundColor(void) {
                             body:nil
                       completion:^(NSInteger status, NSDictionary *respHeaders, NSString *respBody) {
         if (status != 200 || !respBody.length) return;
+        // v2.16.52 充电实时活动：先解析快照，充电中显示锁屏卡片 / 灵动岛，停止充电后自动结束
+        NSDictionary *snap = nil;
+        NSData *jsonData = [respBody dataUsingEncoding:NSUTF8StringEncoding];
+        if (jsonData) {
+            snap = [NSJSONSerialization JSONObjectWithData:jsonData options:0 error:NULL];
+        }
+        if ([snap isKindOfClass:[NSDictionary class]]) {
+            [self updateChargeLiveActivity:snap];
+        }
         NSURL *dir = [[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:kWidgetAppGroup];
         if (!dir) return;
         NSURL *file = [dir URLByAppendingPathComponent:@"widget_snapshot.json"];
@@ -353,11 +363,7 @@ static UIColor *ZHPanelBackgroundColor(void) {
         };
         // v2.16.45 车辆照片：下载并下采样（宽 ≤420px）写入 App Group，再刷新小组件
         NSString *imgUrl = @"";
-        NSData *jsonData = [respBody dataUsingEncoding:NSUTF8StringEncoding];
-        if (jsonData) {
-            NSDictionary *snap = [NSJSONSerialization JSONObjectWithData:jsonData options:0 error:NULL];
-            if ([snap[@"vehicleImageUrl"] isKindOfClass:[NSString class]]) imgUrl = snap[@"vehicleImageUrl"];
-        }
+        if ([snap[@"vehicleImageUrl"] isKindOfClass:[NSString class]]) imgUrl = snap[@"vehicleImageUrl"];
         if (imgUrl.length > 0 && ([imgUrl hasPrefix:@"http://"] || [imgUrl hasPrefix:@"https://"])) {
             NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithURL:[NSURL URLWithString:imgUrl]
                                                                  completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
@@ -386,6 +392,29 @@ static UIColor *ZHPanelBackgroundColor(void) {
             reload();
         }
     }];
+}
+
+// v2.16.52 充电实时活动：把快照里的充电数据交给 ActivityKit（iOS 16.1+ 生效，旧系统自动忽略）
+- (void)updateChargeLiveActivity:(NSDictionary *)snap {
+    NSString *cs = [snap[@"chargeState"] isKindOfClass:[NSString class]] ? snap[@"chargeState"] : @"";
+    BOOL charging = [cs containsString:@"充电"] && ![cs containsString:@"未充电"];
+    NSNumber *socN = [snap[@"soc"] isKindOfClass:[NSNumber class]] ? snap[@"soc"] : @0;
+    NSNumber *powerN = [snap[@"power"] isKindOfClass:[NSNumber class]] ? snap[@"power"] : @0;
+    NSNumber *remainN = [snap[@"chargeRemainSec"] isKindOfClass:[NSNumber class]] ? snap[@"chargeRemainSec"] : @0;
+    NSNumber *voltN = [snap[@"voltage"] isKindOfClass:[NSNumber class]] ? snap[@"voltage"] : @0;
+    NSString *name = [snap[@"vehicleName"] isKindOfClass:[NSString class]] ? snap[@"vehicleName"] : @"极核 ZEEHO";
+    NSDictionary *info = @{
+        @"charging": @(charging),
+        @"soc": @([socN intValue]),
+        @"power": @([powerN intValue]),
+        @"remain": @([remainN intValue]),
+        @"voltage": @([voltN doubleValue]),
+        @"vehicleName": name
+    };
+    Class liveClass = NSClassFromString(@"ZeehoLiveActivityBridge");
+    if (liveClass) {
+        [liveClass performSelector:NSSelectorFromString(@"updateWithInfo:") withObject:info];
+    }
 }
 
 #pragma mark - WKScriptMessageHandler

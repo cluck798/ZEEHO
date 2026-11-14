@@ -15,6 +15,7 @@ targets:
     sources:
       - path: App/Sources
       - path: App/Resources
+      - path: Shared
       - path: App/Info.plist
         buildPhase: none
     settings:
@@ -27,7 +28,7 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_BITCODE: "NO"
         IPHONEOS_DEPLOYMENT_TARGET: "14.0"
-        OTHER_LDFLAGS: "-weak_framework WidgetKit"
+        OTHER_LDFLAGS: "-weak_framework WidgetKit -weak_framework ActivityKit"
     dependencies:
       - target: ZeehoWidget
   ZeehoSingle:
@@ -36,6 +37,7 @@ targets:
     sources:
       - path: App/Sources
       - path: App/Resources
+      - path: Shared
       - path: App/Info-Single.plist
         buildPhase: none
     settings:
@@ -48,7 +50,7 @@ targets:
         ENABLE_BITCODE: "NO"
         IPHONEOS_DEPLOYMENT_TARGET: "14.0"
         CODE_SIGN_ENTITLEMENTS: App/ZeehoSingle.entitlements
-        OTHER_LDFLAGS: "-weak_framework WidgetKit"
+        OTHER_LDFLAGS: "-weak_framework WidgetKit -weak_framework ActivityKit"
         GCC_PREPROCESSOR_DEFINITIONS: "$(inherited) SINGLE_EDITION=1"
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: SINGLE_EDITION
     dependencies:
@@ -58,6 +60,7 @@ targets:
     platform: iOS
     sources:
       - path: Widget/Sources
+      - path: Shared
       - path: Widget/Info.plist
         buildPhase: none
     settings:
@@ -69,11 +72,13 @@ targets:
         ENABLE_BITCODE: "NO"
         IPHONEOS_DEPLOYMENT_TARGET: "16.0"
         SKIP_INSTALL: "NO"
+        OTHER_LDFLAGS: "-weak_framework ActivityKit"
   ZeehoWidgetSingle:
     type: app-extension
     platform: iOS
     sources:
       - path: Widget/Sources
+      - path: Shared
       - path: Widget/Info.plist
         buildPhase: none
     settings:
@@ -85,4 +90,5 @@ targets:
         ENABLE_BITCODE: "NO"
         IPHONEOS_DEPLOYMENT_TARGET: "16.0"
         SKIP_INSTALL: "NO"
+        OTHER_LDFLAGS: "-weak_framework ActivityKit"
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: SINGLE_WIDGET
