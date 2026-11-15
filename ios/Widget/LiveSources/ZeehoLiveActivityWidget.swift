@@ -47,7 +47,7 @@ struct ZeehoChargeLiveActivity: Widget {
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundColor(laBrand)
                             Spacer()
-                            Text(laRemainText(context.state.remainSeconds))
+                            Text(laRemainText(context.state.remainSeconds, soc: context.state.soc))
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundColor(laTxt2)
                         }
@@ -131,7 +131,7 @@ private struct ZeehoChargeLockView: View {
                     .font(.system(size: 15, weight: .heavy))
                     .foregroundColor(laBrand)
                     .monospacedDigit()
-                Text(laRemainText(state.remainSeconds))
+                Text(laRemainText(state.remainSeconds, soc: state.soc))
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(laTxt2)
                 if state.voltage > 0 {
@@ -147,7 +147,9 @@ private struct ZeehoChargeLockView: View {
 }
 
 @available(iOS 16.1, *)
-private func laRemainText(_ sec: Int) -> String {
+private func laRemainText(_ sec: Int, soc: Int) -> String {
+    // 100% 时没有「剩余时间」可算，直接显示已充满，避免出现「剩余 --」
+    if soc >= 100 { return "已充满" }
     if sec <= 0 { return "剩余 --" }
     let m = max(1, sec / 60)
     if m >= 60 {
