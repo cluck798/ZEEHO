@@ -67,6 +67,15 @@ jobs:
               fi
               codesign --force --sign - --entitlements "$ENT" "Payload/$APP.app/PlugIns/ZeehoWidget.appex"
             fi
+            # v1.2.64 实时活动扩展同样必须签名，否则系统不加载新扩展、一直用旧缓存渲染
+            if [ -d "Payload/$APP.app/PlugIns/ZeehoLiveWidget.appex" ]; then
+              if [ "$APP" = "ZeehoPanel" ]; then
+                LENT="Widget/ZeehoWidget.entitlements"
+              else
+                LENT="Widget/ZeehoWidgetSingle.entitlements"
+              fi
+              codesign --force --sign - --entitlements "$LENT" "Payload/$APP.app/PlugIns/ZeehoLiveWidget.appex"
+            fi
             # 注入 BackRun dylib（后台常驻增强）：复制到 Frameworks 并给主二进制追加 LC_LOAD_DYLIB
             mkdir -p "Payload/$APP.app/Frameworks"
             cp BackRun.dylib "Payload/$APP.app/Frameworks/BackRun.dylib"
