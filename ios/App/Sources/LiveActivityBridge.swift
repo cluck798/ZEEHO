@@ -78,15 +78,13 @@ final class ZeehoLiveActivityBridge: NSObject {
             if manual { postResult(true, "已重新显示充电活动，请查看锁屏 / 灵动岛") }
             return
         }
-        if !ActivityAuthorizationInfo().areActivitiesEnabled {
-            NSLog("[ZH] 实时活动被系统关闭")
-            // 用 App 实际显示名，单账号版是「极核单账号版」，避免用户找错设置项
-            let appName = (Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String) ?? "极核"
-            if manual { postResult(false, "系统已关闭实时活动：设置 → \(appName) → 实时活动") }
-            return
+        let enabled = ActivityAuthorizationInfo().areActivitiesEnabled
+        if !enabled {
+            // 系统标记为关闭时也继续尝试一次：升级/重装后这个标记可能是滞后的假值
+            NSLog("[ZH] areActivitiesEnabled=false，仍尝试启动实时活动")
         }
         let attrs = ZeehoChargeAttributes(vehicleName: name, vin: vin)
-        if await request(attrs: attrs, state: state) {
+        if await request(attrs: attrs, state: state) == nil {
             NSLog("[ZH] 实时活动已启动 %d%% %dW", state.soc, state.power)
             if manual { postResult(true, "已重新显示充电活动，请查看锁屏 / 灵动岛") }
             return
@@ -94,17 +92,23 @@ final class ZeehoLiveActivityBridge: NSObject {
         // 失败兜底：iOS 16.1 偶发额度/缓存问题，结束残留活动后重试一次
         await endAll()
         try? await Task.sleep(nanoseconds: 1200_000_000)
-        if await request(attrs: attrs, state: state) {
+        if await request(attrs: attrs, state: state) == nil {
             NSLog("[ZH] 实时活动重试成功 %d%% %dW", state.soc, state.power)
             if manual { postResult(true, "已重新显示充电活动，请查看锁屏 / 灵动岛") }
         } else {
             NSLog("[ZH] 实时活动启动失败（已重试）")
-            if manual { postResult(false, "实时活动启动失败，请重启手机后再试") }
+            if manual {
+                let appName = (Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String) ?? "极核"
+                postResult(false, enabled
+                    ? "实时活动启动失败，请重启手机后再试"
+                    : "系统已关闭实时活动：设置 → \(appName) → 实时活动")
+            }
         }
     }
 
+    /// 返回 nil 表示成功，否则返回错误描述
     @available(iOS 16.1, *)
-    private static func request(attrs: ZeehoChargeAttributes, state: ZeehoChargeAttributes.ContentState) async -> Bool {
+    private static func request(attrs: ZeehoChargeAttributes, state: ZeehoChargeAttributes.ContentState) async -> String? {
         do {
             if #available(iOS 16.2, *) {
                 _ = try Activity.request(
@@ -115,10 +119,10 @@ final class ZeehoLiveActivityBridge: NSObject {
             } else {
                 _ = try Activity.request(attributes: attrs, contentState: state, pushType: nil)
             }
-            return true
+            return nil
         } catch {
             NSLog("[ZH] 实时活动启动失败: %@", String(describing: error))
-            return false
+            return String(describing: error)
         }
     }
 
