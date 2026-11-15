@@ -59,6 +59,8 @@ static Class ZHFindSwiftClass(NSString *name) {
 @property (nonatomic, assign) CFTimeInterval launchT0;
 // v1.2.58 手动「重新显示充电活动」：标记本次快照刷新由按钮触发，刷新完成后回执给面板
 @property (nonatomic, assign) BOOL manualLAPending;
+// v1.2.59 充电状态未知保护：记录最近一次确认充电中的时间，避免打开 App 时一次接口失败就把活动结束
+@property (nonatomic, assign) CFTimeInterval laLastChargingAt;
 - (void)updateChargeLiveActivity:(NSDictionary *)snap;
 - (void)updateChargeLiveActivity:(NSDictionary *)snap forceRestart:(BOOL)force;
 - (BOOL)snapshotCharging:(NSDictionary *)snap;
@@ -390,10 +392,20 @@ static UIColor *ZHPanelBackgroundColor(void) {
         // v1.2.58 手动唤起：刷新完成后把真实结果回执给面板（未充电 / 刷新失败都不再静默）
         if (self.manualLAPending) {
             self.manualLAPending = NO;
+            BOOL known = YES;
+            if ([snap[@"chargeKnown"] isKindOfClass:[NSNumber class]]) known = [snap[@"chargeKnown"] boolValue];
             BOOL charging = snapOk && hasVehicle && [self snapshotCharging:snap];
-            [self zhLAResult:charging
-                     message:(charging ? @"已重新显示充电活动，请查看锁屏 / 灵动岛"
-                                       : @"当前未在充电，实时活动只在充电时显示")];
+            NSString *msg;
+            if (!snapOk || !hasVehicle) {
+                msg = @"车辆状态刷新失败，请稍后重试";
+            } else if (charging) {
+                msg = @"已重新显示充电活动，请查看锁屏 / 灵动岛";
+            } else if (!known) {
+                msg = @"暂时拿不到充电状态，请稍后再试";
+            } else {
+                msg = @"当前未在充电，实时活动只在充电时显示";
+            }
+            [self zhLAResult:charging message:msg];
         }
         NSURL *dir = [[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:kWidgetAppGroup];
         if (!dir) return;
@@ -452,6 +464,21 @@ static UIColor *ZHPanelBackgroundColor(void) {
 // forceRestart=YES：手动重新唤起时先结束旧活动再重建，避免旧卡片残留状态导致新卡片不刷新
 - (void)updateChargeLiveActivity:(NSDictionary *)snap forceRestart:(BOOL)force {
     BOOL charging = [self snapshotCharging:snap];
+    // v1.2.59 关键修复：充电接口本次没拉到（chargeKnown=false）时不能当作「已停止充电」，
+    // 否则打开 App / 点击锁屏卡片触发一次刷新失败，就会把实时活动结束，灵动岛从此不再显示。
+    BOOL known = YES;
+    if ([snap[@"chargeKnown"] isKindOfClass:[NSNumber class]]) known = [snap[@"chargeKnown"] boolValue];
+    if (charging) {
+        self.laLastChargingAt = CACurrentMediaTime();
+    } else {
+        if (!known) {
+            // 状态未知：保持现有活动；只有长时间（>30 分钟）都拿不到状态才结束，避免卡片一直停在旧数据
+            if (self.laLastChargingAt <= 0 || CACurrentMediaTime() - self.laLastChargingAt < 1800) {
+                NSLog(@"[ZH] 充电状态未知，保持现有实时活动");
+                return;
+            }
+        }
+    }
     NSNumber *socN = [snap[@"soc"] isKindOfClass:[NSNumber class]] ? snap[@"soc"] : @0;
     NSNumber *powerN = [snap[@"power"] isKindOfClass:[NSNumber class]] ? snap[@"power"] : @0;
     NSNumber *remainN = [snap[@"chargeRemainSec"] isKindOfClass:[NSNumber class]] ? snap[@"chargeRemainSec"] : @0;
