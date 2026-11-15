@@ -27,8 +27,28 @@ final class ZeehoLiveActivityBridge: NSObject {
         let voltage = (info["voltage"] as? NSNumber)?.doubleValue ?? 0
         let name = (info["vehicleName"] as? String) ?? "极核 ZEEHO"
         let vin = (info["vin"] as? String) ?? ""
+        // v1.2.65 展示文案由 App 计算后传入，扩展只负责排版
+        let socText = "\(soc)%"
+        let powerText = power > 0 ? "\(power)W" : "--"
+        let remainText: String
+        if soc >= 100 {
+            remainText = "已充满"
+        } else if remain > 0 {
+            let m = max(1, remain / 60)
+            if m >= 60 {
+                let h = m / 60, mm = m % 60
+                remainText = "剩余 \(h) 时" + (mm > 0 ? " \(mm) 分" : "")
+            } else {
+                remainText = "剩余 \(m) 分"
+            }
+        } else {
+            remainText = "剩余 --"
+        }
+        let voltageText = voltage > 0 ? "\(Int(voltage))V" : ""
         let state = ZeehoChargeAttributes.ContentState(
-            soc: soc, power: power, remainSeconds: remain, voltage: voltage, charging: true
+            soc: soc, power: power, remainSeconds: remain, voltage: voltage, charging: true,
+            title: "充电中", socText: socText, powerText: powerText,
+            remainText: remainText, voltageText: voltageText, symbolName: "bolt.fill"
         )
         // 版本变更后强制重建一次活动，避免旧版本（旧扩展）创建的卡片一直渲染不出来
         let ver = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? ""

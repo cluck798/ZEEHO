@@ -24,16 +24,16 @@ struct ZeehoChargeLiveActivity: Widget {
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     HStack(spacing: 6) {
-                        Image(systemName: "bolt.fill")
+                        Image(systemName: context.state.symbolName)
                             .font(.system(size: 14, weight: .bold))
                             .foregroundColor(laBrand)
-                        Text("充电中")
+                        Text(context.state.title)
                             .font(.system(size: 13, weight: .bold))
                             .foregroundColor(.white)
                     }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text("\(context.state.soc)%")
+                    Text(context.state.socText)
                         .font(.system(size: 18, weight: .heavy, design: .rounded))
                         .foregroundColor(.white)
                         .monospacedDigit()
@@ -43,11 +43,11 @@ struct ZeehoChargeLiveActivity: Widget {
                         ProgressCapsule(progress: Double(min(100, max(0, context.state.soc))) / 100.0)
                             .frame(height: 6)
                         HStack {
-                            Text(context.state.power > 0 ? "\(context.state.power)W" : "--")
+                            Text(context.state.powerText)
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundColor(laBrand)
                             Spacer()
-                            Text(laRemainText(context.state.remainSeconds, soc: context.state.soc))
+                            Text(context.state.remainText)
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundColor(laTxt2)
                         }
@@ -55,21 +55,16 @@ struct ZeehoChargeLiveActivity: Widget {
                     .padding(.horizontal, 2)
                 }
             } compactLeading: {
-                HStack(spacing: 3) {
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(laBrand)
-                    Text("\(context.state.soc)")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.white)
-                        .monospacedDigit()
-                }
-            } compactTrailing: {
-                Text("%")
+                Image(systemName: context.state.symbolName)
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(laTxt2)
+                    .foregroundColor(laBrand)
+            } compactTrailing: {
+                Text(context.state.socText)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.white)
+                    .monospacedDigit()
             } minimal: {
-                Image(systemName: "bolt.fill")
+                Image(systemName: context.state.symbolName)
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(laBrand)
             }
@@ -111,31 +106,30 @@ private struct ZeehoChargeLockView: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 6) {
                     Circle().fill(laBrand).frame(width: 7, height: 7)
-                    Text(name + " 充电中")
+                    Text(name + " " + state.title)
                         .font(.system(size: 12, weight: .bold))
                         .foregroundColor(.white)
                         .lineLimit(1)
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
-                    Text("\(state.soc)")
+                    Text(state.socText)
                         .font(.system(size: 30, weight: .heavy, design: .rounded))
                         .foregroundColor(.white)
                         .monospacedDigit()
-                    Text("%").font(.system(size: 11, weight: .bold)).foregroundColor(laTxt2)
                 }
                 ProgressCapsule(progress: Double(min(100, max(0, state.soc))) / 100.0)
                     .frame(height: 6)
             }
             VStack(alignment: .trailing, spacing: 3) {
-                Text(state.power > 0 ? "\(state.power)W" : "--")
+                Text(state.powerText)
                     .font(.system(size: 15, weight: .heavy))
                     .foregroundColor(laBrand)
                     .monospacedDigit()
-                Text(laRemainText(state.remainSeconds, soc: state.soc))
+                Text(state.remainText)
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(laTxt2)
-                if state.voltage > 0 {
-                    Text("\(Int(state.voltage))V")
+                if !state.voltageText.isEmpty {
+                    Text(state.voltageText)
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundColor(laTxt2.opacity(0.85))
                 }
@@ -144,19 +138,6 @@ private struct ZeehoChargeLockView: View {
         }
         .padding(14)
     }
-}
-
-@available(iOS 16.1, *)
-private func laRemainText(_ sec: Int, soc: Int) -> String {
-    // 100% 时没有「剩余时间」可算，直接显示已充满，避免出现「剩余 --」
-    if soc >= 100 { return "已充满" }
-    if sec <= 0 { return "剩余 --" }
-    let m = max(1, sec / 60)
-    if m >= 60 {
-        let h = m / 60, mm = m % 60
-        return "剩余 \(h) 时" + (mm > 0 ? " \(mm) 分" : "")
-    }
-    return "剩余 \(m) 分"
 }
 
 @main
