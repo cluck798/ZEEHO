@@ -80,7 +80,9 @@ final class ZeehoLiveActivityBridge: NSObject {
         }
         if !ActivityAuthorizationInfo().areActivitiesEnabled {
             NSLog("[ZH] 实时活动被系统关闭")
-            if manual { postResult(false, "系统已关闭实时活动：设置 → 极核 ZEEHO → 实时活动") }
+            // 用 App 实际显示名，单账号版是「极核单账号版」，避免用户找错设置项
+            let appName = (Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String) ?? "极核"
+            if manual { postResult(false, "系统已关闭实时活动：设置 → \(appName) → 实时活动") }
             return
         }
         let attrs = ZeehoChargeAttributes(vehicleName: name, vin: vin)

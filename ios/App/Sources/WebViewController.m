@@ -92,6 +92,8 @@ static UIColor *ZHPanelBackgroundColor(void) {
     [userCtrl addScriptMessageHandler:self name:@"openExternal"];
     [userCtrl addScriptMessageHandler:self name:@"notify"];
     [userCtrl addScriptMessageHandler:self name:@"chargeActivity"];
+    // v1.2.61 一键跳到本应用系统设置（实时活动开关）
+    [userCtrl addScriptMessageHandler:self name:@"openAppSettings"];
     // v2.16.39 原生桥：版本号 / 打开外部链接（检查更新下载用）
     NSString *appVer = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"";
     NSString *nativeBridge = [NSString stringWithFormat:
@@ -100,6 +102,7 @@ static UIColor *ZHPanelBackgroundColor(void) {
         "window.ZeehoNative.openExternal=function(u){try{window.webkit.messageHandlers.openExternal.postMessage(String(u||''))}catch(e){}};"
         "window.ZeehoNative.notify=function(t,b){try{window.webkit.messageHandlers.notify.postMessage({title:String(t||''),body:String(b||'')})}catch(e){}};"
         "window.ZeehoNative.showChargeLiveActivity=function(){try{window.webkit.messageHandlers.chargeActivity.postMessage(null)}catch(e){}};"
+        "window.ZeehoNative.openAppSettings=function(){try{window.webkit.messageHandlers.openAppSettings.postMessage(null)}catch(e){}};"
         "window.ZeehoNative.hideSplash=function(){try{window.webkit.messageHandlers.hideLoading.postMessage(null)}catch(e){}};",
         appVer];
     [userCtrl addUserScript:[[WKUserScript alloc] initWithSource:nativeBridge
@@ -567,6 +570,12 @@ static UIColor *ZHPanelBackgroundColor(void) {
             [self zhLAResult:YES message:@"正在刷新车辆状态…"];
             [self refreshWidgetSnapshot];
         }
+    }
+    // v1.2.61 打开本应用系统设置（用户可在里面打开「实时活动」）
+    if ([message.name isEqualToString:@"openAppSettings"]) {
+        NSURL *u = [NSURL URLWithString:UIApplicationOpenSettingsURLString];
+        if (u) [[UIApplication sharedApplication] openURL:u options:@{} completionHandler:nil];
+        return;
     }
     // 行车记录仪 RTSP 桥接
     if ([message.name isEqualToString:@"dashcam"]) {
