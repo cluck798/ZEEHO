@@ -238,10 +238,21 @@ static UIColor *ZHPanelBackgroundColor(void) {
                                              selector:@selector(appDidBecomeActive)
                                                  name:UIApplicationDidBecomeActiveNotification
                                                object:nil];
+    // v1.2.60 实时活动真实结果回执（Swift 侧 Activity.request 成功/失败后通知面板）
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(onLiveActivityResult:)
+                                                 name:@"ZHLiveActivityResult"
+                                               object:nil];
 }
 
 - (void)appDidBecomeActive {
     [self refreshWidgetSnapshot];
+}
+
+- (void)onLiveActivityResult:(NSNotification *)note {
+    BOOL ok = [note.userInfo[@"ok"] boolValue];
+    NSString *msg = [note.userInfo[@"msg"] isKindOfClass:[NSString class]] ? note.userInfo[@"msg"] : @"";
+    [self zhLAResult:ok message:msg];
 }
 
 // v1.2.42 启动提速：页面首帧完成即撤开屏；通知授权与小组件快照延后，避免抢占启动资源
@@ -387,25 +398,26 @@ static UIColor *ZHPanelBackgroundColor(void) {
         BOOL snapOk = [snap[@"ok"] isKindOfClass:[NSNumber class]] && [snap[@"ok"] boolValue];
         BOOL hasVehicle = [snap[@"hasVehicle"] isKindOfClass:[NSNumber class]] && [snap[@"hasVehicle"] boolValue];
         if (snapOk && hasVehicle) {
-            [self updateChargeLiveActivity:snap];
+            [self updateChargeLiveActivity:snap forceRestart:(self.manualLAPending && [self snapshotCharging:snap])];
         }
         // v1.2.58 手动唤起：刷新完成后把真实结果回执给面板（未充电 / 刷新失败都不再静默）
+        // 充电中时不在这里回执，交给 Swift 侧 Activity.request 完成后回执真实启动结果
         if (self.manualLAPending) {
             self.manualLAPending = NO;
             BOOL known = YES;
             if ([snap[@"chargeKnown"] isKindOfClass:[NSNumber class]]) known = [snap[@"chargeKnown"] boolValue];
             BOOL charging = snapOk && hasVehicle && [self snapshotCharging:snap];
-            NSString *msg;
-            if (!snapOk || !hasVehicle) {
-                msg = @"车辆状态刷新失败，请稍后重试";
-            } else if (charging) {
-                msg = @"已重新显示充电活动，请查看锁屏 / 灵动岛";
-            } else if (!known) {
-                msg = @"暂时拿不到充电状态，请稍后再试";
-            } else {
-                msg = @"当前未在充电，实时活动只在充电时显示";
+            if (!charging) {
+                NSString *msg;
+                if (!snapOk || !hasVehicle) {
+                    msg = @"车辆状态刷新失败，请稍后重试";
+                } else if (!known) {
+                    msg = @"暂时拿不到充电状态，请稍后再试";
+                } else {
+                    msg = @"当前未在充电，实时活动只在充电时显示";
+                }
+                [self zhLAResult:NO message:msg];
             }
-            [self zhLAResult:charging message:msg];
         }
         NSURL *dir = [[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:kWidgetAppGroup];
         if (!dir) return;
@@ -542,9 +554,14 @@ static UIColor *ZHPanelBackgroundColor(void) {
         }
         BOOL snapOk = [snap[@"ok"] isKindOfClass:[NSNumber class]] && [snap[@"ok"] boolValue];
         BOOL hasVehicle = [snap[@"hasVehicle"] isKindOfClass:[NSNumber class]] && [snap[@"hasVehicle"] boolValue];
+        if (!ZHFindSwiftClass(@"ZeehoLiveActivityBridge")) {
+            [self zhLAResult:NO message:@"当前系统不支持实时活动（需 iOS 16.1+）"];
+            return;
+        }
         if (snapOk && hasVehicle && [self snapshotCharging:snap]) {
+            // 真实结果由 Swift 侧 Activity.request 完成后回执，这里只提示进行中
+            [self zhLAResult:YES message:@"正在唤起实时活动…"];
             [self updateChargeLiveActivity:snap forceRestart:YES];
-            [self zhLAResult:YES message:@"已重新显示充电活动，请查看锁屏 / 灵动岛"];
         } else {
             self.manualLAPending = YES;
             [self zhLAResult:YES message:@"正在刷新车辆状态…"];

@@ -37,7 +37,7 @@ final class ZeehoLiveActivityBridge: NSObject {
         if versionChanged { UserDefaults.standard.set(ver, forKey: key) }
         // 面板「重新显示充电活动」手动触发时也重建，避免旧活动停在已结束/不渲染的状态
         let manual = (info["restart"] as? NSNumber)?.boolValue ?? false
-        Task { await push(state: state, name: name, vin: vin, restart: versionChanged || manual) }
+        Task { await push(state: state, name: name, vin: vin, restart: versionChanged || manual, manual: manual) }
         #endif
     }
 
@@ -62,12 +62,12 @@ final class ZeehoLiveActivityBridge: NSObject {
     }
 
     @available(iOS 16.1, *)
-    private static func push(state: ZeehoChargeAttributes.ContentState, name: String, vin: String, restart: Bool) async {
+    private static func push(state: ZeehoChargeAttributes.ContentState, name: String, vin: String, restart: Bool, manual: Bool) async {
         if restart {
             let had = !Activity<ZeehoChargeAttributes>.activities.isEmpty
             await endAll()
             // iOS 16.1 刚结束的活动会短暂占用额度，立刻 request 可能抛 targetMaximumExceeded
-            if had { try? await Task.sleep(nanoseconds: 500_000_000) }
+            if had { try? await Task.sleep(nanoseconds: 1000_000_000) }
         } else if let act = Activity<ZeehoChargeAttributes>.activities.first {
             if #available(iOS 16.2, *) {
                 await act.update(ActivityContent(state: state, staleDate: Date().addingTimeInterval(1800)))
@@ -75,9 +75,34 @@ final class ZeehoLiveActivityBridge: NSObject {
                 await act.update(using: state)
             }
             NSLog("[ZH] 实时活动已更新 %d%% %dW", state.soc, state.power)
+            if manual { postResult(true, "已重新显示充电活动，请查看锁屏 / 灵动岛") }
+            return
+        }
+        if !ActivityAuthorizationInfo().areActivitiesEnabled {
+            NSLog("[ZH] 实时活动被系统关闭")
+            if manual { postResult(false, "系统已关闭实时活动：设置 → 极核 ZEEHO → 实时活动") }
             return
         }
         let attrs = ZeehoChargeAttributes(vehicleName: name, vin: vin)
+        if await request(attrs: attrs, state: state) {
+            NSLog("[ZH] 实时活动已启动 %d%% %dW", state.soc, state.power)
+            if manual { postResult(true, "已重新显示充电活动，请查看锁屏 / 灵动岛") }
+            return
+        }
+        // 失败兜底：iOS 16.1 偶发额度/缓存问题，结束残留活动后重试一次
+        await endAll()
+        try? await Task.sleep(nanoseconds: 1200_000_000)
+        if await request(attrs: attrs, state: state) {
+            NSLog("[ZH] 实时活动重试成功 %d%% %dW", state.soc, state.power)
+            if manual { postResult(true, "已重新显示充电活动，请查看锁屏 / 灵动岛") }
+        } else {
+            NSLog("[ZH] 实时活动启动失败（已重试）")
+            if manual { postResult(false, "实时活动启动失败，请重启手机后再试") }
+        }
+    }
+
+    @available(iOS 16.1, *)
+    private static func request(attrs: ZeehoChargeAttributes, state: ZeehoChargeAttributes.ContentState) async -> Bool {
         do {
             if #available(iOS 16.2, *) {
                 _ = try Activity.request(
@@ -88,9 +113,21 @@ final class ZeehoLiveActivityBridge: NSObject {
             } else {
                 _ = try Activity.request(attributes: attrs, contentState: state, pushType: nil)
             }
-            NSLog("[ZH] 实时活动已启动 %d%% %dW", state.soc, state.power)
+            return true
         } catch {
             NSLog("[ZH] 实时活动启动失败: %@", String(describing: error))
+            return false
+        }
+    }
+
+    /// 把真实结果回执给面板（App 内 NotificationCenter → WebViewController → JS toast）
+    private static func postResult(_ ok: Bool, _ msg: String) {
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: Notification.Name("ZHLiveActivityResult"),
+                object: nil,
+                userInfo: ["ok": ok, "msg": msg]
+            )
         }
     }
     #endif
