@@ -33,9 +33,11 @@ final class ZeehoLiveActivityBridge: NSObject {
         // 版本变更后强制重建一次活动，避免旧版本（旧扩展）创建的卡片一直渲染不出来
         let ver = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? ""
         let key = "zh_la_render_ver"
-        let restart = UserDefaults.standard.string(forKey: key) != ver
-        if restart { UserDefaults.standard.set(ver, forKey: key) }
-        Task { await push(state: state, name: name, vin: vin, restart: restart) }
+        let versionChanged = UserDefaults.standard.string(forKey: key) != ver
+        if versionChanged { UserDefaults.standard.set(ver, forKey: key) }
+        // 面板「重新显示充电活动」手动触发时也重建，避免旧活动停在已结束/不渲染的状态
+        let manual = (info["restart"] as? NSNumber)?.boolValue ?? false
+        Task { await push(state: state, name: name, vin: vin, restart: versionChanged || manual) }
         #endif
     }
 
@@ -62,7 +64,10 @@ final class ZeehoLiveActivityBridge: NSObject {
     @available(iOS 16.1, *)
     private static func push(state: ZeehoChargeAttributes.ContentState, name: String, vin: String, restart: Bool) async {
         if restart {
+            let had = !Activity<ZeehoChargeAttributes>.activities.isEmpty
             await endAll()
+            // iOS 16.1 刚结束的活动会短暂占用额度，立刻 request 可能抛 targetMaximumExceeded
+            if had { try? await Task.sleep(nanoseconds: 500_000_000) }
         } else if let act = Activity<ZeehoChargeAttributes>.activities.first {
             if #available(iOS 16.2, *) {
                 await act.update(ActivityContent(state: state, staleDate: Date().addingTimeInterval(1800)))

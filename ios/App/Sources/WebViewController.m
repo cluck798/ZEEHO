@@ -57,7 +57,12 @@ static Class ZHFindSwiftClass(NSString *name) {
 @property (nonatomic, strong) NSTimer *monitorTimer;
 @property (nonatomic, strong) UIView *loadingView;
 @property (nonatomic, assign) CFTimeInterval launchT0;
+// v1.2.58 手动「重新显示充电活动」：标记本次快照刷新由按钮触发，刷新完成后回执给面板
+@property (nonatomic, assign) BOOL manualLAPending;
 - (void)updateChargeLiveActivity:(NSDictionary *)snap;
+- (void)updateChargeLiveActivity:(NSDictionary *)snap forceRestart:(BOOL)force;
+- (BOOL)snapshotCharging:(NSDictionary *)snap;
+- (void)zhLAResult:(BOOL)ok message:(NSString *)msg;
 @end
 
 @implementation WebViewController
@@ -362,7 +367,13 @@ static UIColor *ZHPanelBackgroundColor(void) {
                          headers:@{}
                             body:nil
                       completion:^(NSInteger status, NSDictionary *respHeaders, NSString *respBody) {
-        if (status != 200 || !respBody.length) return;
+        if (status != 200 || !respBody.length) {
+            if (self.manualLAPending) {
+                self.manualLAPending = NO;
+                [self zhLAResult:NO message:@"车辆状态刷新失败，请检查网络后重试"];
+            }
+            return;
+        }
         // v2.16.52 充电实时活动：先解析快照，充电中显示锁屏卡片 / 灵动岛，停止充电后自动结束
         NSDictionary *snap = nil;
         NSData *jsonData = [respBody dataUsingEncoding:NSUTF8StringEncoding];
@@ -375,6 +386,14 @@ static UIColor *ZHPanelBackgroundColor(void) {
         BOOL hasVehicle = [snap[@"hasVehicle"] isKindOfClass:[NSNumber class]] && [snap[@"hasVehicle"] boolValue];
         if (snapOk && hasVehicle) {
             [self updateChargeLiveActivity:snap];
+        }
+        // v1.2.58 手动唤起：刷新完成后把真实结果回执给面板（未充电 / 刷新失败都不再静默）
+        if (self.manualLAPending) {
+            self.manualLAPending = NO;
+            BOOL charging = snapOk && hasVehicle && [self snapshotCharging:snap];
+            [self zhLAResult:charging
+                     message:(charging ? @"已重新显示充电活动，请查看锁屏 / 灵动岛"
+                                       : @"当前未在充电，实时活动只在充电时显示")];
         }
         NSURL *dir = [[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:kWidgetAppGroup];
         if (!dir) return;
@@ -421,9 +440,18 @@ static UIColor *ZHPanelBackgroundColor(void) {
 }
 
 // v2.16.52 充电实时活动：把快照里的充电数据交给 ActivityKit（iOS 16.1+ 生效，旧系统自动忽略）
-- (void)updateChargeLiveActivity:(NSDictionary *)snap {
+- (BOOL)snapshotCharging:(NSDictionary *)snap {
     NSString *cs = [snap[@"chargeState"] isKindOfClass:[NSString class]] ? snap[@"chargeState"] : @"";
-    BOOL charging = [cs containsString:@"充电"] && ![cs containsString:@"未充电"];
+    return [cs containsString:@"充电"] && ![cs containsString:@"未充电"];
+}
+
+- (void)updateChargeLiveActivity:(NSDictionary *)snap {
+    [self updateChargeLiveActivity:snap forceRestart:NO];
+}
+
+// forceRestart=YES：手动重新唤起时先结束旧活动再重建，避免旧卡片残留状态导致新卡片不刷新
+- (void)updateChargeLiveActivity:(NSDictionary *)snap forceRestart:(BOOL)force {
+    BOOL charging = [self snapshotCharging:snap];
     NSNumber *socN = [snap[@"soc"] isKindOfClass:[NSNumber class]] ? snap[@"soc"] : @0;
     NSNumber *powerN = [snap[@"power"] isKindOfClass:[NSNumber class]] ? snap[@"power"] : @0;
     NSNumber *remainN = [snap[@"chargeRemainSec"] isKindOfClass:[NSNumber class]] ? snap[@"chargeRemainSec"] : @0;
@@ -435,7 +463,8 @@ static UIColor *ZHPanelBackgroundColor(void) {
         @"power": @([powerN intValue]),
         @"remain": @([remainN intValue]),
         @"voltage": @([voltN doubleValue]),
-        @"vehicleName": name
+        @"vehicleName": name,
+        @"restart": @(force)
     };
     Class liveClass = ZHFindSwiftClass(@"ZeehoLiveActivityBridge");
     if (liveClass) {
@@ -472,17 +501,27 @@ static UIColor *ZHPanelBackgroundColor(void) {
         [[UNUserNotificationCenter currentNotificationCenter] addNotificationRequest:req withCompletionHandler:nil];
     }
     // v1.2.57 手动重新显示充电实时活动（用户关闭锁屏卡片后可再次唤起）
+    // v1.2.58：快照缺失 / 已不是充电态时不再静默，改为主动刷新一次并把结果回执给面板
     if ([message.name isEqualToString:@"chargeActivity"]) {
+        NSDictionary *snap = nil;
         NSURL *dir = [[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:kWidgetAppGroup];
         if (dir) {
             NSURL *file = [dir URLByAppendingPathComponent:@"widget_snapshot.json"];
             NSData *d = [NSData dataWithContentsOfURL:file];
             if (d) {
-                NSDictionary *snap = [NSJSONSerialization JSONObjectWithData:d options:0 error:NULL];
-                if ([snap isKindOfClass:[NSDictionary class]]) {
-                    [self updateChargeLiveActivity:snap];
-                }
+                id obj = [NSJSONSerialization JSONObjectWithData:d options:0 error:NULL];
+                if ([obj isKindOfClass:[NSDictionary class]]) snap = obj;
             }
+        }
+        BOOL snapOk = [snap[@"ok"] isKindOfClass:[NSNumber class]] && [snap[@"ok"] boolValue];
+        BOOL hasVehicle = [snap[@"hasVehicle"] isKindOfClass:[NSNumber class]] && [snap[@"hasVehicle"] boolValue];
+        if (snapOk && hasVehicle && [self snapshotCharging:snap]) {
+            [self updateChargeLiveActivity:snap forceRestart:YES];
+            [self zhLAResult:YES message:@"已重新显示充电活动，请查看锁屏 / 灵动岛"];
+        } else {
+            self.manualLAPending = YES;
+            [self zhLAResult:YES message:@"正在刷新车辆状态…"];
+            [self refreshWidgetSnapshot];
         }
     }
     // 行车记录仪 RTSP 桥接
@@ -512,6 +551,18 @@ static UIColor *ZHPanelBackgroundColor(void) {
 // JS 执行辅助
 - (void)evaluateJS:(NSString *)js {
     [self.webView evaluateJavaScript:js completionHandler:nil];
+}
+
+// v1.2.58 实时活动手动唤起结果回执（面板里弹 toast，避免点了没有任何反馈）
+- (void)zhLAResult:(BOOL)ok message:(NSString *)msg {
+    NSString *safe = [msg stringByReplacingOccurrencesOfString:@"\\" withString:@"\\\\"];
+    safe = [safe stringByReplacingOccurrencesOfString:@"'" withString:@"\\'"];
+    safe = [safe stringByReplacingOccurrencesOfString:@"\n" withString:@" "];
+    NSString *js = [NSString stringWithFormat:@"window.__zhLAResult&&window.__zhLAResult(%@,'%@')",
+                    ok ? @"true" : @"false", safe];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self evaluateJS:js];
+    });
 }
 
 #pragma mark - WKNavigationDelegate
