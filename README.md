@@ -88,6 +88,12 @@
 - 单账号版：独立包名与独立小组件，可与多账号版同时安装
 - 下载：[ios-latest Release](https://github.com/cluck798/ZEEHO/releases/tag/ios-latest)（`ZeehoSignPanel.ipa` 多账号 / `ZeehoSinglePanel.ipa` 单账号），TrollStore 中点击 + 选择 IPA 安装，永久签名不掉签
 
+### 🐳 Docker 版（NAS / 软路由 / 服务器）
+- 零依赖 Node 镜像，浏览器直接访问面板，7×24 在线，不依赖手机后台
+- 一键启动：`cd docker && docker compose up -d --build`，打开 `http://<主机IP>:8787`
+- 镜像：`ghcr.io/cluck798/zeeho:latest`；支持 Basic Auth（`PANEL_USER` / `PANEL_PASS`）
+- 说明见 [docker/README.md](docker/README.md)
+
 ### 🤖 Android 版（APK）
 - 本地前台服务承载面板内核（QuickJS），支持车控、签到、小组件与后台任务
 - 单账号版：独立包名，可同时安装；4×3 桌面小组件（车辆照片/车型/胎压/定位/电量进度/充电信息/签到），App 进程不在时后台 30 分钟自动刷新

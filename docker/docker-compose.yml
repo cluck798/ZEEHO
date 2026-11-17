@@ -1,0 +1,17 @@
+services:
+  zeeho:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: ghcr.io/cluck798/zeeho:latest
+    container_name: zeeho-panel
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./data:/data
+    environment:
+      TZ: Asia/Shanghai
+      # 可选：开启访问密码（不设置则无需登录）
+      # PANEL_USER: admin
+      # PANEL_PASS: change-me
+    restart: unless-stopped

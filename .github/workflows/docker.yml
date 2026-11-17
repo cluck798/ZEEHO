@@ -1,0 +1,38 @@
+name: docker
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "docker/**"
+      - "desktop/engine.js"
+      - "repo/zeeho_box_enhanced.js"
+      - ".github/workflows/docker.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/cluck798/zeeho:latest
+            ghcr.io/cluck798/zeeho:${{ github.sha }}

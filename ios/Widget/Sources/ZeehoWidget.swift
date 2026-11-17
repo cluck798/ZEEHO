@@ -37,6 +37,14 @@ struct ZeehoSnapshot: Codable {
     let power: Int?
     let chargeRemainSec: Int?
     let vehicleImageUrl: String?
+    // v2.16.54 字号缩放（1=标准，1.15=大号，1.3=特大）
+    let fontScale: Double?
+}
+
+/// 全局字号缩放：由面板设置写入快照，组件渲染时读取
+var zhFontScale: CGFloat {
+    let v = SharedStore.load()?.fontScale ?? 1
+    return CGFloat(max(0.8, min(1.6, v)))
 }
 
 enum SharedStore {
@@ -172,7 +180,7 @@ struct HeaderView: View {
     var body: some View {
         HStack(spacing: 6) {
             Text(snap?.vehicleName ?? "ZEEHO")
-                .font(.system(size: 13, weight: .bold))
+                .font(.system(size: 13 * zhFontScale, weight: .bold))
                 .foregroundColor(.white)
                 .lineLimit(1)
             Spacer()
@@ -184,7 +192,7 @@ struct HeaderView: View {
         }
     }
     private func chip(_ text: String, _ color: Color) -> some View {
-        Text(text).font(.system(size: 9, weight: .bold)).foregroundColor(color)
+        Text(text).font(.system(size: 9 * zhFontScale, weight: .bold)).foregroundColor(color)
             .padding(.horizontal, 6).padding(.vertical, 2)
             .background(color.opacity(0.16)).cornerRadius(6)
     }
@@ -194,7 +202,7 @@ struct ChipRow: View {
     let snap: ZeehoSnapshot?
     var body: some View {
         HStack(spacing: 1) {
-            Text(snap?.vehicleModel ?? "").font(.system(size: 10, weight: .semibold)).foregroundColor(zhDim).lineLimit(1)
+            Text(snap?.vehicleModel ?? "").font(.system(size: 10 * zhFontScale, weight: .semibold)).foregroundColor(zhDim).lineLimit(1)
             Spacer()
             let seat = cushionText(snap?.cushionState)
             let lock = lockText(snap?.lockState)
@@ -203,7 +211,7 @@ struct ChipRow: View {
         }
     }
     private func smallChip(_ text: String) -> some View {
-        Text(text).font(.system(size: 9, weight: .bold)).foregroundColor(zhTxt2)
+        Text(text).font(.system(size: 9 * zhFontScale, weight: .bold)).foregroundColor(zhTxt2)
             .padding(.horizontal, 6).padding(.vertical, 2)
             .background(Color(red: 17/255, green: 26/255, blue: 43/255))
             .overlay(RoundedRectangle(cornerRadius: 20).stroke(zhLine, lineWidth: 1))
@@ -231,13 +239,13 @@ struct VehicleInfoView: View {
             VStack(alignment: .leading, spacing: 2) {
                 let f = tireLine("前", snap?.frontPressure, snap?.frontTemp)
                 let r = tireLine("后", snap?.rearPressure, snap?.rearTemp)
-                if !f.isEmpty { Text(f).font(.system(size: 9.5, weight: .semibold)).foregroundColor(zhTxt2).lineLimit(1).minimumScaleFactor(0.8) }
-                if !r.isEmpty { Text(r).font(.system(size: 9.5, weight: .semibold)).foregroundColor(zhTxt2).lineLimit(1).minimumScaleFactor(0.8) }
+                if !f.isEmpty { Text(f).font(.system(size: 9.5 * zhFontScale, weight: .semibold)).foregroundColor(zhTxt2).lineLimit(1).minimumScaleFactor(0.8) }
+                if !r.isEmpty { Text(r).font(.system(size: 9.5 * zhFontScale, weight: .semibold)).foregroundColor(zhTxt2).lineLimit(1).minimumScaleFactor(0.8) }
                 if let addr = snap?.address, !addr.isEmpty {
-                    Text("📍 " + addr).font(.system(size: 9.5, weight: .semibold)).foregroundColor(zhTxt2).lineLimit(1).minimumScaleFactor(0.8)
+                    Text("📍 " + addr).font(.system(size: 9.5 * zhFontScale, weight: .semibold)).foregroundColor(zhTxt2).lineLimit(1).minimumScaleFactor(0.8)
                 }
                 Text(snap?.signedToday == true ? "今日已签到 · +\(snap?.todayScore ?? 0) 分" : "今日未签到")
-                    .font(.system(size: 9.5, weight: .semibold))
+                    .font(.system(size: 9.5 * zhFontScale, weight: .semibold))
                     .foregroundColor(snap?.signedToday == true ? zhOk : zhTxt2)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -255,11 +263,11 @@ struct BatteryView: View {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text("\(snap?.soc ?? 0)").font(.system(size: socSize, weight: .heavy, design: .rounded))
                     .foregroundColor(socColor(snap?.soc ?? 0))
-                Text("%").font(.system(size: 11, weight: .bold)).foregroundColor(zhTxt2)
-                Text("\(snap?.range ?? 0) km").font(.system(size: 12, weight: .bold)).foregroundColor(zhTxt2)
+                Text("%").font(.system(size: 11 * zhFontScale, weight: .bold)).foregroundColor(zhTxt2)
+                Text("\(snap?.range ?? 0) km").font(.system(size: 12 * zhFontScale, weight: .bold)).foregroundColor(zhTxt2)
                 Spacer()
                 if let v = snap?.voltage, v > 0 {
-                    Text("\(Int(v)) V").font(.system(size: 11, weight: .bold)).foregroundColor(zhTxt2)
+                    Text("\(Int(v)) V").font(.system(size: 11 * zhFontScale, weight: .bold)).foregroundColor(zhTxt2)
                 }
             }
             GeometryReader { g in
@@ -282,14 +290,14 @@ struct StateLine: View {
                 let p = snap?.power ?? 0
                 let rm = remainText(snap?.chargeRemainSec)
                 Text("⚡ 充电中" + (p > 0 ? " · \(p)W" : "") + (rm.isEmpty ? "" : " · 剩余 \(rm)"))
-                    .font(.system(size: 9.5, weight: .semibold)).foregroundColor(zhBrand).lineLimit(1).minimumScaleFactor(0.8)
+                    .font(.system(size: 9.5 * zhFontScale, weight: .semibold)).foregroundColor(zhBrand).lineLimit(1).minimumScaleFactor(0.8)
             } else {
                 let d = snap?.todayDistance ?? 0
                 Text((snap?.chargeState ?? "未充电") + (d > 0 ? String(format: " · 今日 %.1f km", d) : ""))
-                    .font(.system(size: 9.5, weight: .semibold)).foregroundColor(zhTxt2).lineLimit(1).minimumScaleFactor(0.8)
+                    .font(.system(size: 9.5 * zhFontScale, weight: .semibold)).foregroundColor(zhTxt2).lineLimit(1).minimumScaleFactor(0.8)
             }
             Spacer(minLength: 4)
-            Text("更新 \(fmtTime(snap?.ts))").font(.system(size: 9, weight: .semibold)).foregroundColor(zhTxt2.opacity(0.75)).lineLimit(1)
+            Text("更新 \(fmtTime(snap?.ts))").font(.system(size: 9 * zhFontScale, weight: .semibold)).foregroundColor(zhTxt2.opacity(0.75)).lineLimit(1)
         }
     }
 }
@@ -304,18 +312,18 @@ struct SmallWidgetView: View {
             Spacer()
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text("\(snap?.soc ?? 0)%")
-                    .font(.system(size: 30, weight: .heavy, design: .rounded))
+                    .font(.system(size: 30 * zhFontScale, weight: .heavy, design: .rounded))
                     .foregroundColor(socColor(snap?.soc ?? 0))
                 Text("\(snap?.range ?? 0)km")
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.system(size: 14 * zhFontScale, weight: .bold))
                     .foregroundColor(zhTxt2)
             }
             Text("连签 \(snap?.continueDays ?? 0) 天 · \(snap?.signedToday == true ? "已签到" : "未签到")")
-                .font(.system(size: 9, weight: .semibold))
+                .font(.system(size: 9 * zhFontScale, weight: .semibold))
                 .foregroundColor(zhTxt2)
                 .lineLimit(1)
             Text("更新 \(fmtTime(snap?.ts))")
-                .font(.system(size: 8, weight: .semibold))
+                .font(.system(size: 8 * zhFontScale, weight: .semibold))
                 .foregroundColor(zhTxt2.opacity(0.7))
         }
         .padding(12)
@@ -359,15 +367,15 @@ struct LargeWidgetView: View {
                 Text(snap?.signedToday == true ? "✓ 已签到" : "未签到")
                     .foregroundColor(snap?.signedToday == true ? zhOk : zhTxt2)
             }
-            .font(.system(size: 9, weight: .semibold)).foregroundColor(zhTxt2.opacity(0.8))
+            .font(.system(size: 9 * zhFontScale, weight: .semibold)).foregroundColor(zhTxt2.opacity(0.8))
         }
         .padding(14)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
     func cell(_ k: String, _ v: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(k).font(.system(size: 9, weight: .semibold)).foregroundColor(zhTxt2)
-            Text(v).font(.system(size: 13, weight: .bold)).foregroundColor(.white)
+            Text(k).font(.system(size: 9 * zhFontScale, weight: .semibold)).foregroundColor(zhTxt2)
+            Text(v).font(.system(size: 13 * zhFontScale, weight: .bold)).foregroundColor(.white)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 10).padding(.vertical, 7)
