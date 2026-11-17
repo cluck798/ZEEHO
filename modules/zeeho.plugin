@@ -4,7 +4,7 @@
 #!homepage=https://github.com/cluck798/ZEEHO
 #!logo=https://raw.githubusercontent.com/cluck798/ZEEHO/main/ZEEHO.png
 #!system=ios
-#!version=2.16.21
+#!version=2.16.54
 
 [Script]
 # 面板 + 极核API自动捕获appId/appSecret（访问 http://zeeho.box 打开面板）
