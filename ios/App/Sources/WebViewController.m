@@ -246,6 +246,28 @@ static UIColor *ZHPanelBackgroundColor(void) {
                                              selector:@selector(onLiveActivityResult:)
                                                  name:@"ZHLiveActivityResult"
                                                object:nil];
+    // v1.2.66 iOS 16.1 后台更新实时活动前暂停常驻音频（否则系统会拦掉更新）
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pauseKeepAliveForLiveActivity)
+                                                 name:@"ZHPauseKeepAlive"
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(resumeKeepAliveForLiveActivity)
+                                                 name:@"ZHResumeKeepAlive"
+                                               object:nil];
+}
+
+// 暂停常驻音频：让系统不再把 App 视为「后台播放音频」，否则 iOS 16.1 会丢弃实时活动更新
+- (void)pauseKeepAliveForLiveActivity {
+    [self.silencePlayer pause];
+    [[AVAudioSession sharedInstance] setActive:NO
+                                   withOptions:AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation
+                                         error:NULL];
+}
+
+- (void)resumeKeepAliveForLiveActivity {
+    [[AVAudioSession sharedInstance] setActive:YES error:NULL];
+    if (self.silencePlayer && !self.silencePlayer.isPlaying) [self.silencePlayer play];
 }
 
 - (void)appDidBecomeActive {

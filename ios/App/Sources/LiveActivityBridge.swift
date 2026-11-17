@@ -3,6 +3,7 @@
 // 注意：Swift 类默认运行时名是「模块名.类名」，必须用 @objc(ZeehoLiveActivityBridge) 固定成无前缀名，
 // 否则 ObjC 的 NSClassFromString(@"ZeehoLiveActivityBridge") 取到 nil，实时活动会静默不生效。
 import Foundation
+import UIKit
 
 #if canImport(ActivityKit)
 import ActivityKit
@@ -83,6 +84,42 @@ final class ZeehoLiveActivityBridge: NSObject {
 
     @available(iOS 16.1, *)
     private static func push(state: ZeehoChargeAttributes.ContentState, name: String, vin: String, restart: Bool, manual: Bool) async {
+        // iOS 16.1 已知问题：App 用 AVAudioSessionCategoryPlayback 常驻后台时，
+        // 后台更新实时活动会被系统拦掉（16.2 才修复）。更新前短暂停掉常驻音频，
+        // 让系统把这次更新当作普通后台刷新，更新完立刻恢复，避免面板数据卡住。
+        let bgTask = await pauseKeepAliveIfNeeded()
+        await pushInner(state: state, name: name, vin: vin, restart: restart, manual: manual)
+        await resumeKeepAlive(bgTask)
+    }
+
+    /// 若当前在后台则申请后台任务并暂停常驻音频；返回后台任务 id（前台时为 .invalid）
+    @available(iOS 16.1, *)
+    private static func pauseKeepAliveIfNeeded() async -> UIBackgroundTaskIdentifier {
+        let isActive = await MainActor.run { UIApplication.shared.applicationState == .active }
+        if isActive { return .invalid }
+        let task = await MainActor.run {
+            UIApplication.shared.beginBackgroundTask(withName: "zh-live-activity-update") {}
+        }
+        // 没有拿到后台执行时间就不要停音频，避免 App 直接被挂起
+        if task == .invalid { return .invalid }
+        await MainActor.run {
+            NotificationCenter.default.post(name: Notification.Name("ZHPauseKeepAlive"), object: nil)
+        }
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        return task
+    }
+
+    @available(iOS 16.1, *)
+    private static func resumeKeepAlive(_ task: UIBackgroundTaskIdentifier) async {
+        guard task != .invalid else { return }
+        await MainActor.run {
+            NotificationCenter.default.post(name: Notification.Name("ZHResumeKeepAlive"), object: nil)
+            UIApplication.shared.endBackgroundTask(task)
+        }
+    }
+
+    @available(iOS 16.1, *)
+    private static func pushInner(state: ZeehoChargeAttributes.ContentState, name: String, vin: String, restart: Bool, manual: Bool) async {
         if restart {
             let had = !Activity<ZeehoChargeAttributes>.activities.isEmpty
             await endAll()
