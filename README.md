@@ -5,7 +5,7 @@
 # ZEEHO
 > ⚠️本项目仅用于学习研究，禁止商用，使用产生一切风险自行承担
 
-极核ZEEHO电动车 **Loon / Quantumult X / Surge / Shadowrocket** 脚本：自动签到、社区积分任务、盲盒抽奖、车辆状态看板、远程车辆控制。HTML 可视化 BoxJS 面板，多账号管理，自动抓取 Token。另提供 **Windows 桌面版**、**Android APK**、**iOS 版（TrollStore）**、**单账号版（Android / iOS）** 与 **Scriptable 小组件脚本（单账号 / 多账号）**。
+极核ZEEHO电动车 **Loon / Quantumult X / Surge / Shadowrocket** 脚本：自动签到、社区积分任务、盲盒抽奖、车辆状态看板、远程车辆控制。HTML 可视化 BoxJS 面板，多账号管理，自动抓取 Token。另提供 **Windows 桌面版**、**Windows 命令行精简版**、**Android APK**、**iOS 版（TrollStore）**、**单账号版（Android / iOS）** 与 **Scriptable 小组件脚本（单账号 / 多账号）**。
 
 ## ✨ 主要功能
 
@@ -78,6 +78,13 @@
 ### 🖥️ 桌面版（Windows）
 - 托盘常驻、定时自动签到、开机自启
 - 下载：[Releases](https://github.com/cluck798/ZEEHO/releases)（Setup 安装版 / Portable 便携版）
+
+### ⌨️ 命令行精简版（Windows CMD）
+- 单文件 [`zeeho-cli/极核签到.cmd`](zeeho-cli/极核签到.cmd)，双击即用；首次运行自动释放内置主程序，只需安装 Node.js
+- 每日定时签到 + 社区任务：发帖、点赞、评论、分享、删除临时动态，盲盒与连签积分统计
+- 多账号、手机号验证码 / Token 登录（支持鼠标右键粘贴、自定义备注昵称）
+- Token 过期提醒、签到失败重试 3 次后提醒、签到时间可改、开机自启、后台守护
+- 使用：双击 `极核签到.cmd` → 添加账号 → 设置签到时间 → 开启开机自启 / 后台守护；账号与日志保存在 `zeeho-cli/data/`
 
 ### 📱 iOS 版（TrollStore / 巨魔）
 - WKWebView 面板 + 本地通知（签到结果、充电充满、车辆离线、充电完成、震动等车辆提醒）
