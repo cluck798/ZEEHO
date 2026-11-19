@@ -12,8 +12,8 @@ if errorlevel 1 (
   exit /b 1
 )
 
-rem 首次运行或版本更新时，自动释放内置主程序
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='%~dp0zeeho.js'; $c=[IO.File]::ReadAllLines('%~f0',[Text.Encoding]::UTF8); $i=0; while($i -lt $c.Length -and $c[$i] -ne '@@ZEEHO_JS@@'){$i++}; if($i -ge $c.Length){exit 1}; $n=$c.Length-$i-1; if($n -le 0){exit 1}; [IO.File]::WriteAllLines($p, $c[($i+1)..($c.Length-1)], [Text.UTF8Encoding]::new($false))"
+rem 首次运行或启动器比主程序新时，释放内置主程序（自动更新过的 zeeho.js 不会被覆盖）
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='%~dp0zeeho.js'; $need=(-not (Test-Path $p)) -or ((Get-Item $p).LastWriteTime -lt (Get-Item '%~f0').LastWriteTime); if($need){ $c=[IO.File]::ReadAllLines('%~f0',[Text.Encoding]::UTF8); $i=0; while($i -lt $c.Length -and $c[$i] -ne '@@ZEEHO_JS@@'){$i++}; if($i -ge $c.Length){exit 1}; $n=$c.Length-$i-1; if($n -le 0){exit 1}; [IO.File]::WriteAllLines($p, $c[($i+1)..($c.Length-1)], [Text.UTF8Encoding]::new($false)) }"
 if errorlevel 1 (
   echo [错误] 内置主程序释放失败，请确认当前目录可写。
   pause
@@ -35,7 +35,8 @@ exit /b %CODE%
  *
  * 功能：每日定时签到（可改时间）、多账号、Token/手机号验证码登录、
  *       Token 过期提醒、签到失败重试 3 次后提醒、开机自启、后台守护、
- *       社区任务（发帖 +1 / 点赞 +1 / 评论 / 分享 +1 / 删除临时动态）。
+ *       社区任务（发帖 +1 / 点赞 +1 / 评论 / 分享 +1 / 删除临时动态）、
+ *       自动检测新版本并下载更新内置主程序。
  * 依赖：仅 Node.js 内置模块（建议 Node 16+）。
  *
  * 用法：
@@ -61,6 +62,22 @@ const DATA_DIR = path.join(APP_DIR, 'data');
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 const LOG_FILE = path.join(DATA_DIR, 'log.txt');
 const LOCK_FILE = path.join(DATA_DIR, 'daemon.pid');
+const UPDATE_STATE_FILE = path.join(DATA_DIR, 'update.json');
+
+const VERSION = '1.1.0';
+// 更新源：优先 jsDelivr（国内可访问），GitHub raw 兜底；支持环境变量用于测试/自定义镜像
+const UPDATE_VERSION_URLS = process.env.ZEEHO_UPDATE_VERSION_URL
+  ? [process.env.ZEEHO_UPDATE_VERSION_URL]
+  : [
+      'https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/zeeho-cli/version.json',
+      'https://raw.githubusercontent.com/cluck798/ZEEHO/main/zeeho-cli/version.json'
+    ];
+const UPDATE_JS_URLS = process.env.ZEEHO_UPDATE_JS_URL
+  ? [process.env.ZEEHO_UPDATE_JS_URL]
+  : [
+      'https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/zeeho-cli/zeeho.js',
+      'https://raw.githubusercontent.com/cluck798/ZEEHO/main/zeeho-cli/zeeho.js'
+    ];
 
 const TAPI = 'https://tapi.zeehoev.com/v1.0/mine/cfmotoservermine';
 const H5 = 'https://h5.zeehoev.com/cfmotoservermine';
@@ -304,6 +321,45 @@ const httpPost = (url, headers, body, timeout) => request('POST', url, headers, 
 const httpPut = (url, headers, body, timeout) => request('PUT', url, headers, body === undefined ? null : body, timeout);
 const httpDelete = (url, headers, timeout) => request('DELETE', url, headers, null, timeout);
 
+// 文本下载（更新检查/主程序下载），支持 http/https 与重定向
+function httpGetText(url, timeout = 8000, redirects = 3) {
+  return new Promise((resolve) => {
+    let u;
+    try {
+      u = new URL(url);
+    } catch (e) {
+      resolve({ ok: false, status: 0, body: 'URL 错误' });
+      return;
+    }
+    const mod = u.protocol === 'http:' ? require('http') : https;
+    const req = mod.get(
+      {
+        hostname: u.hostname,
+        port: u.port || (u.protocol === 'http:' ? 80 : 443),
+        path: u.pathname + u.search,
+        timeout,
+        headers: {
+          'User-Agent': `ZEEHO-CLI/${VERSION}`,
+          'Cache-Control': 'no-cache'
+        }
+      },
+      (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && redirects > 0) {
+          res.resume();
+          resolve(httpGetText(new URL(res.headers.location, url).toString(), timeout, redirects - 1));
+          return;
+        }
+        let data = '';
+        res.setEncoding('utf8');
+        res.on('data', (c) => (data += c));
+        res.on('end', () => resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, body: data }));
+      }
+    );
+    req.on('timeout', () => req.destroy(new Error('请求超时')));
+    req.on('error', (e) => resolve({ ok: false, status: 0, body: e.message || String(e) }));
+  });
+}
+
 function authHeaders(token, userId) {
   const h = {
     Authorization: `Bearer ${token}`,
@@ -460,6 +516,139 @@ function log(msg) {
     console.log(line);
   } catch (e) {
     /* 隐藏窗口下无控制台 */
+  }
+}
+
+// ------------------------------------------------------------------
+// 版本检测与自动更新
+// ------------------------------------------------------------------
+function defaultUpdateState() {
+  return { lastCheck: '', latestVersion: '', downloadedVersion: '', notes: '', lastResult: '', lastUpdate: '' };
+}
+function loadUpdateState() {
+  try {
+    return Object.assign(defaultUpdateState(), JSON.parse(fs.readFileSync(UPDATE_STATE_FILE, 'utf8').replace(/^\uFEFF/, '')));
+  } catch (e) {
+    return defaultUpdateState();
+  }
+}
+function saveUpdateState(state) {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    const tmp = UPDATE_STATE_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(state, null, 2), 'utf8');
+    fs.renameSync(tmp, UPDATE_STATE_FILE);
+  } catch (e) {
+    /* 忽略更新状态写入失败 */
+  }
+}
+function versionParts(v) {
+  return String(v || '')
+    .replace(/^v/i, '')
+    .split('.')
+    .map((n) => parseInt(n, 10) || 0);
+}
+function compareVersion(a, b) {
+  const x = versionParts(a);
+  const y = versionParts(b);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    const d = (x[i] || 0) - (y[i] || 0);
+    if (d !== 0) return d > 0 ? 1 : -1;
+  }
+  return 0;
+}
+async function downloadAndApplyUpdate(latest) {
+  for (const base of UPDATE_JS_URLS) {
+    const url = base + (base.includes('?') ? '&' : '?') + 't=' + Date.now();
+    const r = await httpGetText(url, 15000);
+    if (!r.ok || !r.body) continue;
+    const text = r.body;
+    if (text.length < 20000) continue;
+    const m = text.match(/const VERSION = '([^']+)'/);
+    if (!m || compareVersion(m[1], latest) !== 0) continue;
+    if (!text.includes('runCommunityTasks') || !text.includes('module.exports')) continue;
+    try {
+      const target = path.join(APP_DIR, 'zeeho.js');
+      const tmp = target + '.tmp';
+      fs.writeFileSync(tmp, text, 'utf8');
+      fs.renameSync(tmp, target);
+      return { ok: true, size: text.length };
+    } catch (e) {
+      return { ok: false, error: '写入失败：' + ((e && e.message) || e) };
+    }
+  }
+  return { ok: false, error: '下载失败或版本校验不通过' };
+}
+async function checkForUpdate({ manual = false, silent = false } = {}) {
+  const state = loadUpdateState();
+  let meta = null;
+  let lastError = '';
+  for (const base of UPDATE_VERSION_URLS) {
+    const url = base + (base.includes('?') ? '&' : '?') + 't=' + Date.now();
+    const r = await httpGetText(url, 5000);
+    if (!r.ok) {
+      lastError = r.body || `HTTP ${r.status}`;
+      continue;
+    }
+    try {
+      const j = JSON.parse(r.body);
+      if (j && j.version) {
+        meta = j;
+        break;
+      }
+      lastError = '版本信息格式错误';
+    } catch (e) {
+      lastError = '版本信息解析失败';
+    }
+  }
+  state.lastCheck = new Date().toISOString();
+  if (!meta) {
+    state.lastResult = 'check_failed';
+    saveUpdateState(state);
+    if (manual) console.log('检查更新失败：' + (lastError || '无法连接更新服务器'));
+    return { checked: true, ok: false, error: lastError };
+  }
+  const latest = String(meta.version).replace(/^v/i, '');
+  state.latestVersion = latest;
+  state.notes = String(meta.notes || '');
+  if (compareVersion(latest, VERSION) <= 0) {
+    state.lastResult = 'latest';
+    saveUpdateState(state);
+    if (manual) console.log(`当前已是最新版本 v${VERSION}。`);
+    return { checked: true, ok: true, updated: false, latest };
+  }
+  if (!silent) console.log(`发现新版本 v${latest}（当前 v${VERSION}），正在自动更新...`);
+  const apply = await downloadAndApplyUpdate(latest);
+  if (apply.ok) {
+    state.downloadedVersion = latest;
+    state.lastResult = 'updated';
+    state.lastUpdate = nowStr();
+    saveUpdateState(state);
+    const msg = `已自动更新到 v${latest}，重新打开程序后生效。`;
+    console.log(msg);
+    log(msg);
+    toast('极核签到已更新', `新版本 v${latest} 已下载，重新打开程序后生效`);
+    return { checked: true, ok: true, updated: true, latest };
+  }
+  state.lastResult = 'update_failed';
+  saveUpdateState(state);
+  console.log(`新版本 v${latest} 更新失败：${apply.error}`);
+  log(`自动更新失败 v${latest}：${apply.error}`);
+  if (!silent) toast('极核签到更新失败', `新版本 v${latest} 下载失败，请手动更新`);
+  return { checked: true, ok: false, updated: false, latest, error: apply.error };
+}
+async function maybeAutoCheckUpdate() {
+  const state = loadUpdateState();
+  const last = Date.parse(state.lastCheck || '');
+  if (Number.isFinite(last)) {
+    const interval = state.lastResult === 'check_failed' || state.lastResult === 'update_failed' ? 3600 * 1000 : 24 * 3600 * 1000;
+    if (Date.now() - last < interval) return { checked: false };
+  }
+  try {
+    return await checkForUpdate({ manual: false });
+  } catch (e) {
+    log('自动检查更新异常：' + ((e && e.message) || e));
+    return { checked: true, ok: false, error: (e && e.message) || String(e) };
   }
 }
 
@@ -1282,6 +1471,12 @@ async function runDaemon() {
 
   await tick();
   setInterval(tick, 15000);
+
+  // 后台守护每天检查一次新版本（不阻塞签到）
+  maybeAutoCheckUpdate().catch(() => {});
+  setInterval(() => {
+    maybeAutoCheckUpdate().catch(() => {});
+  }, 6 * 3600 * 1000);
 }
 
 // ------------------------------------------------------------------
@@ -1350,9 +1545,17 @@ function printHeader() {
   const expired = cfg.accounts.filter((a) => a.enabled && a.status === 'expired').length;
   const disabled = cfg.accounts.filter((a) => !a.enabled).length;
   const todayDone = cfg.lastRunDate === todayStr();
+  const us = loadUpdateState();
+  const pending = !!(us.downloadedVersion && compareVersion(us.downloadedVersion, VERSION) > 0);
+  const latestCmp = us.latestVersion ? compareVersion(us.latestVersion, VERSION) : null;
+  const latestText = us.latestVersion
+    ? `v${us.latestVersion}${pending ? '（已下载，重启生效）' : latestCmp > 0 ? '（可更新）' : latestCmp === 0 ? '（已是最新）' : ''}`
+    : '未检测';
   console.log('\n============================================================');
   console.log('        极核 ZEEHO · 每日签到（精简控制台版）');
   console.log('============================================================');
+  console.log(` 程序版本   : v${VERSION}${pending ? `（已下载 v${us.downloadedVersion}）` : ''}`);
+  console.log(` 最新版本   : ${latestText}`);
   console.log(` 签到时间   : 每天 ${cfg.signTime}`);
   console.log(` 后台守护   : ${pid ? `运行中（PID ${pid}）` : '未运行'}`);
   console.log(` 开机自启动 : ${isAutostartOn() ? '已开启' : '未开启'}`);
@@ -1363,6 +1566,7 @@ function printHeader() {
 
 async function menu() {
   enableQuickEdit();
+  await maybeAutoCheckUpdate();
   createRL();
   rl.on('SIGINT', () => {
     console.log('\n已退出。');
@@ -1376,7 +1580,8 @@ async function menu() {
     console.log(' 3. 设置每天签到时间');
     console.log(' 4. 开启 / 关闭开机自启动');
     console.log(' 5. 开启 / 关闭后台守护');
-    console.log(' 6. 查看最近日志');
+    console.log(' 6. 检查更新');
+    console.log(' 7. 查看最近日志');
     console.log(' 0. 退出');
     console.log('------------------------------------------------------------');
     const choice = (await ask('请选择: ')).trim();
@@ -1409,6 +1614,9 @@ async function menu() {
         }
         await pause();
       } else if (choice === '6') {
+        await checkForUpdate({ manual: true });
+        await pause();
+      } else if (choice === '7') {
         console.log('\n---------------- 最近日志 ----------------');
         try {
           const lines = fs.readFileSync(LOG_FILE, 'utf8').split(/\r?\n/).filter(Boolean).slice(-30);
@@ -1470,4 +1678,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { getSign, gatewaySign, authHeaders, apiBaseInfo, fetchProfile, apiSignInfo, apiSign, signAccount, loadConfig, setAutostart, isAutostartOn, socialHeaders, appQueryGetHeaders, httpGet, httpPost, httpPut, httpDelete, runCommunityTasks };
+module.exports = { VERSION, getSign, gatewaySign, authHeaders, apiBaseInfo, fetchProfile, apiSignInfo, apiSign, signAccount, loadConfig, setAutostart, isAutostartOn, socialHeaders, appQueryGetHeaders, httpGet, httpPost, httpPut, httpDelete, runCommunityTasks, compareVersion, checkForUpdate, maybeAutoCheckUpdate, loadUpdateState };
