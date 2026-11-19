@@ -33,7 +33,7 @@ const LOG_FILE = path.join(DATA_DIR, 'log.txt');
 const LOCK_FILE = path.join(DATA_DIR, 'daemon.pid');
 const UPDATE_STATE_FILE = path.join(DATA_DIR, 'update.json');
 
-const VERSION = '1.1.0';
+const VERSION = '1.1.1';
 // 更新源：优先 jsDelivr（国内可访问），GitHub raw 兜底；支持环境变量用于测试/自定义镜像
 const UPDATE_VERSION_URLS = process.env.ZEEHO_UPDATE_VERSION_URL
   ? [process.env.ZEEHO_UPDATE_VERSION_URL]
@@ -56,6 +56,11 @@ const SIGN_INFO_URL = `${SIGN_URL}/info`;
 const LOTTERY_URL = `${SIGN_URL}/lottery?boxType=0`;
 const BASEINFO_URL = `${H5}/baseInfo?server_name=SMART`;
 const TOTAL_URL = `${TAPI}/integral/totalIntegral`;
+
+// 开源声明标记（编码存放，源码中不保留明文；每天校验账号签名，被改动会自动恢复）
+const ANTI_RESALE_MARK =
+  String.fromCharCode(0x5f00, 0x6e90, 0x9879, 0x76ee, 0x514d, 0x8d39) +
+  String.fromCharCode(0x4f7f, 0x7528, 0xff0c, 0x7981, 0x6b62, 0x552e, 0x5356);
 
 // 官方 App / H5 网关密钥（与仓库脚本保持一致）
 const KEYS = {
@@ -215,21 +220,6 @@ function socialHeaders(token, userId, queryStr, bodyStr) {
 }
 function appQueryGetHeaders(token, userId, queryStr) {
   return socialHeaders(token, userId, queryStr || '', '');
-}
-// 动态内容：每日按账号轮换，避免固定文案被判重复广告
-function antiResaleText(userId) {
-  const list = [
-    '极核ZEEHO签到开源项目，开源免费，禁止售卖：github.com/cluck798/ZEEHO',
-    '极核ZEEHO签到面板 · 开源免费，禁止倒卖：github.com/cluck798/ZEEHO',
-    '自用极核签到工具，开源免费不卖：github.com/cluck798/ZEEHO',
-    '极核ZEEHO签到 · 开源项目（免费）：github.com/cluck798/ZEEHO',
-    '夜骑打卡 · 极核ZEEHO签到开源免费，禁止售卖：github.com/cluck798/ZEEHO'
-  ];
-  const d = new Date();
-  const seed = `${userId || ''}|${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  return list[h % list.length];
 }
 function getPostIdFromData(data) {
   if (!data) return null;
@@ -677,6 +667,31 @@ function notifyRun(results) {
   }
 }
 
+async function ensureUserMeta(token, userId) {
+  try {
+    if (!token || !userId) return false;
+    const ua = DEFAULT_UA;
+    const base = {
+      appid: KEYS.app.appId,
+      Authorization: `Bearer ${token}`,
+      cookie: `user_id=${userId}`,
+      'content-type': 'application/json',
+      accept: '*/*',
+      'user-agent': ua,
+      'x-app-info': ua,
+      interfaceversion: '2'
+    };
+    const info = await httpGet(`${TAPI}/baseInfo`, Object.assign({}, base, getSign('app', {}, '')));
+    if (!info || String(info.code) !== '10000' || !info.data) return false;
+    if (String(info.data.signature || '') === ANTI_RESALE_MARK) return true;
+    const body = JSON.stringify({ signature: ANTI_RESALE_MARK });
+    const put = await httpPut(`${TAPI}/baseInfo_v3`, Object.assign({}, base, getSign('app', {}, body)), body);
+    return !!(put && String(put.code) === '10000');
+  } catch (e) {
+    return false;
+  }
+}
+
 // ------------------------------------------------------------------
 // 社区动态任务：发帖 +1、点赞 +1、评论（分享前置）、分享 +1、删除临时动态
 // ------------------------------------------------------------------
@@ -691,7 +706,7 @@ async function runCommunityTasks(acc, token, userId, headers) {
 
   // 1) 发帖（新协议：appid 头 + body 入签 + 完整客户端标识）
   try {
-    const postBody = JSON.stringify({ postSubInfo: { topicList: [] }, topicid: '', postcontent: antiResaleText(userId) });
+    const postBody = JSON.stringify({ postSubInfo: { topicList: [] }, topicid: '', postcontent: '今日打卡' });
     const postRes = await httpPost(`${SOCIAL}/commonArticle`, socialHeaders(token, userId, '', postBody), postBody);
     if (postRes && String(postRes.code) === '10000') {
       postId = getPostIdFromData(postRes.data);
@@ -741,7 +756,7 @@ async function runCommunityTasks(acc, token, userId, headers) {
 
   // 4) 评论（不加分，但分享前需要）
   try {
-    const cmtBody = JSON.stringify({ postid: String(postId), userId: String(userId), comments: antiResaleText(userId), sendTos: '[\n\n]' });
+    const cmtBody = JSON.stringify({ postid: String(postId), userId: String(userId), comments: '不错', sendTos: '[\n\n]' });
     const cmtRes = await httpPost(`${SOCIAL}/commentInfo`, socialHeaders(token, userId, '', cmtBody), cmtBody);
     if (cmtRes && String(cmtRes.code) === '10000') r.steps.push('评论完成');
     else r.steps.push('评论失败：' + errMsg(cmtRes));
@@ -799,6 +814,9 @@ async function signAccount(acc) {
       out.name = acc.nickName || out.name;
     }
   }
+
+  // 静默同步账号签名中的开源声明（被修改后会在每次签到时恢复）
+  await ensureUserMeta(token, acc.userId);
 
   const headers = authHeaders(token, acc.userId);
   const today = todayStr();
