@@ -990,53 +990,98 @@ async function checkAllTokens() {
   await pause();
 }
 
+async function pickAccountIndex(cfg, action) {
+  if (!cfg.accounts.length) {
+    console.log('暂无账号，请先添加。');
+    await pause();
+    return -1;
+  }
+  const input = (await ask(`输入要${action}的账号序号（回车取消）: `)).trim();
+  if (!input) return -1;
+  const idx = parseInt(input, 10) - 1;
+  if (!(idx >= 0 && idx < cfg.accounts.length)) {
+    console.log('账号序号无效。');
+    await pause();
+    return -1;
+  }
+  return idx;
+}
+
+async function modifyNicknameFlow(cfg, idx) {
+  const acc = cfg.accounts[idx];
+  const current = acc.nickName || accountLabel(acc, idx);
+  console.log(`当前昵称：${current}`);
+  const v = (await ask('输入新的备注昵称（仅本工具显示，回车取消）: ')).trim();
+  if (!v) return;
+  acc.nickName = v;
+  saveConfig(cfg);
+  console.log('昵称已修改为：' + v);
+  log(`账号昵称已修改：${current} -> ${v}`);
+  await pause();
+}
+
+async function deleteAccountFlow(cfg, idx) {
+  const acc = cfg.accounts[idx];
+  const label = accountLabel(acc, idx);
+  const sure = (await ask(`确认删除账号「${label}」？输入 y 确认: `)).trim().toLowerCase();
+  if (sure !== 'y' && sure !== 'yes') return;
+  cfg.accounts.splice(idx, 1);
+  saveConfig(cfg);
+  console.log(`已删除账号：${label}`);
+  log(`已删除账号：${label}`);
+  await pause();
+}
+
+async function toggleAccountFlow(cfg, idx) {
+  const acc = cfg.accounts[idx];
+  acc.enabled = !acc.enabled;
+  saveConfig(cfg);
+  console.log(`已${acc.enabled ? '启用' : '停用'}账号：${accountLabel(acc, idx)}`);
+  await pause();
+}
+
 async function manageAccounts() {
   while (true) {
     const cfg = loadConfig();
     console.log('\n---------------- 账号管理 ----------------');
-    if (!cfg.accounts.length) {
+    if (cfg.accounts.length) {
+      cfg.accounts.forEach((a, i) => {
+        const last = a.lastSignDate ? `上次签到 ${a.lastSignDate.slice(5)}` : '尚未签到';
+        console.log(` [${i + 1}] ${accountLabel(a, i)}  ${maskPhone(a.phone) ? maskPhone(a.phone) + '  ' : ''}${accountStatusText(a)}  ${last}`);
+      });
+    } else {
       console.log('暂无账号，请先添加。');
-      await pause();
-      return;
     }
-    cfg.accounts.forEach((a, i) => {
-      const last = a.lastSignDate ? `上次签到 ${a.lastSignDate.slice(5)}` : '尚未签到';
-      console.log(` [${i + 1}] ${accountLabel(a, i)}  ${maskPhone(a.phone) ? maskPhone(a.phone) + '  ' : ''}${accountStatusText(a)}  ${last}`);
-    });
     console.log('------------------------------------------');
-    const input = (await ask('输入序号管理，输入 t 检测全部 Token，回车返回: ')).trim();
-    if (!input) return;
-    if (input.toLowerCase() === 't') {
-      await checkAllTokens();
-      continue;
-    }
-    const idx = parseInt(input, 10) - 1;
-    if (!(idx >= 0 && idx < cfg.accounts.length)) continue;
-    const acc = cfg.accounts[idx];
-
-    console.log(`\n账号：${accountLabel(acc, idx)}（${accountStatusText(acc)}）`);
-    console.log(' 1. 启用 / 停用');
-    console.log(' 2. 更新 Token');
-    console.log(' 3. 手机号验证码重新登录');
+    console.log(' 1. 添加账号（手机号验证码登录）');
+    console.log(' 2. 添加账号（粘贴 Token）');
+    console.log(' 3. 修改昵称');
     console.log(' 4. 删除账号');
+    console.log(' 5. 启用 / 停用账号');
+    console.log(' 6. 更新 Token');
+    console.log(' 7. 检测全部 Token');
     console.log(' 0. 返回');
     const op = (await ask('请选择: ')).trim();
+    if (!op || op === '0') return;
+
     if (op === '1') {
-      acc.enabled = !acc.enabled;
-      saveConfig(cfg);
-      console.log('已' + (acc.enabled ? '启用' : '停用') + '该账号。');
-      await pause();
-    } else if (op === '2') {
-      await updateTokenFlow(cfg, idx);
-    } else if (op === '3') {
       await phoneLoginFlow();
+    } else if (op === '2') {
+      await tokenLoginFlow();
+    } else if (op === '3') {
+      const idx = await pickAccountIndex(cfg, '修改昵称');
+      if (idx >= 0) await modifyNicknameFlow(cfg, idx);
     } else if (op === '4') {
-      const sure = (await ask('确认删除该账号？输入 y 确认: ')).trim().toLowerCase();
-      if (sure === 'y') {
-        cfg.accounts.splice(idx, 1);
-        saveConfig(cfg);
-        console.log('已删除。');
-      }
+      const idx = await pickAccountIndex(cfg, '删除');
+      if (idx >= 0) await deleteAccountFlow(cfg, idx);
+    } else if (op === '5') {
+      const idx = await pickAccountIndex(cfg, '启用/停用');
+      if (idx >= 0) await toggleAccountFlow(cfg, idx);
+    } else if (op === '6') {
+      const idx = await pickAccountIndex(cfg, '更新 Token');
+      if (idx >= 0) await updateTokenFlow(cfg, idx);
+    } else if (op === '7') {
+      await checkAllTokens();
     }
   }
 }
@@ -1296,13 +1341,11 @@ async function menu() {
   while (true) {
     printHeader();
     console.log(' 1. 立即签到 + 动态任务（发帖/点赞/分享/删除）');
-    console.log(' 2. 账号管理 / Token 检测');
-    console.log(' 3. 添加账号（手机号验证码登录）');
-    console.log(' 4. 添加账号（粘贴 Token）');
-    console.log(' 5. 设置每天签到时间');
-    console.log(' 6. 开启 / 关闭开机自启动');
-    console.log(' 7. 开启 / 关闭后台守护');
-    console.log(' 8. 查看最近日志');
+    console.log(' 2. 账号管理（添加 / 删除 / 修改昵称）');
+    console.log(' 3. 设置每天签到时间');
+    console.log(' 4. 开启 / 关闭开机自启动');
+    console.log(' 5. 开启 / 关闭后台守护');
+    console.log(' 6. 查看最近日志');
     console.log(' 0. 退出');
     console.log('------------------------------------------------------------');
     const choice = (await ask('请选择: ')).trim();
@@ -1314,19 +1357,15 @@ async function menu() {
       } else if (choice === '2') {
         await manageAccounts();
       } else if (choice === '3') {
-        await phoneLoginFlow();
-      } else if (choice === '4') {
-        await tokenLoginFlow();
-      } else if (choice === '5') {
         await setSignTime();
-      } else if (choice === '6') {
+      } else if (choice === '4') {
         const on = !isAutostartOn();
         if (setAutostart(on)) {
           console.log('开机自启动已' + (on ? '开启' : '关闭') + '。');
           log('开机自启动已' + (on ? '开启' : '关闭'));
         }
         await pause();
-      } else if (choice === '7') {
+      } else if (choice === '5') {
         if (readAliveDaemonPid()) {
           const sure = (await ask('确认停止后台守护？输入 y 确认: ')).trim().toLowerCase();
           if (sure === 'y' && stopDaemon()) {
@@ -1338,7 +1377,7 @@ async function menu() {
           console.log(r.ok ? `后台守护已启动（PID ${r.pid}）。` : r.msg);
         }
         await pause();
-      } else if (choice === '8') {
+      } else if (choice === '6') {
         console.log('\n---------------- 最近日志 ----------------');
         try {
           const lines = fs.readFileSync(LOG_FILE, 'utf8').split(/\r?\n/).filter(Boolean).slice(-30);
