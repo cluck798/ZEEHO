@@ -12,9 +12,9 @@
 # 面板入口（http://zeeho.box；面板 POST API 需要读取 body）
 http-request ^https?://zeeho\.box/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js?v=2.16.57, requires-body=true, timeout=60, tag=极核面板
 
-# 官方 App 请求：只改请求头（不读 body）
+# 官方 App 请求：独立小脚本，每个请求换新 UA（jsDelivr 国内可访问）
 # 同一请求只会执行第一个匹配的请求脚本；若被其它通配脚本抢占，请把本规则放到本地配置（优先级最高）
-http-request ^https?://.*zeehoev\.com/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js?v=2.16.57, timeout=60, tag=极核App请求
+http-request ^https?://.*zeehoev\.com/.* script-path=https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/script/zeeho_ua.js?v=1, timeout=10, tag=极核App请求
 
 # 车辆图片替换（v2.16.11：http-response 直改响应体图片 URL，需在面板设置页配置）
 http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/app\/cfmotoserverapp\/(vehicle\/(list|widgets|details)|vehicleHomePageV2|vehicleInfo|vehicle\/properties) script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/repo/zeeho_box_enhanced.js?v=2.16.57, requires-body=true, timeout=30, tag=车辆图片改写

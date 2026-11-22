@@ -4,16 +4,16 @@
 #!homepage=https://github.com/cluck798/ZEEHO
 #!logo=https://raw.githubusercontent.com/cluck798/ZEEHO/main/ZEEHO.png
 #!system=ios
-#!version=2.16.57
+#!version=2.16.58
 
 [Script]
 # 面板入口（访问 http://zeeho.box 打开面板；面板 POST API 需要读取 body）
 http-request ^https?://zeeho\.box/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/zeeho_box_enhanced.js?v=2.16.57, requires-body=true, timeout=60, tag=极核面板
 
-# 官方 App 请求：只改请求头（不读 body，避免 GET 等待 body 被挂起）
+# 官方 App 请求：使用独立小脚本（每个请求换新 UA，jsDelivr 国内可访问；timeout 10 秒避免拖住请求）
 # 注意：Loon 同一请求只会执行「第一个匹配」的请求脚本；若其它插件/订阅有更靠前的通配脚本，
 # 请把本插件移到插件列表最上方，或把这条规则复制到 Loon 本地配置（本地优先级最高）。
-http-request ^https?://.*zeehoev\.com/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/zeeho_box_enhanced.js?v=2.16.57, timeout=60, tag=极核App请求
+http-request ^https?://.*zeehoev\.com/.* script-path=https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/script/zeeho_ua.js?v=1, timeout=10, tag=极核App请求
 
 # 车辆图片替换（http-response 直改响应体图片URL，需在面板设置页配置车型图；同一脚本顺带学习 31001 被风控指纹）
 http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/app\/cfmotoserverapp\/(vehicle\/(list|widgets|details)|vehicleHomePageV2|vehicleInfo|vehicle\/properties) script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/zeeho_box_enhanced.js?v=2.16.57, requires-body=true, timeout=30, tag=车辆图片改写
