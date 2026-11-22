@@ -2,7 +2,7 @@
 #!name=极核 每日签到 积分任务
 #!desc=极核打开我的插件自动捕获 user_id/Authorization/Cookie/User-Agent/app_secret，无需手动抓包；每日定时自动签到。仅供个人学习使用，请勿用于违规用途。
 #!author=lucky
-#!version=2.5.6
+#!version=2.5.7
 #!icon=https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/script/ZEEHO.png
 
 [Script]
@@ -29,6 +29,69 @@ hostname = tapi.zeehoev.com
 
 const $ = new Env("极核-ZEEHO");
 const ckName = "zeeho_data";
+//-------------------- 设备指纹风控自救（v2.5.7） -------------------------------------
+// 服务端对整套设备指纹做风控时返回 430 {"code":"31001","message":"非法的请求"}。
+// 这里在收到 31001 时把旧 UA 记入拉黑列表并换一份官方格式随机指纹重试一次；
+// 下次运行不再复用被拉黑的 UA（面板侧 zeeho_box_enhanced.js 读取同一个拉黑列表）。
+const BURNED_DEVICE_MARK = "DC0C4906-A4A8-4866-9432-B31E1E252D53";
+const CK_BURNED_UUID = "zeeho_burned_uuid";
+const UA_UUID_RE = /(?:^|\|)([0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})(?=\|)/;
+const UA_DEVICE_MODELS = [
+  ["iPhone 11", "828*1792"], ["iPhone XR", "828*1792"], ["iPhone SE (3rd generation)", "750*1334"],
+  ["iPhone 12 mini", "1080*2340"], ["iPhone 12", "1170*2532"], ["iPhone 12 Pro", "1170*2532"],
+  ["iPhone 13 mini", "1080*2340"], ["iPhone 13", "1170*2532"], ["iPhone 13 Pro", "1170*2532"], ["iPhone 13 Pro Max", "1284*2778"],
+  ["iPhone 14", "1170*2532"], ["iPhone 14 Plus", "1284*2778"], ["iPhone 14 Pro", "1179*2556"], ["iPhone 14 Pro Max", "1290*2796"],
+  ["iPhone 15", "1179*2556"], ["iPhone 15 Pro", "1179*2556"], ["iPhone 15 Pro Max", "1290*2796"],
+  ["iPhone 16", "1179*2556"], ["iPhone 16 Pro", "1206*2622"], ["iPhone 16 Pro Max", "1320*2868"]
+];
+const UA_IOS_VERSIONS = ["16.1.1", "16.6.1", "16.7.8", "17.1.1", "17.2.1", "17.4.1", "17.5.1", "17.6.1", "18.0", "18.1.1", "18.3.1"];
+function uaDeviceUuid(ua) {
+  const m = String(ua || "").match(UA_UUID_RE);
+  return m ? m[1].toUpperCase() : "";
+}
+function isOfficialAppUA(ua) {
+  return /^MOBILE\|iOS\|[\d.]+\|ZEEHO_APP\|[\d.]+\|/i.test(String(ua || ""));
+}
+function getBurnedUuids() {
+  let list = [];
+  try { const raw = $.getdata(CK_BURNED_UUID); list = raw ? JSON.parse(raw) : []; } catch(e) { list = []; }
+  if (!Array.isArray(list)) list = [];
+  list = list.map(x => String(x).toUpperCase());
+  if (list.indexOf(BURNED_DEVICE_MARK) < 0) list.push(BURNED_DEVICE_MARK);
+  return list;
+}
+function isBurnedUa(ua) {
+  const id = uaDeviceUuid(ua);
+  return !!id && getBurnedUuids().indexOf(id) >= 0;
+}
+function markBurnedUa(ua) {
+  const id = uaDeviceUuid(ua);
+  if (!id) return false;
+  const list = getBurnedUuids();
+  if (list.indexOf(id) >= 0) return false;
+  list.push(id);
+  while (list.length > 30) list.shift();
+  try { $.setdata(JSON.stringify(list), CK_BURNED_UUID); } catch(e) {}
+  $.log(`⚠️ 设备指纹被服务端风控，已记录: ${id}`);
+  return true;
+}
+function randomFullUA() {
+  const m = UA_DEVICE_MODELS[Math.floor(Math.random() * UA_DEVICE_MODELS.length)];
+  const net = Math.random() < 0.7 ? "WWAN" : "WiFi";
+  let hex = ""; const H = "0123456789ABCDEF";
+  for (let i = 0; i < 32; i++) hex += H[Math.floor(Math.random() * 16)];
+  const uuid = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  return `MOBILE|iOS|${UA_IOS_VERSIONS[Math.floor(Math.random() * UA_IOS_VERSIONS.length)]}|ZEEHO_APP|3.0.5|iPhone|${m[0]}|${m[1]}|${uuid}|${net}|iOS`;
+}
+// 把请求头里的 user-agent / x-app-info 统一换成指定 UA（其余头保持原样）
+function withUA(headers, ua) {
+  const out = {};
+  Object.keys(headers || {}).forEach(k => {
+    const lk = k.toLowerCase();
+    out[k] = (lk === "user-agent" || lk === "x-app-info") ? ua : headers[k];
+  });
+  return out;
+}
 //-------------------- 一般不动变量区域 -------------------------------------
 const Notify = 1;//0为关闭通知,1为打开通知,默认为1
 const notify = $.isNode() ? require('./sendNotify') : '';
@@ -195,7 +258,9 @@ class UserInfo {
     this.token = "Bearer " + String(rawToken || "").replace(/^[bB]earer\s+/i, "").trim();
     this.userId = String(user.userId || "").trim();
     this.userName = user.userName || `账号${this.index}`;
-    this.userAgent = user.userAgent || "ZEEHO/5.0 (iPhone; iOS 17.0; Scale/3.00)";
+    // 抓包 UA 缺失 / 非官方格式（旧 WebView 短 UA）/ 已被风控拉黑时，改用官方格式随机指纹
+    const capturedUA = String(user.userAgent || "").trim();
+    this.userAgent = isOfficialAppUA(capturedUA) && !isBurnedUa(capturedUA) ? capturedUA : randomFullUA();
     // 每账号独立 Bark Key（面板配置页保存，经 zeeho_data 同步过来）
     this.barkKey = cleanBarkKey(user.barkKey);
     this.ckStatus = true;
@@ -215,7 +280,16 @@ class UserInfo {
       try {
         if (typeof o === 'string') o = { url: o };
         if (o?.url?.startsWith("/")) o.url = this.host + o.url
-        const res = await Request({ ...o, headers: o.headers || this.headers, url: o.url || this.baseUrl })
+        const reqUrl = o.url || this.baseUrl;
+        let res = await Request({ ...o, headers: o.headers || this.headers, url: reqUrl })
+        // 430/31001：服务端判定设备指纹被风控 → 记录旧指纹，换新指纹重试一次（签名不含 UA，无需重新签名）
+        if (res && String(res.code) === "31001") {
+          markBurnedUa(this.userAgent);
+          this.userAgent = randomFullUA();
+          this.headers["User-Agent"] = this.userAgent;
+          $.log(`⚠️ 原设备指纹被服务端风控（31001），已换新指纹重试`);
+          res = await Request({ ...o, headers: withUA(o.headers || this.headers, this.userAgent), url: reqUrl })
+        }
         debug(res, o?.url?.replace(/\/+$/, '').substring(o?.url?.lastIndexOf('/') + 1));
         if (res?.code == 40001) throw new Error(res?.message || `用户需要去登录`);
         return res;
