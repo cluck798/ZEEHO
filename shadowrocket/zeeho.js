@@ -2,7 +2,7 @@
 #!name=极核 每日签到 积分任务
 #!desc=极核打开我的插件自动捕获 user_id/Authorization/Cookie/User-Agent/app_secret，无需手动抓包；每日定时自动签到。仅供个人学习使用，请勿用于违规用途。
 #!author=lucky
-#!version=2.5.7
+#!version=2.5.8
 #!icon=https://cdn.jsdelivr.net/gh/cluck798/ZEEHO@main/script/ZEEHO.png
 
 [Script]
@@ -83,13 +83,17 @@ function randomFullUA() {
   const uuid = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
   return `MOBILE|iOS|${UA_IOS_VERSIONS[Math.floor(Math.random() * UA_IOS_VERSIONS.length)]}|ZEEHO_APP|3.0.5|iPhone|${m[0]}|${m[1]}|${uuid}|${net}|iOS`;
 }
-// 把请求头里的 user-agent / x-app-info 统一换成指定 UA（其余头保持原样）
+// 把请求头里的 user-agent / x-app-info 统一换成指定 UA（其余头保持原样；缺失 x-app-info 时补上）
 function withUA(headers, ua) {
   const out = {};
+  let hasX = false;
   Object.keys(headers || {}).forEach(k => {
     const lk = k.toLowerCase();
-    out[k] = (lk === "user-agent" || lk === "x-app-info") ? ua : headers[k];
+    if (lk === "user-agent") out[k] = ua;
+    else if (lk === "x-app-info") { out[k] = ua; hasX = true; }
+    else out[k] = headers[k];
   });
+  if (!hasX) out["x-app-info"] = ua;
   return out;
 }
 //-------------------- 一般不动变量区域 -------------------------------------
@@ -258,9 +262,8 @@ class UserInfo {
     this.token = "Bearer " + String(rawToken || "").replace(/^[bB]earer\s+/i, "").trim();
     this.userId = String(user.userId || "").trim();
     this.userName = user.userName || `账号${this.index}`;
-    // 抓包 UA 缺失 / 非官方格式（旧 WebView 短 UA）/ 已被风控拉黑时，改用官方格式随机指纹
-    const capturedUA = String(user.userAgent || "").trim();
-    this.userAgent = isOfficialAppUA(capturedUA) && !isBurnedUa(capturedUA) ? capturedUA : randomFullUA();
+    // v2.5.8：不再复用抓包保存的 UA，每个请求都会现场生成全新官方格式指纹（见 fetch）
+    this.userAgent = randomFullUA();
     // 每账号独立 Bark Key（面板配置页保存，经 zeeho_data 同步过来）
     this.barkKey = cleanBarkKey(user.barkKey);
     this.ckStatus = true;
@@ -281,14 +284,16 @@ class UserInfo {
         if (typeof o === 'string') o = { url: o };
         if (o?.url?.startsWith("/")) o.url = this.host + o.url
         const reqUrl = o.url || this.baseUrl;
-        let res = await Request({ ...o, headers: o.headers || this.headers, url: reqUrl })
-        // 430/31001：服务端判定设备指纹被风控 → 记录旧指纹，换新指纹重试一次（签名不含 UA，无需重新签名）
+        // v2.5.8：每个请求都换一份全新的官方格式指纹（uuid/机型/系统随机），避免被 UA 风控长期关联
+        const reqUA = randomFullUA();
+        const reqHeaders = withUA(Object.assign({}, o.headers || this.headers, { "User-Agent": reqUA }), reqUA);
+        let res = await Request({ ...o, headers: reqHeaders, url: reqUrl })
+        // 仍被 31001 拒绝时：记录旧指纹，再换一份新指纹重试一次
         if (res && String(res.code) === "31001") {
-          markBurnedUa(this.userAgent);
-          this.userAgent = randomFullUA();
-          this.headers["User-Agent"] = this.userAgent;
-          $.log(`⚠️ 原设备指纹被服务端风控（31001），已换新指纹重试`);
-          res = await Request({ ...o, headers: withUA(o.headers || this.headers, this.userAgent), url: reqUrl })
+          markBurnedUa(reqUA);
+          const retryUA = randomFullUA();
+          $.log(`⚠️ 请求返回 31001，已换新指纹重试`);
+          res = await Request({ ...o, headers: withUA(reqHeaders, retryUA), url: reqUrl })
         }
         debug(res, o?.url?.replace(/\/+$/, '').substring(o?.url?.lastIndexOf('/') + 1));
         if (res?.code == 40001) throw new Error(res?.message || `用户需要去登录`);

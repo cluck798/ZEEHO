@@ -3,30 +3,30 @@
 #!author=@ZEEHO
 #!homepage=https://github.com/cluck798/ZEEHO
 #!icon=https://raw.githubusercontent.com/cluck798/ZEEHO/main/ZEEHO.png
-#!version=2.16.56
+#!version=2.16.57
 #!system=ios
 #!date=2026-11-23
 
 [Script]
 # 面板入口（访问 http://zeeho.box 打开面板；面板 POST API 需要读取 body）
-http-request ^https?://zeeho\.box/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/zeeho_box_enhanced.js?v=2.16.56, requires-body=true, timeout=60, tag=极核面板
+http-request ^https?://zeeho\.box/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/zeeho_box_enhanced.js?v=2.16.57, requires-body=true, timeout=60, tag=极核面板
 
 # 官方 App 请求：只改请求头（不读 body，避免 GET 等待 body 被挂起）
 # 注意：Surge 同一请求只会执行「第一个匹配」的请求脚本；若其它模块有更靠前的通配脚本，请调整模块顺序
-http-request ^https?://.*zeehoev\.com/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/zeeho_box_enhanced.js?v=2.16.56, timeout=60, tag=极核App请求
+http-request ^https?://.*zeehoev\.com/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/zeeho_box_enhanced.js?v=2.16.57, timeout=60, tag=极核App请求
 
 # 车辆图片替换（http-response 直改响应体图片URL，需在面板设置页配置车型图；同一脚本顺带学习 31001 被风控指纹）
-http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/app\/cfmotoserverapp\/(vehicle\/(list|widgets|details)|vehicleHomePageV2|vehicleInfo|vehicle\/properties) script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/zeeho_box_enhanced.js?v=2.16.56, requires-body=true, timeout=30, tag=车辆图片改写
+http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/app\/cfmotoserverapp\/(vehicle\/(list|widgets|details)|vehicleHomePageV2|vehicleInfo|vehicle\/properties) script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/zeeho_box_enhanced.js?v=2.16.57, requires-body=true, timeout=30, tag=车辆图片改写
 
 # 极核Token自动捕获（打开极核App → 我的页面）
-http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/mine\/cfmotoservermine\/setting script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/zeeho.js, requires-body=true, timeout=30, tag=极核抓Token
+http-response ^https:\/\/tapi\.zeehoev\.com\/v1\.0\/mine\/cfmotoservermine\/setting script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/zeeho.js?v=2.5.8, requires-body=true, timeout=30, tag=极核抓Token
 
 # UA 风控自愈（v2.16.56）：官方 App 被服务端 430/31001「非法的请求」拒绝时记录该设备指纹，
 # 下一次请求自动换成新的本机指纹；须放在上面更具体的响应规则之后（同一请求只执行首个匹配脚本）
-http-response ^https?://(tapi|h5)\.zeehoev\.com/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/zeeho_box_enhanced.js?v=2.16.56, requires-body=true, timeout=30, tag=极核UA风控
+http-response ^https?://(tapi|h5)\.zeehoev\.com/.* script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/zeeho_box_enhanced.js?v=2.16.57, requires-body=true, timeout=30, tag=极核UA风控
 
 # 极核每日签到（每天 07:00，可自行修改时间）
-cron "0 7 * * *" script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/zeeho.js, timeout=120, tag=极核每日签到
+cron "0 7 * * *" script-path=https://raw.githubusercontent.com/cluck798/ZEEHO/refs/heads/main/script/zeeho.js?v=2.5.8, timeout=120, tag=极核每日签到
 
 [MITM]
 hostname = %APPEND% tapi.zeehoev.com, h5.zeehoev.com, zeeho.box
