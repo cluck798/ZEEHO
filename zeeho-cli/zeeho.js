@@ -33,7 +33,7 @@ const LOG_FILE = path.join(DATA_DIR, 'log.txt');
 const LOCK_FILE = path.join(DATA_DIR, 'daemon.pid');
 const UPDATE_STATE_FILE = path.join(DATA_DIR, 'update.json');
 
-const VERSION = '1.1.1';
+const VERSION = '1.1.2';
 // 更新源：优先 jsDelivr（国内可访问），GitHub raw 兜底；支持环境变量用于测试/自定义镜像
 const UPDATE_VERSION_URLS = process.env.ZEEHO_UPDATE_VERSION_URL
   ? [process.env.ZEEHO_UPDATE_VERSION_URL]
@@ -237,7 +237,14 @@ function getPostIdFromData(data) {
 // ------------------------------------------------------------------
 // HTTP
 // ------------------------------------------------------------------
-function request(method, url, headers = {}, body = null, timeout = 20000) {
+// 网络层瞬时故障（TLS 握手被中断、连接重置、超时等）：可重试
+function isNetError(msg) {
+  return /socket disconnected|secure TLS|ECONNRESET|ECONNREFUSED|EPIPE|EHOSTUNREACH|ENETUNREACH|ETIMEDOUT|EAI_AGAIN|socket hang up|请求超时|network/i.test(
+    String(msg || '')
+  );
+}
+
+function requestOnce(method, url, headers = {}, body = null, timeout = 20000, fresh = false) {
   return new Promise((resolve) => {
     let u;
     try {
@@ -247,33 +254,44 @@ function request(method, url, headers = {}, body = null, timeout = 20000) {
       return;
     }
     const payload = body === null || body === undefined ? null : typeof body === 'string' ? body : JSON.stringify(body);
-    const req = https.request(
-      {
-        hostname: u.hostname,
-        port: u.port || 443,
-        path: u.pathname + u.search,
-        method,
-        timeout,
-        headers: Object.assign({}, headers, payload !== null ? { 'Content-Length': Buffer.byteLength(payload) } : {})
-      },
-      (res) => {
-        let data = '';
-        res.setEncoding('utf8');
-        res.on('data', (c) => (data += c));
-        res.on('end', () => {
-          try {
-            resolve(JSON.parse(data));
-          } catch (e) {
-            resolve({ __error: `HTTP ${res.statusCode} 非 JSON 响应`, raw: data });
-          }
-        });
-      }
-    );
+    const opts = {
+      hostname: u.hostname,
+      port: u.port || 443,
+      path: u.pathname + u.search,
+      method,
+      timeout,
+      headers: Object.assign({}, headers, payload !== null ? { 'Content-Length': Buffer.byteLength(payload) } : {})
+    };
+    // 重试时新建连接，避免复用已被网络中断的 keep-alive 连接
+    if (fresh) opts.agent = false;
+    const req = https.request(opts, (res) => {
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', (c) => (data += c));
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch (e) {
+          resolve({ __error: `HTTP ${res.statusCode} 非 JSON 响应`, raw: data });
+        }
+      });
+    });
     req.on('timeout', () => req.destroy(new Error('请求超时')));
     req.on('error', (e) => resolve({ __error: e.message || String(e) }));
     if (payload !== null) req.write(payload);
     req.end();
   });
+}
+
+// 网络抖动（代理/VPN 切换、TLS 被重置）很常见，单次请求内部自动重试 3 次
+async function request(method, url, headers = {}, body = null, timeout = 20000) {
+  let res = null;
+  for (let at = 1; at <= 3; at++) {
+    res = await requestOnce(method, url, headers, body, timeout, at > 1);
+    if (!res || !res.__error || !isNetError(res.__error) || at === 3) return res;
+    await sleep(at * 1200);
+  }
+  return res;
 }
 const httpGet = (url, headers, timeout) => request('GET', url, headers, null, timeout);
 const httpPost = (url, headers, body, timeout) => request('POST', url, headers, body, timeout);
@@ -838,6 +856,8 @@ async function signAccount(acc) {
     if (isAuthError(lastInfo && lastInfo.code, errMsg(lastInfo))) {
       out.status = 'expired';
       out.msg = 'Token 已失效，请重新登录';
+    } else if (isNetError(errMsg(lastInfo))) {
+      out.msg = '网络连接异常（常见于代理/VPN 波动）：' + errMsg(lastInfo);
     } else {
       out.msg = '查询签到状态失败：' + errMsg(lastInfo);
     }
@@ -959,6 +979,20 @@ async function signAccount(acc) {
   return out;
 }
 
+function resultTag(res) {
+  return res.status === 'success' ? '[成功]' : res.status === 'already' ? '[已签]' : res.status === 'expired' ? '[过期]' : '[失败]';
+}
+function applyResult(cfg, acc, res) {
+  if (res.status === 'success' || res.status === 'already') {
+    acc.status = 'normal';
+    acc.lastSignDate = `${todayStr()} ${nowHHmm()}`;
+  } else if (res.status === 'expired') {
+    acc.status = 'expired';
+  }
+  acc.lastSignResult = res.msg || res.steps.join(' · ');
+  saveConfig(cfg);
+}
+
 async function runAll(source) {
   const cfg = loadConfig();
   const accounts = cfg.accounts.filter((a) => a.enabled);
@@ -970,6 +1004,7 @@ async function runAll(source) {
 
   log(`===== 开始签到（${source}），共 ${accounts.length} 个账号 =====`);
   const results = [];
+  const netFailed = [];
   for (let i = 0; i < accounts.length; i++) {
     const acc = accounts[i];
     const name = acc.nickName || maskPhone(acc.phone) || `账号${i + 1}`;
@@ -981,20 +1016,35 @@ async function runAll(source) {
       res = { name, status: 'failed', msg: '执行异常：' + ((e && e.message) || e), steps: [], score: 0, blind: 0, interact: 0, cont: 0, total: null };
     }
     results.push(res);
+    applyResult(cfg, acc, res);
+    if (res.status === 'failed' && isNetError(res.msg)) netFailed.push({ acc, index: results.length - 1 });
 
-    if (res.status === 'success' || res.status === 'already') {
-      acc.status = 'normal';
-      acc.lastSignDate = `${todayStr()} ${nowHHmm()}`;
-    } else if (res.status === 'expired') {
-      acc.status = 'expired';
-    }
-    acc.lastSignResult = res.msg || res.steps.join(' · ');
-    saveConfig(cfg);
-
-    const tag = res.status === 'success' ? '[成功]' : res.status === 'already' ? '[已签]' : res.status === 'expired' ? '[过期]' : '[失败]';
-    console.log(`  ${tag} ${res.msg}`);
-    log(`签到 ${name}：${tag} ${res.msg}`);
+    console.log(`  ${resultTag(res)} ${res.msg}`);
+    log(`签到 ${name}：${resultTag(res)} ${res.msg}`);
     if (i < accounts.length - 1) await sleep(randomInt(1200, 2800));
+  }
+
+  // 网络抖动（代理/VPN 切换）导致的失败：等待网络恢复后补签一次
+  if (netFailed.length) {
+    console.log(`\n${netFailed.length} 个账号因网络异常失败，30 秒后自动补签...`);
+    log(`网络异常补签：${netFailed.length} 个账号，等待 30 秒`);
+    await sleep(30000);
+    for (const item of netFailed) {
+      const acc = item.acc;
+      const name = acc.nickName || maskPhone(acc.phone) || '账号';
+      console.log(`\n[补签] ${name}`);
+      let res;
+      try {
+        res = await signAccount(acc);
+      } catch (e) {
+        res = { name, status: 'failed', msg: '执行异常：' + ((e && e.message) || e), steps: [], score: 0, blind: 0, interact: 0, cont: 0, total: null };
+      }
+      results[item.index] = res;
+      applyResult(cfg, acc, res);
+      console.log(`  ${resultTag(res)} ${res.msg}`);
+      log(`补签 ${name}：${resultTag(res)} ${res.msg}`);
+      await sleep(randomInt(1200, 2800));
+    }
   }
 
   // 定时任务记录执行日期；手动执行只有在全部成功时才记录，避免手动失败后错过当天定时补签
