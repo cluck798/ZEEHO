@@ -8,15 +8,16 @@
 | `zeeho.local.conf` | **本地脚本版配置（推荐，最稳）** |
 | `zeeho.js` | 签到 + Token 抓取脚本 |
 | `zeeho_box_enhanced.js` | 网页面板 + appId 捕获脚本 |
+| `zeeho_ua.js` | 官方 App 请求头随机 UA 脚本 |
 
 ## 快速开始（本地脚本版，推荐）
 
 ### 第 1 步：放入脚本文件
 
-将 `zeeho.js` 和 `zeeho_box_enhanced.js` 放入 Shadowrocket 本地目录，二选一：
+将 `zeeho.js`、`zeeho_box_enhanced.js` 和 `zeeho_ua.js` 放入 Shadowrocket 本地目录，二选一：
 
-- **方式 A（手机直接操作）**：用「文件」App → 浏览 → 我的 iPhone → Shadowrocket，把两个 `.js` 文件拷进去。
-- **方式 B（电脑传输）**：电脑连接 iPhone，打开 iTunes / 访达 → 设备 → 文件共享 → Shadowrocket，把两个 `.js` 拖入。
+- **方式 A（手机直接操作）**：用「文件」App → 浏览 → 我的 iPhone → Shadowrocket，把三个 `.js` 文件拷进去。
+- **方式 B（电脑传输）**：电脑连接 iPhone，打开 iTunes / 访达 → 设备 → 文件共享 → Shadowrocket，把三个 `.js` 拖入。
 
 ### 第 2 步：导入配置
 
@@ -74,13 +75,16 @@ tapi.zeehoev.com, h5.zeehoev.com, zeeho.box
 zeeho.box = 127.0.0.1
 
 [Script]
-# 1. 面板入口 + appId 捕获（http-request 拦截）
-http-request ^https?:\/\/(zeeho\.box|.*zeehoev\.com)\/.* script-path=zeeho_box_enhanced.js, requires-body=true, timeout=60
+# 1. 面板入口（只有面板请求需要读取 body）
+http-request ^https?:\/\/zeeho\.box\/.* script-path=zeeho_box_enhanced.js, requires-body=true, timeout=60
 
-# 2. Token 自动抓取（http-response 拦截 /setting 接口响应）
+# 2. 官方 App 每个请求换新 UA（独立本地小脚本）
+http-request ^https?:\/\/.*zeehoev\.com\/.* script-path=zeeho_ua.js, timeout=10
+
+# 3. Token 自动抓取（http-response 拦截 /setting 接口响应）
 http-response ^https?:\/\/tapi\.zeehoev\.com\/v1\.0\/mine\/cfmotoservermine\/setting script-path=zeeho.js, requires-body=true, timeout=60
 
-# 3. 每日签到（cron 定时，每天 07:00）
+# 4. 每日签到（cron 定时，每天 07:00）
 cron "0 7 * * *" script-path=zeeho.js
 
 [MITM]
@@ -99,7 +103,7 @@ hostname = tapi.zeehoev.com, h5.zeehoev.com, zeeho.box
 ### Q: 访问 `zeeho.box` 提示「无法连接」/「连接被拒绝」
 
 1. **确认配置模式**：首页 → 配置 → 选中 `zeeho.local.conf`（不是模块）。
-2. **确认脚本已放入本地目录**：「文件」App → Shadowrocket 目录下应有 `zeeho.js` 和 `zeeho_box_enhanced.js`。
+2. **确认脚本已放入本地目录**：「文件」App → Shadowrocket 目录下应有 `zeeho.js`、`zeeho_box_enhanced.js` 和 `zeeho_ua.js`。
 3. **确认地址是 http**：输入 `http://zeeho.box`，不是 `https://`。
 4. **确认 MITM 已开启**：设置 → MITM → 开关打开，hostname 含 `zeeho.box`。
 5. **确认 Shadowrocket 已连接**：首页顶部 VPN 开关为已连接状态。

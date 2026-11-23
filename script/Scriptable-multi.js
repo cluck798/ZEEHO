@@ -667,6 +667,7 @@ async function requestWithSign(type, method, url, params, data, token, label = "
   else if (typeof data === "string") bodyStrForSign = data;
 
   const signHeaders = useV2 ? newProtoSign(toQuery(params), bodyStrForSign) : getSign(type, params, data, method);
+  const deviceUA = useV2 ? randomDeviceUA() : "";
 
   const signQuery = toQuery(params);
   const fullUrl = signQuery ? `${url}?${signQuery}` : url;
@@ -681,9 +682,9 @@ async function requestWithSign(type, method, url, params, data, token, label = "
         "authorization": `Bearer ${cleanToken(token)}`,
         "accept": "*/*",
         "accept-language": "zh-CN",
-        "user-agent": OFFICIAL_UA,
+        "user-agent": deviceUA,
         "interfaceversion": "2",
-        "x-app-info": OFFICIAL_UA,
+        "x-app-info": deviceUA,
         ...signHeaders,
       }
     : {
@@ -1254,7 +1255,7 @@ async function ensureVehicleRisk() {
 
 // 车控请求头（旧通道）
 function vehicleHeaders(acc, signHeaders) {
-  const ua = "MOBILE|iOS|16.1.1|ZEEHO_APP|3.0.1|iPhone|WWAN|iOS";
+  const ua = randomDeviceUA();
   const h = {
     "Authorization": `Bearer ${cleanToken(acc.token)}`,
     "Content-Type": "application/json;charset=UTF-8",
@@ -1271,7 +1272,30 @@ function vehicleHeaders(acc, signHeaders) {
 
 // 写操作"新协议"（2026-09-24 起网关收紧：缺少 appid 头 / 官方UA / Cookie 会返回 30121 permit error。
 // 与参考实现里已验证的发帖协议 1:1 一致；车控同样走这套，被拦截时再回退旧通道）
-const OFFICIAL_UA = "MOBILE|iOS|16.1.1|ZEEHO_APP|3.0.5|iPhone|iPhone 14 Pro|1179*2556|DC0C4906-A4A8-4866-9432-B31E1E252D53|WWAN|iOS";
+const DEVICE_MODELS = [
+  ["iPhone 12", "1170*2532"], ["iPhone 13", "1170*2532"], ["iPhone 13 Pro", "1170*2532"],
+  ["iPhone 14", "1170*2532"], ["iPhone 14 Pro", "1179*2556"], ["iPhone 15", "1179*2556"],
+  ["iPhone 15 Pro", "1179*2556"], ["iPhone 15 Pro Max", "1290*2796"], ["iPhone 16", "1179*2556"]
+];
+const IOS_VERSIONS = ["16.1.1", "16.6.1", "16.7.8", "17.1.1", "17.2.1", "17.4.1", "17.5.1", "17.6.1", "18.0", "18.1.1", "18.3.1"];
+
+function pickRandomDevice(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function randomDeviceUuid() {
+  const hex = "0123456789ABCDEF";
+  let s = "";
+  for (let i = 0; i < 32; i++) s += hex[Math.floor(Math.random() * 16)];
+  return `${s.slice(0, 8)}-${s.slice(8, 12)}-${s.slice(12, 16)}-${s.slice(16, 20)}-${s.slice(20)}`;
+}
+
+// 每次请求生成一份新的官方格式设备指纹，避免复用被风控的固定 UA
+function randomDeviceUA() {
+  const m = pickRandomDevice(DEVICE_MODELS);
+  const net = Math.random() < 0.7 ? "WWAN" : "WIFI";
+  return `MOBILE|iOS|${pickRandomDevice(IOS_VERSIONS)}|ZEEHO_APP|3.0.5|iPhone|${m[0]}|${m[1]}|${randomDeviceUuid()}|${net}|iOS`;
+}
 
 function newProtoSign(queryStr, bodyStr) {
   const ac = APP_CONFIG.app;
@@ -1290,15 +1314,16 @@ function newProtoSign(queryStr, bodyStr) {
 }
 
 function vehicleHeadersV2(acc, signHeaders) {
+  const deviceUA = randomDeviceUA();
   const h = {
     "content-type": "application/json",
     "appid": APP_CONFIG.app.appId,
     "authorization": `Bearer ${cleanToken(acc.token)}`,
     "accept": "*/*",
     "accept-language": "zh-CN",
-    "user-agent": OFFICIAL_UA,
+    "user-agent": deviceUA,
     "interfaceversion": "2",
-    "x-app-info": OFFICIAL_UA,
+    "x-app-info": deviceUA,
     ...(signHeaders || {}),
   };
   if (acc.userId) h["cookie"] = `user_id=${acc.userId}`;
