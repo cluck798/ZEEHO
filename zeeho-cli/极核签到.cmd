@@ -63,9 +63,10 @@ const DATA_DIR = path.join(APP_DIR, 'data');
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 const LOG_FILE = path.join(DATA_DIR, 'log.txt');
 const LOCK_FILE = path.join(DATA_DIR, 'daemon.pid');
+const TRAY_PID_FILE = path.join(DATA_DIR, 'tray.pid');
 const UPDATE_STATE_FILE = path.join(DATA_DIR, 'update.json');
 
-const VERSION = '1.1.6';
+const VERSION = '1.1.7';
 // 更新源：优先 jsDelivr（国内可访问），GitHub raw 兜底；支持环境变量用于测试/自定义镜像
 const UPDATE_VERSION_URLS = process.env.ZEEHO_UPDATE_VERSION_URL
   ? [process.env.ZEEHO_UPDATE_VERSION_URL]
@@ -482,7 +483,7 @@ async function apiLoginByPhone(phone, authCode) {
 // 配置 / 日志
 // ------------------------------------------------------------------
 function defaultConfig() {
-  return { signTime: '08:00', notify: true, lastRunDate: '', lastRunTime: '', accounts: [] };
+  return { signTime: '08:00', notify: true, tray: true, lastRunDate: '', lastRunTime: '', accounts: [] };
 }
 function loadConfig() {
   let raw = null;
@@ -1453,6 +1454,142 @@ function migrateAutostart() {
   } catch (e) {}
 }
 
+function trayScript() {
+  return `$ErrorActionPreference = 'SilentlyContinue'
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+$dataDir = Join-Path $env:ZEEHO_APP_DIR 'data'
+$log = Join-Path $dataDir 'tray.log'
+try { Set-Content -LiteralPath $env:ZEEHO_TRAY_PID -Value $PID -Encoding ASCII } catch {}
+try { Add-Content -LiteralPath $log -Value ('started ' + $PID) -Encoding UTF8 } catch {}
+$notify = New-Object System.Windows.Forms.NotifyIcon
+try {
+  if ($env:ZEEHO_ICON -and (Test-Path -LiteralPath $env:ZEEHO_ICON)) {
+    $notify.Icon = New-Object System.Drawing.Icon -ArgumentList $env:ZEEHO_ICON
+  }
+} catch {}
+if (-not $notify.Icon) { $notify.Icon = [System.Drawing.SystemIcons]::Application }
+$notify.Text = '极核签到守护'
+$notify.Visible = $true
+$menu = New-Object System.Windows.Forms.ContextMenuStrip
+$open = $menu.Items.Add('打开控制台')
+$stop = $menu.Items.Add('停止守护')
+$exit = $menu.Items.Add('退出托盘')
+$notify.ContextMenuStrip = $menu
+$open.add_Click({ Start-Process -FilePath $env:ZEEHO_CMD -WorkingDirectory $env:ZEEHO_APP_DIR })
+$notify.add_DoubleClick({ Start-Process -FilePath $env:ZEEHO_CMD -WorkingDirectory $env:ZEEHO_APP_DIR })
+$stop.add_Click({
+  try {
+    $raw = Get-Content -LiteralPath $env:ZEEHO_DAEMON_LOCK -Raw
+    $dpid = 0
+    try { $dpid = [int](($raw | ConvertFrom-Json).pid) } catch { $dpid = [int]$raw.Trim() }
+    if ($dpid -gt 0) { Stop-Process -Id $dpid -Force }
+  } catch {}
+  $notify.Visible = $false
+  [System.Windows.Forms.Application]::Exit()
+})
+$exit.add_Click({ $notify.Visible = $false; [System.Windows.Forms.Application]::Exit() })
+$timer = New-Object System.Windows.Forms.Timer
+$timer.Interval = 5000
+$timer.add_Tick({
+  try {
+    $raw = Get-Content -LiteralPath $env:ZEEHO_DAEMON_LOCK -Raw
+    $dpid = 0
+    try { $dpid = [int](($raw | ConvertFrom-Json).pid) } catch { $dpid = [int]$raw.Trim() }
+    if ($dpid -gt 0 -and (Get-Process -Id $dpid -ErrorAction SilentlyContinue)) { $notify.Text = '极核签到守护 · 运行中 PID ' + $dpid } else { $notify.Text = '极核签到守护 · 未运行' }
+  } catch { $notify.Text = '极核签到守护 · 未运行' }
+})
+$timer.Start()
+[System.Windows.Forms.Application]::Run()
+try { Remove-Item -LiteralPath $env:ZEEHO_TRAY_PID -Force } catch {}`;
+}
+
+function readTrayPid() {
+  try {
+    const pid = parseInt(fs.readFileSync(TRAY_PID_FILE, 'utf8'), 10) || 0;
+    if (!pid) return 0;
+    process.kill(pid, 0);
+    return pid;
+  } catch (e) {
+    return 0;
+  }
+}
+
+function startTray() {
+  if (process.platform !== 'win32') return;
+  if (loadConfig().tray === false) return;
+  if (readTrayPid()) return;
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    const scriptPath = path.join(DATA_DIR, 'tray.ps1');
+    fs.writeFileSync(scriptPath, '\uFEFF' + trayScript(), 'utf8');
+    const cmdPath = fs.existsSync(path.join(APP_DIR, '启动.cmd')) ? path.join(APP_DIR, '启动.cmd') : path.join(APP_DIR, '极核签到.cmd');
+    const spawnLog = path.join(DATA_DIR, 'tray-spawn.log');
+    const sysRoot = process.env.SystemRoot || process.env.windir || 'C:\\Windows';
+    const psExe = path.join(sysRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+    const exe = fs.existsSync(psExe) ? psExe : 'powershell.exe';
+    try {
+      fs.appendFileSync(spawnLog, `start ${nowStr()} parent=${process.pid} exe=${exe} sysroot=${process.env.SystemRoot || ''} temp=${process.env.TEMP || ''} path=${process.env.PATH ? 'set' : 'empty'}\n`);
+    } catch (e) {}
+    let outFd = null;
+    try {
+      outFd = fs.openSync(spawnLog, 'a');
+    } catch (e) {}
+    const child = spawn(exe, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath], {
+      cwd: APP_DIR,
+      detached: false,
+      stdio: ['ignore', outFd === null ? 'ignore' : outFd, outFd === null ? 'ignore' : outFd],
+      windowsHide: true,
+      env: Object.assign({}, process.env, {
+        SystemRoot: sysRoot,
+        windir: sysRoot,
+        TEMP: process.env.TEMP || DATA_DIR,
+        TMP: process.env.TMP || DATA_DIR,
+        ZEEHO_TRAY_PID: TRAY_PID_FILE,
+        ZEEHO_DAEMON_LOCK: LOCK_FILE,
+        ZEEHO_APP_DIR: APP_DIR,
+        ZEEHO_CMD: cmdPath,
+        ZEEHO_ICON: path.join(APP_DIR, 'zeeho.ico')
+      })
+    });
+    try {
+      fs.appendFileSync(spawnLog, `child=${child.pid}\n`);
+    } catch (e) {}
+    if (outFd !== null) {
+      try {
+        fs.closeSync(outFd);
+      } catch (e) {}
+    }
+    child.on('error', (e) => {
+      try {
+        fs.appendFileSync(spawnLog, `error ${nowStr()} ${(e && e.message) || e}\n`);
+      } catch (err) {}
+    });
+    child.on('exit', (code, signal) => {
+      try {
+        fs.appendFileSync(spawnLog, `exit ${nowStr()} code=${code} signal=${signal}\n`);
+      } catch (err) {}
+    });
+    child.unref();
+  } catch (e) {
+    try {
+      fs.appendFileSync(path.join(DATA_DIR, 'tray-spawn.log'), `throw ${nowStr()} ${(e && e.message) || e}\n`);
+    } catch (err) {}
+  }
+}
+
+function stopTray() {
+  const pid = readTrayPid();
+  if (pid) {
+    try {
+      process.kill(pid);
+    } catch (e) {}
+  }
+  try {
+    fs.unlinkSync(TRAY_PID_FILE);
+  } catch (e) {}
+}
+
 function bootStamp() {
   return Math.round(Date.now() / 1000 - os.uptime());
 }
@@ -1526,23 +1663,24 @@ async function startDaemonDetached() {
 function stopDaemon() {
   const pid = readAliveDaemonPid();
   if (!pid) {
-    try {
-      fs.unlinkSync(LOCK_FILE);
-    } catch (e) {}
+    stopTray();
+    removeLock();
     return false;
   }
   try {
     process.kill(pid);
   } catch (e) {}
-  try {
-    fs.unlinkSync(LOCK_FILE);
-  } catch (e) {}
+  stopTray();
+  removeLock();
   return true;
 }
 
 function cleanupLock() {
   const l = readLock();
-  if (l && l.pid === process.pid) removeLock();
+  if (l && l.pid === process.pid) {
+    stopTray();
+    removeLock();
+  }
 }
 
 async function runDaemon() {
@@ -1564,7 +1702,8 @@ async function runDaemon() {
 
   process.title = 'ZEEHO签到守护';
   log(`守护进程已启动（PID ${process.pid}），签到时间 ${initial.signTime}，账号 ${initial.accounts.filter((a) => a.enabled).length} 个`);
-  console.log(`守护运行中：每天 ${initial.signTime} 自动签到。关闭窗口或按 Ctrl+C 退出。`);
+  console.log(`守护运行中：每天 ${initial.signTime} 自动签到（后台无窗口运行）。`);
+  startTray();
 
   let busy = false;
   let lastAttemptDate = '';
