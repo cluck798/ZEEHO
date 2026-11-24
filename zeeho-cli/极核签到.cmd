@@ -49,6 +49,7 @@ exit /b %CODE%
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const https = require('https');
 const crypto = require('crypto');
 const readline = require('readline');
@@ -64,7 +65,7 @@ const LOG_FILE = path.join(DATA_DIR, 'log.txt');
 const LOCK_FILE = path.join(DATA_DIR, 'daemon.pid');
 const UPDATE_STATE_FILE = path.join(DATA_DIR, 'update.json');
 
-const VERSION = '1.1.4';
+const VERSION = '1.1.5';
 // 更新源：优先 jsDelivr（国内可访问），GitHub raw 兜底；支持环境变量用于测试/自定义镜像
 const UPDATE_VERSION_URLS = process.env.ZEEHO_UPDATE_VERSION_URL
   ? [process.env.ZEEHO_UPDATE_VERSION_URL]
@@ -1452,19 +1453,61 @@ function migrateAutostart() {
   } catch (e) {}
 }
 
-function readAliveDaemonPid() {
-  let pid = 0;
+function bootStamp() {
+  return Math.round(Date.now() / 1000 - os.uptime());
+}
+function readLock() {
   try {
-    pid = parseInt(fs.readFileSync(LOCK_FILE, 'utf8'), 10) || 0;
+    const raw = fs.readFileSync(LOCK_FILE, 'utf8').replace(/^\uFEFF/, '').trim();
+    if (!raw) return null;
+    if (raw.charAt(0) === '{') {
+      const j = JSON.parse(raw);
+      const pid = parseInt(j.pid, 10) || 0;
+      return pid ? { pid, boot: Number(j.boot) || 0, time: Number(j.time) || 0, legacy: false } : null;
+    }
+    const pid = parseInt(raw, 10) || 0;
+    return pid ? { pid, boot: 0, time: 0, legacy: true } : null;
   } catch (e) {
-    return 0;
+    return null;
   }
-  if (!pid) return 0;
+}
+function removeLock() {
   try {
-    process.kill(pid, 0);
-    return pid;
+    fs.unlinkSync(LOCK_FILE);
+  } catch (e) {}
+}
+function writeLock() {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(LOCK_FILE, JSON.stringify({ pid: process.pid, boot: bootStamp(), time: Date.now() }));
+  } catch (e) {}
+}
+function touchLock() {
+  const l = readLock();
+  if (!l || l.pid !== process.pid) return;
+  writeLock();
+}
+function readAliveDaemonPid() {
+  const l = readLock();
+  if (!l || !l.pid) return 0;
+  if (!l.legacy) {
+    // 系统重启后 boot 时间会变化；心跳超时说明进程已异常退出
+    if (l.boot && Math.abs(bootStamp() - l.boot) > 90) {
+      removeLock();
+      return 0;
+    }
+    if (l.time && Date.now() - l.time > 120000) {
+      removeLock();
+      return 0;
+    }
+  }
+  try {
+    process.kill(l.pid, 0);
+    return l.pid;
   } catch (e) {
-    return e.code === 'EPERM' ? pid : 0;
+    if (e.code === 'EPERM') return l.pid;
+    removeLock();
+    return 0;
   }
 }
 async function startDaemonDetached() {
@@ -1498,10 +1541,8 @@ function stopDaemon() {
 }
 
 function cleanupLock() {
-  try {
-    const pid = parseInt(fs.readFileSync(LOCK_FILE, 'utf8'), 10);
-    if (pid === process.pid) fs.unlinkSync(LOCK_FILE);
-  } catch (e) {}
+  const l = readLock();
+  if (l && l.pid === process.pid) removeLock();
 }
 
 async function runDaemon() {
@@ -1512,7 +1553,7 @@ async function runDaemon() {
     return;
   }
   fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(LOCK_FILE, String(process.pid));
+  writeLock();
 
   const initial = loadConfig();
   if (!initial.accounts.some((a) => a.enabled)) {
@@ -1558,6 +1599,8 @@ async function runDaemon() {
 
   await tick();
   setInterval(tick, 15000);
+  // 心跳：避免崩溃/重启后残留锁导致下次无法启动
+  setInterval(touchLock, 15000);
 
   // 后台守护每天检查一次新版本（不阻塞签到）
   maybeAutoCheckUpdate().catch(() => {});
@@ -1765,4 +1808,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { VERSION, getSign, gatewaySign, authHeaders, apiBaseInfo, fetchProfile, apiSignInfo, apiSign, signAccount, loadConfig, setAutostart, isAutostartOn, migrateAutostart, socialHeaders, appQueryGetHeaders, httpGet, httpPost, httpPut, httpDelete, runCommunityTasks, compareVersion, checkForUpdate, maybeAutoCheckUpdate, loadUpdateState };
+module.exports = { VERSION, getSign, gatewaySign, authHeaders, apiBaseInfo, fetchProfile, apiSignInfo, apiSign, signAccount, loadConfig, setAutostart, isAutostartOn, migrateAutostart, readAliveDaemonPid, socialHeaders, appQueryGetHeaders, httpGet, httpPost, httpPut, httpDelete, runCommunityTasks, compareVersion, checkForUpdate, maybeAutoCheckUpdate, loadUpdateState };
