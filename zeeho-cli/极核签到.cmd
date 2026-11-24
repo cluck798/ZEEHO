@@ -64,7 +64,7 @@ const LOG_FILE = path.join(DATA_DIR, 'log.txt');
 const LOCK_FILE = path.join(DATA_DIR, 'daemon.pid');
 const UPDATE_STATE_FILE = path.join(DATA_DIR, 'update.json');
 
-const VERSION = '1.1.2';
+const VERSION = '1.1.3';
 // 更新源：优先 jsDelivr（国内可访问），GitHub raw 兜底；支持环境变量用于测试/自定义镜像
 const UPDATE_VERSION_URLS = process.env.ZEEHO_UPDATE_VERSION_URL
   ? [process.env.ZEEHO_UPDATE_VERSION_URL]
@@ -661,36 +661,17 @@ async function maybeAutoCheckUpdate() {
 }
 
 // ------------------------------------------------------------------
-// Windows 通知（Toast）
+// Windows 通知（系统消息框，避免使用 PowerShell）
 // ------------------------------------------------------------------
-function psLiteral(s) {
-  return "'" + String(s).replace(/'/g, "''") + "'";
-}
 function toast(title, body) {
   if (process.platform !== 'win32') return;
   try {
-    const esc = (s) =>
-      String(s || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-    const xml = `<toast><visual><binding template="ToastGeneric"><text>${esc(title)}</text><text>${esc(body)}</text></binding></visual><audio src="ms-winsoundevent:Notification.Default"/></toast>`;
-    const ps = [
-      "$ErrorActionPreference='Stop'",
-      '[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null',
-      '[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom, ContentType = WindowsRuntime] > $null',
-      '$doc = New-Object Windows.Data.Xml.Dom.XmlDocument',
-      `$doc.LoadXml(${psLiteral(xml)})`,
-      '$toast = New-Object Windows.UI.Notifications.ToastNotification $doc',
-      "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe').Show($toast)"
-    ].join('\r\n');
-    const b64 = Buffer.from(ps, 'utf16le').toString('base64');
-    const child = spawn(
-      'powershell.exe',
-      ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-EncodedCommand', b64],
-      { windowsHide: true, stdio: 'ignore' }
-    );
+    const text = `${title}\n${String(body || '').slice(0, 300)}`;
+    const child = spawn('msg.exe', ['*', '/TIME:20', text], {
+      windowsHide: true,
+      stdio: 'ignore',
+      detached: true
+    });
     child.on('error', () => {});
     child.unref();
   } catch (e) {
@@ -1395,43 +1376,80 @@ async function setSignTime() {
   await pause();
 }
 
-function startupVbsPath() {
+function startupDir() {
   const base = process.env.APPDATA;
   if (!base) return null;
-  return path.join(base, 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup', '极核签到守护.vbs');
+  return path.join(base, 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
+}
+function startupCmdPath() {
+  const dir = startupDir();
+  return dir ? path.join(dir, '极核签到守护.cmd') : null;
+}
+function startupLegacyVbsPath() {
+  const dir = startupDir();
+  return dir ? path.join(dir, '极核签到守护.vbs') : null;
 }
 function isAutostartOn() {
-  const f = startupVbsPath();
-  return !!(f && fs.existsSync(f));
+  const cmd = startupCmdPath();
+  const vbs = startupLegacyVbsPath();
+  return !!((cmd && fs.existsSync(cmd)) || (vbs && fs.existsSync(vbs)));
+}
+function writeStartupCmd() {
+  const f = startupCmdPath();
+  if (!f) return false;
+  const nodePath = process.execPath;
+  const scriptPath = path.join(APP_DIR, 'zeeho.js');
+  if (!fs.existsSync(scriptPath)) return false;
+  const content =
+    '@echo off\r\n' +
+    'chcp 65001 >nul\r\n' +
+    `cd /d "${APP_DIR}"\r\n` +
+    `start "" /min "${nodePath}" "${scriptPath}" daemon\r\n`;
+  fs.mkdirSync(path.dirname(f), { recursive: true });
+  fs.writeFileSync(f, content, 'utf8');
+  return true;
 }
 function setAutostart(on) {
-  const f = startupVbsPath();
-  if (!f) {
+  const dir = startupDir();
+  if (!dir) {
     console.log('无法获取启动目录（APPDATA 缺失）。');
     return false;
   }
+  const cmd = startupCmdPath();
+  const vbs = startupLegacyVbsPath();
   if (on) {
-    const nodePath = process.execPath;
-    const scriptPath = path.join(APP_DIR, 'zeeho.js');
-    if (!fs.existsSync(scriptPath)) {
+    if (!writeStartupCmd()) {
       console.log('未找到 zeeho.js，无法设置自启动。');
       return false;
     }
-    const content =
-      "' 极核每日签到 · 开机自启（由程序自动生成，请勿手改）\r\n" +
-      `CreateObject("WScript.Shell").Run """${nodePath}"" ""${scriptPath}"" daemon", 0, False\r\n`;
-    // WSH 读取 UTF-16LE + BOM 的脚本可正确处理中文路径
-    const buf = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(content, 'utf16le')]);
-    fs.mkdirSync(path.dirname(f), { recursive: true });
-    fs.writeFileSync(f, buf);
+    if (vbs && fs.existsSync(vbs)) {
+      try {
+        fs.unlinkSync(vbs);
+      } catch (e) {}
+    }
     return true;
   }
+  let ok = true;
+  for (const f of [cmd, vbs]) {
+    if (f && fs.existsSync(f)) {
+      try {
+        fs.unlinkSync(f);
+      } catch (e) {
+        ok = false;
+      }
+    }
+  }
+  return ok;
+}
+// 旧版使用隐藏 VBS 自启动，容易被杀软误报；启动时自动迁移为普通启动脚本
+function migrateAutostart() {
+  const vbs = startupLegacyVbsPath();
+  if (!vbs || !fs.existsSync(vbs)) return;
+  const cmd = startupCmdPath();
   try {
-    fs.unlinkSync(f);
-    return true;
-  } catch (e) {
-    return false;
-  }
+    if (cmd && !fs.existsSync(cmd)) writeStartupCmd();
+    fs.unlinkSync(vbs);
+  } catch (e) {}
 }
 
 function readAliveDaemonPid() {
@@ -1487,6 +1505,7 @@ function cleanupLock() {
 }
 
 async function runDaemon() {
+  migrateAutostart();
   const running = readAliveDaemonPid();
   if (running && running !== process.pid) {
     log(`守护进程已在运行（PID ${running}），本次退出。`);
@@ -1560,9 +1579,8 @@ function enableQuickEdit() {
     const ps = [
       'Add-Type -Namespace ZeehoConsole -Name Native -MemberDefinition \'[DllImport("kernel32.dll",SetLastError=true)]public static extern IntPtr GetStdHandle(int n);[DllImport("kernel32.dll",SetLastError=true)]public static extern bool GetConsoleMode(IntPtr h,out uint m);[DllImport("kernel32.dll",SetLastError=true)]public static extern bool SetConsoleMode(IntPtr h,uint m);\'',
       '$h=[ZeehoConsole.Native]::GetStdHandle(-10);$m=[uint32]0;[void][ZeehoConsole.Native]::GetConsoleMode($h,[ref]$m);[void][ZeehoConsole.Native]::SetConsoleMode($h,($m -bor 0x40 -bor 0x80))'
-    ].join('\r\n');
-    const b64 = Buffer.from(ps, 'utf16le').toString('base64');
-    execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-EncodedCommand', b64], {
+    ].join('; ');
+    execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], {
       windowsHide: true,
       stdio: 'ignore',
       timeout: 8000
@@ -1633,6 +1651,7 @@ function printHeader() {
 }
 
 async function menu() {
+  migrateAutostart();
   enableQuickEdit();
   await maybeAutoCheckUpdate();
   createRL();
@@ -1746,4 +1765,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { VERSION, getSign, gatewaySign, authHeaders, apiBaseInfo, fetchProfile, apiSignInfo, apiSign, signAccount, loadConfig, setAutostart, isAutostartOn, socialHeaders, appQueryGetHeaders, httpGet, httpPost, httpPut, httpDelete, runCommunityTasks, compareVersion, checkForUpdate, maybeAutoCheckUpdate, loadUpdateState };
+module.exports = { VERSION, getSign, gatewaySign, authHeaders, apiBaseInfo, fetchProfile, apiSignInfo, apiSign, signAccount, loadConfig, setAutostart, isAutostartOn, migrateAutostart, socialHeaders, appQueryGetHeaders, httpGet, httpPost, httpPut, httpDelete, runCommunityTasks, compareVersion, checkForUpdate, maybeAutoCheckUpdate, loadUpdateState };
