@@ -64,7 +64,7 @@ const LOG_FILE = path.join(DATA_DIR, 'log.txt');
 const LOCK_FILE = path.join(DATA_DIR, 'daemon.pid');
 const UPDATE_STATE_FILE = path.join(DATA_DIR, 'update.json');
 
-const VERSION = '1.1.3';
+const VERSION = '1.1.4';
 // 更新源：优先 jsDelivr（国内可访问），GitHub raw 兜底；支持环境变量用于测试/自定义镜像
 const UPDATE_VERSION_URLS = process.env.ZEEHO_UPDATE_VERSION_URL
   ? [process.env.ZEEHO_UPDATE_VERSION_URL]
@@ -599,7 +599,7 @@ async function checkForUpdate({ manual = false, silent = false } = {}) {
       continue;
     }
     try {
-      const j = JSON.parse(r.body);
+      const j = JSON.parse(String(r.body).replace(/^\uFEFF/, ''));
       if (j && j.version) {
         meta = j;
         break;
