@@ -65,7 +65,7 @@ const LOG_FILE = path.join(DATA_DIR, 'log.txt');
 const LOCK_FILE = path.join(DATA_DIR, 'daemon.pid');
 const UPDATE_STATE_FILE = path.join(DATA_DIR, 'update.json');
 
-const VERSION = '1.1.5';
+const VERSION = '1.1.6';
 // 更新源：优先 jsDelivr（国内可访问），GitHub raw 兜底；支持环境变量用于测试/自定义镜像
 const UPDATE_VERSION_URLS = process.env.ZEEHO_UPDATE_VERSION_URL
   ? [process.env.ZEEHO_UPDATE_VERSION_URL]
@@ -1405,7 +1405,7 @@ function writeStartupCmd() {
     '@echo off\r\n' +
     'chcp 65001 >nul\r\n' +
     `cd /d "${APP_DIR}"\r\n` +
-    `start "" /min "${nodePath}" "${scriptPath}" daemon\r\n`;
+    `"${nodePath}" "${scriptPath}" start-bg\r\n`;
   fs.mkdirSync(path.dirname(f), { recursive: true });
   fs.writeFileSync(f, content, 'utf8');
   return true;
@@ -1667,9 +1667,17 @@ async function pause(msg = '按回车返回...') {
   await ask(msg);
 }
 
+function updateWindowTitle(pid) {
+  if (process.platform !== 'win32') return;
+  try {
+    process.title = pid ? `极核每日签到 | 守护运行中 PID ${pid}` : '极核每日签到 | 守护未运行';
+  } catch (e) {}
+}
+
 function printHeader() {
   const cfg = loadConfig();
   const pid = readAliveDaemonPid();
+  updateWindowTitle(pid);
   const normal = cfg.accounts.filter((a) => a.enabled && a.status !== 'expired').length;
   const expired = cfg.accounts.filter((a) => a.enabled && a.status === 'expired').length;
   const disabled = cfg.accounts.filter((a) => !a.enabled).length;
@@ -1775,6 +1783,16 @@ async function main() {
     await runDaemon();
     return;
   }
+  if (cmd === 'start-bg') {
+    const r = await startDaemonDetached();
+    if (r.ok) {
+      console.log(`后台守护已启动（PID ${r.pid}），关闭当前窗口不会停止。`);
+      log(`后台守护已启动（PID ${r.pid}）`);
+    } else {
+      console.log(r.msg);
+    }
+    return;
+  }
   if (cmd === 'sign') {
     await runAll('命令行');
     return;
@@ -1795,6 +1813,7 @@ async function main() {
     console.log('  双击「极核签到.cmd」进入菜单');
     console.log('  node zeeho.js sign     立即签到一次');
     console.log('  node zeeho.js daemon   后台守护（定时签到）');
+    console.log('  node zeeho.js start-bg 无窗口启动后台守护');
     console.log('  node zeeho.js list     查看账号');
     return;
   }
