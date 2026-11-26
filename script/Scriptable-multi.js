@@ -1,4 +1,5 @@
-// ============= 极核 ZEEHO · Scriptable（多账号版 v1.1） =============
+// ============= 极核 ZEEHO · Scriptable（多账号版 v1.2） =============
+// v1.2：⌨️ 适配 Scriptable 1.8.3——Alert.textFieldValue 失效，统一改用 readTextField（WebView 输入兜底），修复手机号/验证码/Token 无法输入
 // v1.1：H5 通道密钥轮换（appId=AiTXmBrm）+ 签到/盲盒/补签接口迁到 /H5/ 前缀（服务端 2026-10 调整）
 // ============= 配置与常量 =========
 const BASE = "https://tapi.zeehoev.com";
@@ -472,7 +473,63 @@ function toQuery(params = {}) {
 }
 
 function cleanToken(token) {
-  return String(token || "").replace(/^[bB]earer\s+/i, "").trim();
+  // v2.7：兼容剪贴板来源的 Token 杂质——剥离 Authorization:/Bearer 前缀、首尾引号与全部空白换行（JWT 串内无空白）
+  let t = String(token || "");
+  t = t.replace(/^Authorization\s*:?\s*/i, "");
+  t = t.replace(/^[bB]earer\s+/i, "");
+  t = t.replace(/^["'`]+|["'`]+$/g, "");
+  t = t.replace(/\s+/g, "");
+  return t;
+}
+
+// v2.7 WebView 网页输入（新版 Scriptable 的 Alert.textFieldValue 失效时的现场输入兜底）：
+// 打开内嵌网页 textarea，用户打字/粘贴/编辑后点左上角「完成」关闭，脚本读回输入值（与 Alert 独立，不受其 bug 影响）
+async function webViewPrompt(title, initial = "", placeholder = "", hint = "") {
+  const esc = (s) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const html = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:-apple-system;padding:16px;background:#f2f2f7;margin:0}h3{margin:0 0 10px;font-size:17px}textarea{width:100%;height:38vh;font-size:16px;padding:10px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box;-webkit-user-select:text}.tip{color:#666;font-size:13px;margin-top:8px}button{margin-top:12px;width:100%;padding:12px;font-size:16px;background:#2C76F2;color:#fff;border:none;border-radius:8px}</style></head><body><h3>${esc(title)}</h3>${hint ? `<div class="tip" style="margin-bottom:8px">${esc(hint)}</div>` : ""}<textarea id="t" placeholder="${esc(placeholder)}">${esc(initial)}</textarea><div style="display:flex;gap:10px;margin-top:12px"><button style="flex:1;margin:0" onclick="document.getElementById('tip').style.display='block'">✅ 记住内容</button><button style="flex:1;margin:0;background:#8e8e93" onclick="document.getElementById('t').value='';document.getElementById('t').focus()">🗑 清空重填</button></div><div id="tip" class="tip" style="display:none">已记录，点左上角「完成」关闭本页返回脚本</div></body></html>`;
+  const wv = new WebView();
+  await wv.loadHTML(html);
+  await wv.present(false);
+  try {
+    const v = await wv.evaluateJavaScript("String(document.getElementById('t').value || '')");
+    return String(v || "").trim();
+  } catch (e) { return ""; }
+}
+
+// v2.7c 输入（单页化 + 智能直达）：说明、剪贴板预填、输入框合并进一个 WebView 页面，点菜单后直接弹输入页
+// clipboard:true 场景自动预填剪贴板内容（Token/验证码/手机号/URL 等“刚复制好”的内容）；
+// smartToken:true 场景检测到剪贴板像 Token 时直接弹确认窗（连输入页都省了）；
+// 编辑型场景预填 initial（当前值）；textarea 支持现场打字 / 长按粘贴 / 清空重填
+function looksLikeToken(s) {
+  const t = String(s || "").replace(/\s+/g, "");
+  if (!t) return false;
+  if (/^eyJ[A-Za-z0-9_-]{20,}\./.test(t)) return true; // JWT 形态
+  return t.length >= 80;                               // 长随机串形态
+}
+async function readTextField(alert, idx, opts = {}) {
+  let clip = "";
+  try { clip = String(Pasteboard.paste() || "").trim(); } catch (e) { clip = ""; }
+  // B2 智能直达：Token 场景且剪贴板内容像 Token → 一步确认，无需打开输入页
+  if (opts.smartToken && clip && looksLikeToken(clip)) {
+    const a = new Alert();
+    a.title = "🔑 检测到剪贴板 Token";
+    a.message = `长度 ${clip.replace(/\s+/g, "").length} · 开头 ${clip.replace(/\s+/g, "").substring(0, 12)}…\n\n是否直接使用？`;
+    a.addAction("✅ 直接使用");
+    a.addAction("⌨️ 打开输入页查看/修改");
+    a.addCancelAction("取消");
+    const r = await a.present();
+    if (r === 0) return clip;
+    if (r === -1) return "";
+  }
+  // 单页输入：编辑型场景预填当前值；复制型场景自动预填剪贴板
+  let prefill = String(opts.initial || "");
+  const clipFilled = !prefill && opts.clipboard && clip;
+  if (clipFilled) prefill = clip;
+  const hint2 = (opts.hint ? opts.hint + "\n\n" : "") +
+    (clipFilled ? "💡 已自动填入剪贴板内容，确认无误点左上角「完成」；不对可打字或长按输入框修改\n" : "");
+  try {
+    return await webViewPrompt(opts.title || "请输入内容", prefill, opts.placeholder || "", hint2);
+  } catch (e) { return ""; }
 }
 
 const SERVER_NAME = getParam("server_name") || getParam("serverName") || "SMART";
@@ -758,17 +815,12 @@ async function handleTokenExpired() {
   logDebug("Token过期", "显示更新弹窗");
   const acc = CURRENT_ACC || pickAccountForWidget(getStore());
   
-  const alert = new Alert();
-  alert.title = "🔑 Token已过期";
-  alert.message = `账号「${acc ? dispName(acc) : "默认"}」的Token已过期，请登录极核App抓包获取新Token。\n\n获取方式：\n1. 打开ZEEHO App\n2. 抓包获取Authorization头\n3. 复制Token内容粘贴到下方\n\n💡 也可在菜单→账号管理 里用「手机号登录」免抓包更新`;
-  alert.addTextField("粘贴新Token", "");
-  alert.addAction("✅ 更新Token");
-  alert.addCancelAction("取消");
-  
-  const idx = await alert.present();
-  if (idx === -1) return false;
-  
-  const newToken = cleanToken(alert.textFieldValue(0));
+  const newToken = cleanToken(await readTextField(null, 0, {
+    title: "🔑 Token已过期 · 更新Token",
+    smartToken: true,
+    clipboard: true,
+    hint: `账号「${acc ? dispName(acc) : "默认"}」的Token已过期。\n获取：打开ZEEHO App → 抓包获取 Authorization 头 → 复制 Token 内容后打开本页\n也可在菜单→账号管理 里用「手机号登录」免抓包更新`,
+  }));
   if (!newToken) {
     await simpleAlert("❌ Token不能为空", "请粘贴有效的Token");
     return false;
@@ -780,7 +832,7 @@ async function handleTokenExpired() {
     saveStore(getStore());
   } else {
     // 兼容旧版无账号场景：仍写回脚本顶部
-    await saveTokenToScript(alert.textFieldValue(0).trim());
+    await saveTokenToScript(newToken);
   }
   
   await simpleAlert("✅ Token已更新", `新Token: ${newToken.substring(0, 10)}...\n已保存，请重新运行脚本。`);
@@ -1911,27 +1963,21 @@ async function chooseVehicle(token) {
 }
 
 async function promptForToken(initial = "") {
-  const a = new Alert();
-  a.title = "🔑 设置Token";
-  a.message = "请粘贴ZEEHO Token。\n\n获取方式：\n1. 打开ZEEHO App\n2. 抓包获取Authorization头\n3. 复制Token内容粘贴到下方\n\n💡 输入后会自动保存到脚本顶部的 HARDCODED_TOKEN";
-  a.addTextField("在此粘贴Token包括Bearer ", initial);
-  a.addAction("确定");
-  a.addCancelAction("取消");
-  const idx = await a.present();
-  if (idx === -1) throw new Error("已取消");
-  return a.textFieldValue(0).trim();
+  return cleanToken(await readTextField(null, 0, {
+    title: "🔑 设置Token",
+    initial,
+    smartToken: true,
+    clipboard: true,
+    hint: "请粘贴 ZEEHO Token（会自动保存到脚本顶部的 HARDCODED_TOKEN）\n获取：打开ZEEHO App → 抓包获取 Authorization 头 → 复制 Token 内容后打开本页",
+  }));
 }
 
 async function promptForImageUrl(initial = "") {
-  const a = new Alert();
-  a.title = "车辆图片";
-  a.message = "输入URL可自定义图片，留空则自动抓取app图片";
-  a.addTextField("默认留空自动抓取图片", initial);
-  a.addAction("确定");
-  a.addCancelAction("跳过");
-  const idx = await a.present();
-  if (idx === -1) return "";
-  return a.textFieldValue(0).trim();
+  return await readTextField(null, 0, {
+    title: "车辆图片",
+    initial,
+    hint: "输入 URL 可自定义图片，留空则自动抓取 app 图片",
+  });
 }
 
 async function saveTokenToScript(token) {
@@ -2124,14 +2170,11 @@ async function finalizeAccount({ token, userId, userName, phone, picked, vehicle
 
 // 手机号登录添加账号（免抓包）
 async function addAccountByPhone() {
-  const pa = new Alert();
-  pa.title = "📱 手机号登录（免抓包）";
-  pa.message = "输入极核 App 注册手机号，将发送短信验证码";
-  pa.addTextField("手机号（11位）", "");
-  pa.addAction("发送验证码");
-  pa.addCancelAction("取消");
-  if ((await pa.present()) === -1) return null;
-  const phone = pa.textFieldValue(0).trim();
+  const phone = await readTextField(null, 0, {
+    title: "📱 手机号登录（免抓包）",
+    clipboard: true,
+    hint: "输入极核 App 注册手机号（11位），将发送短信验证码",
+  });
   if (!/^1\d{10}$/.test(phone)) {
     await simpleAlert("❌ 手机号格式不对", "应为11位数字");
     return null;
@@ -2143,14 +2186,11 @@ async function addAccountByPhone() {
     return null;
   }
 
-  const ca = new Alert();
-  ca.title = "🔢 输入验证码";
-  ca.message = `已发送至 ${phone.slice(0, 3)}****${phone.slice(-4)}`;
-  ca.addTextField("短信验证码", "");
-  ca.addAction("登录");
-  ca.addCancelAction("取消");
-  if ((await ca.present()) === -1) return null;
-  const code = ca.textFieldValue(0).trim();
+  const code = await readTextField(null, 0, {
+    title: "🔢 输入验证码",
+    clipboard: true,
+    hint: `验证码已发送至 ${phone.slice(0, 3)}****${phone.slice(-4)}\n从短信直接复制验证码，打开本页即已自动填入`,
+  });
   if (!code) { await simpleAlert("❌ 验证码为空", "请重新输入"); return null; }
 
   const login = await loginByPhoneReq(phone, code);
@@ -3657,16 +3697,14 @@ async function menuMonitor() {
       await simpleAlert("🔋 检测完成", `${dispName(acc)}\n${b.chargeStateStr} · ${Number(b.soc || 0)}% · ${b.voltage ? b.voltage.toFixed(1) + "V" : "无电压数据"}\n${tail}`);
     } catch (e) { await simpleAlert("❌ 检测失败", friendlyErr(e)); }
   } else if (idx === 1) {
-    const pa = new Alert();
-    pa.title = "驻留监控设置";
-    pa.message = "保持脚本前台运行期间，按间隔轮询充电状态并通知（充满 / 低电量）";
-    pa.addTextField(`间隔分钟(默认${cfg.monitorIntervalMin})`, String(cfg.monitorIntervalMin));
-    pa.addTextField(`持续分钟(默认${cfg.monitorDurationMin})`, String(cfg.monitorDurationMin));
-    pa.addAction("开始监控");
-    pa.addCancelAction("取消");
-    if ((await pa.present()) === -1) return;
-    const iv = Number(pa.textFieldValue(0)) || cfg.monitorIntervalMin;
-    const dur = Number(pa.textFieldValue(1)) || cfg.monitorDurationMin;
+    const cv = await readTextField(null, 0, {
+      title: "⏱ 驻留监控参数",
+      initial: `${cfg.monitorIntervalMin}\n${cfg.monitorDurationMin}`,
+      hint: `保持脚本前台运行期间，按间隔轮询充电状态并通知（充满 / 低电量）\n第一行=间隔分钟，第二行=持续分钟（默认 ${cfg.monitorIntervalMin} / ${cfg.monitorDurationMin}）`,
+    });
+    const lines = cv.split(/\r?\n+/).map((x) => x.trim()).filter(Boolean);
+    const iv = Number(lines[0]) || cfg.monitorIntervalMin;
+    const dur = Number(lines[1]) || cfg.monitorDurationMin;
     cfg.monitorIntervalMin = iv;
     cfg.monitorDurationMin = dur;
     saveStore(getStore());
@@ -3687,14 +3725,11 @@ async function menuMonitor() {
       saveStore(getStore());
       await simpleAlert("✅ 已设置", "满电通知：电量达到 100% 时提醒");
     } else if (mi === 1) {
-      const pa = new Alert();
-      pa.title = "设置电压伏数";
-      pa.message = "电压达到该数值即视为充满并通知（例如满电 84V）";
-      pa.addTextField("电压(V)", String(cur > 0 ? cur : 84));
-      pa.addAction("保存");
-      pa.addCancelAction("取消");
-      if ((await pa.present()) === -1) return;
-      const v = Number(pa.textFieldValue(0));
+      const v = Number(await readTextField(null, 0, {
+        title: "🔢 设置电压伏数",
+        initial: String(cur > 0 ? cur : 84),
+        hint: "电压达到该数值即视为充满并通知（例如满电 84V）",
+      }));
       if (!isFinite(v) || v <= 0) { await simpleAlert("❌ 无效数值", "请输入大于0的数字，如 84"); return; }
       cfg.voltageThreshold = v;
       saveStore(getStore());
@@ -3705,14 +3740,11 @@ async function menuMonitor() {
     saveStore(getStore());
     await simpleAlert("✅ 已更新", `充满通知：${getStore().cfg.notifyFull ? "开" : "关"}`);
   } else if (idx === 4) {
-    const pa = new Alert();
-    pa.title = "低电量通知";
-    pa.message = `当前：${cfg.notifyLow ? "开" : "关"} · 阈值 ≤${cfg.lowThreshold}%\n修改阈值后自动开启；输入 0 表示关闭`;
-    pa.addTextField("低电量阈值(%)", String(cfg.lowThreshold));
-    pa.addAction("保存");
-    pa.addCancelAction("取消");
-    if ((await pa.present()) === -1) return;
-    const v = Number(pa.textFieldValue(0));
+    const v = Number(await readTextField(null, 0, {
+      title: "🔋 低电量通知",
+      initial: String(cfg.lowThreshold),
+      hint: `当前：${cfg.notifyLow ? "开" : "关"} · 阈值 ≤${cfg.lowThreshold}%\n修改阈值后自动开启；输入 0 表示关闭`,
+    }));
     if (!isFinite(v) || v < 0) { await simpleAlert("❌ 无效数值", "请输入数字"); return; }
     if (v === 0) getStore().cfg.notifyLow = false;
     else { getStore().cfg.notifyLow = true; getStore().cfg.lowThreshold = v; }
@@ -3885,14 +3917,11 @@ async function menuSettings() {
     saveStore(getStore());
     await simpleAlert("✅ 已更新", `自动发布：${cfg.autoPost ? "开" : "关"}`);
   } else if (idx === 1) {
-    const pa = new Alert();
-    pa.title = "发布内容";
-    pa.message = "每天自动发布并删除的动态内容";
-    pa.addTextField("内容", cfg.postContent);
-    pa.addAction("保存");
-    pa.addCancelAction("取消");
-    if ((await pa.present()) === -1) return;
-    const v = pa.textFieldValue(0).trim();
+    const v = await readTextField(null, 0, {
+      title: "✏️ 发布内容",
+      initial: String(cfg.postContent || ""),
+      hint: "每天自动发布并删除的动态内容，可现场编辑",
+    });
     if (!v) { await simpleAlert("❌ 不能为空", "请填写内容"); return; }
     cfg.postContent = v;
     saveStore(getStore());
@@ -3902,26 +3931,20 @@ async function menuSettings() {
     saveStore(getStore());
     await simpleAlert("✅ 已更新", `自动补签：${cfg.autoSupplement ? "开" : "关"}`);
   } else if (idx === 3) {
-    const pa = new Alert();
-    pa.title = "并发数";
-    pa.message = "多账号并发签到的同时请求数（建议 2~3，过高可能触发风控）";
-    pa.addTextField("并发数(1~5)", String(cfg.concurrency));
-    pa.addAction("保存");
-    pa.addCancelAction("取消");
-    if ((await pa.present()) === -1) return;
-    const v = Math.max(1, Math.min(5, Number(pa.textFieldValue(0)) || 3));
+    const v = Math.max(1, Math.min(5, Number(await readTextField(null, 0, {
+      title: "🔢 并发数",
+      initial: String(cfg.concurrency),
+      hint: "多账号并发签到的同时请求数（建议 2~3，过高可能触发风控）",
+    })) || 3));
     cfg.concurrency = v;
     saveStore(getStore());
     await simpleAlert("✅ 已保存", `并发数：${v}`);
   } else if (idx === 4) {
-    const pa = new Alert();
-    pa.title = "云端控车 AES 密钥";
-    pa.message = "32位十六进制字符串，用于开/关锁加密（已内置默认密钥）";
-    pa.addTextField("AES Key", cfg.aesKey);
-    pa.addAction("保存");
-    pa.addCancelAction("取消");
-    if ((await pa.present()) === -1) return;
-    const v = pa.textFieldValue(0).trim();
+    const v = await readTextField(null, 0, {
+      title: "🔐 云端控车 AES 密钥",
+      initial: String(cfg.aesKey || ""),
+      hint: "32位十六进制字符串，用于开/关锁加密（已内置默认密钥）",
+    });
     if (!/^[0-9a-fA-F]{32}$/.test(v)) { await simpleAlert("❌ 格式错误", "需为32位十六进制字符"); return; }
     cfg.aesKey = v;
     saveStore(getStore());
