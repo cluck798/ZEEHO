@@ -1,9 +1,10 @@
 // Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
 // icon-color: deep-blue; icon-glyph: sf:wand.and.stars;
-// ============= 极核 ZEEHO · Scriptable（单账号版 v2.7） =============
+// ============= 极核 ZEEHO · Scriptable（单账号版 v2.7.1） =============
 // 单账号：只维护一个账号，菜单内可随时「手机号登录 / 粘贴 Token」重设
 // 功能全集：自动签到 / 盲盒 / 补签 / 发布动态 · 车辆控制 · 充电监控 · 小组件（小 / 中 / 大 + 锁屏圆形 / 长方形）
+// v2.7.1：🧩 组件必定渲染——Token 过期/异常/慢网络时也 setWidget，修复组件报 "Call Script.setWidget() to set the content of the widget."
 // v2.7：⌨️ 适配 Scriptable 1.8.3——Alert.textFieldValue 失效，统一改用 readTextField（WebView 输入兜底），修复手机号/验证码/Token 无法输入
 // 相对 v2.4 另含：🎨 组件新版式（中尺寸 V6 / 大尺寸 V4 / 锁屏）、自定义车辆图片、组件背景图、组件签到时段控制
 
@@ -843,7 +844,8 @@ async function requestWriteWithFallback(method, url, params, data, token, label)
 
 // ========== Token过期处理（更新当前账号的Token） ==========
 async function handleTokenExpired() {
-  if (config.runsInWidget) return false;
+  // 组件场景（含组件预览：runsInWidget 可能为 false，但 widgetFamily 有值）不能弹输入框
+  if (config.runsInWidget || config.widgetFamily) return false;
   
   logDebug("Token过期", "显示更新弹窗");
   const acc = CURRENT_ACC || pickAccountForWidget(getStore());
@@ -5053,8 +5055,8 @@ async function runSinglePipeline(acc, vinNo, opts = {}) {
     } catch (e) {
       const errMsg = String(e?.message || e);
       if (errMsg === "TOKEN_EXPIRED") {
-        await handleTokenExpired();
-        Script.complete();
+        // 组件里必须落到「Token已过期」占位组件，直接 Script.complete() 会报 Call Script.setWidget()
+        await handleTokenExpiredInMain(isWidget);
         return;
       }
       postStatus = "failed";
@@ -5884,10 +5886,28 @@ async function main() {
   }
 
   // ===== 组件运行（外层兜底：任何异常都必须 setWidget，避免出现 "Call Script.setWidget()"） =====
+  // 慢网络 watchdog：20 秒还没渲染出组件就先铺占位，避免 iOS 结束时提示 Call Script.setWidget()
+  let widgetShown = false;
+  let watchdog = null;
+  const showWidget = (w) => {
+    if (widgetShown) return;
+    widgetShown = true;
+    try { if (watchdog) watchdog.invalidate(); } catch (_) { }
+    Script.setWidget(w);
+  };
+  try {
+    watchdog = Timer.schedule(20, false, () => {
+      if (widgetShown) return;
+      try {
+        Script.setWidget(buildFallbackWidget("⏳ 正在加载", "网络较慢，稍后会自动刷新"));
+        Script.complete();
+      } catch (_) { }
+    });
+  } catch (_) { }
   try {
     const acc = pickAccountForWidget(store);
     if (!acc || !acc.token) {
-      Script.setWidget(buildFallbackWidget("🔑 需要配置", acc
+      showWidget(buildFallbackWidget("🔑 需要配置", acc
         ? "账号缺少Token：请在 Scriptable 内运行脚本，菜单会自动引导设置"
         : "请在 Scriptable 内运行脚本，设置账号后即可显示"));
       Script.complete();
@@ -5896,14 +5916,14 @@ async function main() {
     setCurrentAcc(acc);
     const vinNo = (getParam("vin") || acc.activeVin || (acc.vehicles[0] && acc.vehicles[0].vinNo) || "").trim();
     if (!vinNo) {
-      Script.setWidget(buildFallbackWidget("🚗 未选择车辆", "请在 Scriptable 内运行脚本，选择要显示的车辆"));
+      showWidget(buildFallbackWidget("🚗 未选择车辆", "请在 Scriptable 内运行脚本，选择要显示的车辆"));
       Script.complete();
       return;
     }
 
     try {
       const dash = await runSinglePipeline(acc, vinNo, { isWidget: true });
-      if (!dash) { Script.setWidget(buildFallbackWidget()); Script.complete(); return; }
+      if (!dash) { showWidget(buildFallbackWidget()); Script.complete(); return; }
       // v1.8 大尺寸多车总览（先自动同步车辆列表，App 新绑定车辆自动填充）
       try { await syncVehiclesLite(acc, store); } catch (e) { }
       if ((config.widgetFamily || "medium") === "large" && acc.vehicles && acc.vehicles.length > 1) {
@@ -5914,21 +5934,32 @@ async function main() {
         const refreshMin = Number(getStore().cfg.refreshMin || 15);
         widget.refreshAfterDate = new Date(Date.now() + refreshMin * 60 * 1000);
       } catch { }
-      Script.setWidget(widget);
+      showWidget(widget);
       logStep("ZEEHO 极核助手", "ok", `充电: ${dash.chargeStateStr}`);
       Script.complete();
     } catch (e) {
       const msg = String(e?.message || e);
       if (msg === "TOKEN_EXPIRED") { await handleTokenExpiredInMain(true); return; }
       logStep("运行失败", "fail", msg);
-      Script.setWidget(buildFallbackWidget("⚠️ 运行失败", msg.slice(0, 60)));
+      showWidget(buildFallbackWidget("⚠️ 运行失败", msg.slice(0, 60)));
       Script.complete();
     }
   } catch (e2) {
     console.error("[组件异常]", (e2 && (e2.stack || e2.message)) || e2);
-    try { Script.setWidget(buildFallbackWidget("⚠️ 组件异常", String(e2?.message || e2).slice(0, 60))); } catch (_) { }
+    try { showWidget(buildFallbackWidget("⚠️ 组件异常", String(e2?.message || e2).slice(0, 60))); } catch (_) { }
     Script.complete();
   }
 }
 
-main();
+main().catch((e) => {
+  const msg = String((e && e.message) || e);
+  console.error("[主流程异常]", (e && e.stack) || msg);
+  if (config.runsInWidget || config.widgetFamily) {
+    try {
+      Script.setWidget(buildFallbackWidget("⚠️ 运行失败", msg.slice(0, 60)));
+      Script.complete();
+    } catch (_) { }
+    return;
+  }
+  throw e;
+});
